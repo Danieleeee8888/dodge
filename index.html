@@ -354,27 +354,36 @@ canvas {
   letter-spacing: 0.12em;
   font-weight: 700;
 }
-#records-block .records-reset-wrap {
-  margin-top: clamp(14px, 3.5vw, 20px);
-  padding-top: clamp(10px, 2.5vw, 14px);
-  border-top: 1px solid rgba(255,255,255,0.1);
+#records-block li.rec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+#records-block li.rec-row .rec-row-main {
+  flex: 1;
+  min-width: 0;
   text-align: center;
 }
-#records-block .records-reset {
+#records-block .rec-del {
+  flex-shrink: 0;
   pointer-events: auto;
   cursor: pointer;
-  font-family: inherit;
-  font-size: clamp(10px, 2.8vw, 12px);
-  letter-spacing: 0.32em;
-  color: rgba(255,210,210,0.88);
-  background: rgba(255,70,70,0.12);
-  border: 1px solid rgba(255,130,130,0.4);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
   border-radius: 6px;
-  padding: 8px 20px;
+  background: rgba(255,80,80,0.15);
+  color: rgba(255,180,180,0.95);
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
   -webkit-tap-highlight-color: transparent;
 }
-#records-block .records-reset:active {
-  background: rgba(255,70,70,0.22);
+#records-block .rec-del:active {
+  background: rgba(255,80,80,0.3);
 }
 #shield-hud, #slow-hud {
   position:fixed; z-index:10; pointer-events:none;
@@ -544,8 +553,8 @@ const WHITE_START_SQUARES = 3;
 const WHITE_ON_FIELD_MAX = 50;
 /** Spawn bonus: intervalli fissi (ms). */
 const RED_SPAWN_INTERVAL_MS = 15000;
-const BLUE_SPAWN_INTERVAL_MS = 30000;
-const YELLOW_SPAWN_INTERVAL_MS = 60000;
+const BLUE_SPAWN_INTERVAL_MS = 35000;
+const YELLOW_SPAWN_INTERVAL_MS = 57000;
 const GREEN_SPAWN_INTERVAL_MS = 22000;
 /** Tempo di vita sul campo prima di despawn (ms). */
 const RED_BONUS_TTL_MS = 15000;
@@ -628,6 +637,14 @@ function addRecord(ms) {
   safeLocalSet(RECORDS_KEY, JSON.stringify(next));
 }
 
+function removeRecordByEntry(ms, tagEnc) {
+  const tag = decodeURIComponent(tagEnc || '');
+  const msN = Number(ms);
+  const arr = loadRecordsRaw().filter((r) => !(r.ms === msN && r.tag === tag));
+  safeLocalSet(RECORDS_KEY, JSON.stringify(arr.sort((a, b) => b.ms - a.ms).slice(0, 5)));
+  renderRecordsInto(document.getElementById('records-block'));
+}
+
 function renderRecordsInto(el) {
   if (!el) return;
   const rec = getRecords();
@@ -635,29 +652,24 @@ function renderRecordsInto(el) {
   if (rec.length === 0) body += '<li class="rec-empty">nessun record</li>';
   else {
     rec.forEach((row, i) => {
-      const cls = i === 0 ? 'rec-r1' : '';
-      body += `<li${cls ? ` class="${cls}"` : ''}>${i + 1}. <span class="rec-tag">${row.tag}</span> ${fmt(row.ms)}</li>`;
+      const clsTop = i === 0 ? 'rec-r1' : '';
+      const cls = `rec-row${clsTop ? ' ' + clsTop : ''}`;
+      const te = encodeURIComponent(row.tag);
+      body += `<li class="${cls}"><span class="rec-row-main">${i + 1}. <span class="rec-tag">${row.tag}</span> ${fmt(row.ms)}</span><button type="button" class="rec-del js-no-start" data-rec-ms="${row.ms}" data-rec-tag="${te}" aria-label="Elimina record">×</button></li>`;
     });
   }
-  body += '</ol><div class="records-reset-wrap"><button type="button" id="recordsResetBtn" class="records-reset js-no-start">RESET</button></div>';
+  body += '</ol>';
   el.innerHTML = body;
 }
-function resetLeaderboard() {
-  try {
-    localStorage.removeItem(RECORDS_KEY);
-    localStorage.removeItem(RECORDS_KEY_LEGACY);
-  } catch (e) {}
-  renderRecordsInto(document.getElementById('records-block'));
-}
-function bindLeaderboardResetOnce() {
-  if (document.documentElement.dataset.lbResetBound === '1') return;
-  document.documentElement.dataset.lbResetBound = '1';
+function bindLeaderboardRowDeleteOnce() {
+  if (document.documentElement.dataset.lbDelBound === '1') return;
+  document.documentElement.dataset.lbDelBound = '1';
   document.addEventListener('click', (e) => {
-    const btn = e.target.closest && e.target.closest('#recordsResetBtn');
+    const btn = e.target.closest && e.target.closest('.rec-del');
     if (!btn) return;
     e.stopPropagation();
     e.preventDefault();
-    resetLeaderboard();
+    removeRecordByEntry(btn.getAttribute('data-rec-ms'), btn.getAttribute('data-rec-tag'));
   });
 }
 function syncAudioCornerBtn() {
@@ -1127,6 +1139,36 @@ function whiteTrajectoryTouchesAimSector(b) {
     return false;
   }
   return true;
+}
+
+function isBonusCircle(b) {
+  return b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green';
+}
+/** Bonus: rimbalzano dentro lo schermo, non escono dal campo. */
+function clampBounceBonus(b) {
+  const r = b.r + 1;
+  for (let g = 0; g < 4; g++) {
+    let hit = false;
+    if (b.x < r) {
+      b.x = r;
+      b.vx = b.vx < 0 ? -b.vx : Math.max(b.vx, 0.08);
+      hit = true;
+    } else if (b.x > W - r) {
+      b.x = W - r;
+      b.vx = b.vx > 0 ? -b.vx : Math.min(b.vx, -0.08);
+      hit = true;
+    }
+    if (b.y < r) {
+      b.y = r;
+      b.vy = b.vy < 0 ? -b.vy : Math.max(b.vy, 0.08);
+      hit = true;
+    } else if (b.y > H - r) {
+      b.y = H - r;
+      b.vy = b.vy > 0 ? -b.vy : Math.min(b.vy, -0.08);
+      hit = true;
+    }
+    if (!hit) break;
+  }
 }
 
 function spawnPositionCrowded(sx, sy) {
@@ -1725,6 +1767,7 @@ function loop(now){
       // straight (triangoli bianchi, bonus rosso/blu) e altri
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+      if (isBonusCircle(b)) clampBounceBonus(b);
     }
 
     b.rotation += b.rotSpeed * dt;
@@ -1742,12 +1785,14 @@ function loop(now){
 
     if (b.expireAt != null && now > b.expireAt) { balls.splice(i, 1); continue; }
 
-    // Sempre la posizione *renderizzata*: col centro spirale dentro schermo l’orbita poteva stare fuori → campo “vuoto”.
+    // Fuori schermo: respawn bianchi; i bonus cerchio rimbalzano e non vengono persi ai bordi.
     const cx = b.x, cy = b.y;
-    if (cx < -SCREEN_MARGIN || cx > W + SCREEN_MARGIN || cy < -SCREEN_MARGIN || cy > H + SCREEN_MARGIN) {
-      balls.splice(i, 1);
-      if (b.type === 'white') spawnBall('white', { movement: b.movement });
-      continue;
+    if (!isBonusCircle(b)) {
+      if (cx < -SCREEN_MARGIN || cx > W + SCREEN_MARGIN || cy < -SCREEN_MARGIN || cy > H + SCREEN_MARGIN) {
+        balls.splice(i, 1);
+        if (b.type === 'white') spawnBall('white', { movement: b.movement });
+        continue;
+      }
     }
 
     // collisione
@@ -2067,7 +2112,7 @@ function drawBg(now, lv){
 }
 
 setupMenuUI();
-bindLeaderboardResetOnce();
+bindLeaderboardRowDeleteOnce();
 syncAudioCornerBtn();
 bindAudioCornerBtn();
 updateShellForPhase('menu');
