@@ -27,7 +27,7 @@ canvas {
   position:fixed; top:max(10px, env(safe-area-inset-top)); left:0; right:0;
   display:grid;
   grid-template-columns:1fr auto 1fr;
-  align-items:center;
+  align-items:start;
   gap:clamp(6px, 2vw, 12px);
   padding:0 max(10px, env(safe-area-inset-left)) 0 max(10px, env(safe-area-inset-right));
   color:#fff;
@@ -35,65 +35,57 @@ canvas {
   letter-spacing:0.1em;
   pointer-events:none; z-index:10;
 }
-#hud .hud-left { justify-self:start; text-align:left; }
+#hud.hud--hidden { display:none; }
+#hud .hud-spacer { pointer-events:none; }
 #hud .hud-center {
   justify-self:center; text-align:center;
   white-space:nowrap;
-  display:inline-flex; align-items:baseline; justify-content:center;
-  gap:0.12em;
+  padding-top:2px;
 }
-#hud .hud-right { justify-self:end; display:flex; align-items:center; gap:8px; }
-#hudAudioGlyph {
+#hud .hud-right-stack {
+  justify-self:end;
+  text-align:right;
+  display:flex; flex-direction:column;
+  align-items:flex-end;
+  gap:3px;
+  line-height:1.2;
+}
+#hud .hud-time { white-space:nowrap; }
+#hud .hud-nb { white-space:nowrap; opacity:0.92; }
+#audioCornerBtn {
+  position:fixed;
+  right:max(12px, env(safe-area-inset-right));
+  bottom:max(14px, env(safe-area-inset-bottom));
+  z-index:25;
   pointer-events:auto;
-  display:inline-block;
-  cursor:pointer;
-  padding:4px 5px;
-  margin-right:0.04em;
-  font-size:1.2em;
-  line-height:1;
-  font-weight:700;
-  -webkit-tap-highlight-color:transparent;
-  user-select:none;
-  border:none;
-  background:none;
-  font-family:inherit;
-  vertical-align:baseline;
-}
-#hudAudioGlyph.audio-on {
-  color:#4ade80;
-  text-shadow:0 0 10px rgba(74,222,128,0.55);
-}
-#hudAudioGlyph.audio-off {
-  color:#f87171;
-  text-shadow:0 0 10px rgba(248,113,113,0.5);
-}
-#pauseBtn {
-  pointer-events:auto;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.25);
-  color: #fff;
-  font-family: monospace;
-  font-size: clamp(10px, 3vw, 12px);
-  letter-spacing: 0.08em;
-  padding: 5px 10px;
-  cursor: pointer;
-  display: none;
-  min-width: 36px;
-  text-align:center;
-}
-#pauseBtn:hover { background: rgba(255,255,255,0.18); }
-#pauseOverlay {
-  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-  background: rgba(5,6,12,0.55);
+  width:clamp(44px, 12vw, 52px);
+  height:clamp(44px, 12vw, 52px);
+  padding:0;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,0.28);
+  background:rgba(0,0,0,0.35);
   color:#fff;
-  font-size: clamp(1.75rem, 12vw, 3rem);
-  letter-spacing: clamp(0.2em, 1.5vw, 0.4em);
-  z-index:15;
-  pointer-events:none;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  box-sizing: border-box;
-  text-align: center;
+  font-family:inherit;
+  font-size:clamp(17px, 5vw, 22px);
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 4px 18px rgba(0,0,0,0.35);
 }
+#audioCornerBtn.audio-on {
+  color:#4ade80;
+  border-color:rgba(74,222,128,0.45);
+  text-shadow:0 0 12px rgba(74,222,128,0.5);
+}
+#audioCornerBtn.audio-off {
+  color:#f87171;
+  border-color:rgba(248,113,113,0.45);
+  text-shadow:0 0 12px rgba(248,113,113,0.45);
+}
+#audioCornerBtn.audio-corner--hidden { display:none; }
 #countdownOverlay {
   position:fixed; inset:0; z-index:24;
   display:none; align-items:center; justify-content:center;
@@ -161,14 +153,39 @@ canvas {
   line-height:1.05;
 }
 #screen h1.menu-logo {
-  font-size:clamp(2rem, 11vw, 3.75rem);
-  letter-spacing:clamp(0.18em, 2.5vw, 0.38em);
-  margin-bottom:clamp(14px, 4vw, 24px);
+  font-size:clamp(2.75rem, 15vw, 5rem);
+  letter-spacing:clamp(0.16em, 2.2vw, 0.36em);
+  margin-bottom:clamp(18px, 5vw, 28px);
+}
+#screen .player-name-input {
+  width:min(280px, calc(100vw - 48px));
+  margin-bottom:clamp(16px, 4vw, 22px);
+  padding:12px 14px;
+  font-family:monospace;
+  font-size:clamp(13px, 3.6vw, 15px);
+  letter-spacing:0.12em;
+  text-align:center;
+  color:#fff;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.28);
+  border-radius:8px;
+  outline:none;
+}
+#screen .player-name-input::placeholder {
+  color:rgba(255,255,255,0.35);
 }
 #screen h1.death-heading {
-  font-size:clamp(1.65rem, 9.5vw, 3.1rem);
-  letter-spacing:clamp(0.12em, 1.8vw, 0.28em);
-  margin-bottom:clamp(10px, 3vw, 18px);
+  color:#fff;
+  font-size:clamp(3.2rem, 20vw, 6rem);
+  letter-spacing:0.04em;
+  line-height:1;
+  margin-bottom:clamp(12px, 3vw, 20px);
+  text-shadow:none;
+  font-weight:600;
+}
+#screen.screen-death {
+  background:#000;
+  justify-content:center;
 }
 #screen .death-sub {
   color:rgba(255,255,255,0.5);
@@ -261,7 +278,7 @@ canvas {
   position:fixed; z-index:10; pointer-events:none;
   display:none; flex-direction:column; align-items:center;
   gap:10px;
-  top:calc(52px + env(safe-area-inset-top, 0px));
+  top:calc(46px + env(safe-area-inset-top, 0px));
   bottom:calc(1.5cm + env(safe-area-inset-bottom, 0px));
 }
 #shield-hud { left:20px; }
@@ -296,18 +313,16 @@ canvas {
 
 <canvas id="c"></canvas>
 
-<div id="hud">
-  <span class="hud-left">TEMPO: <span id="t">0:00</span></span>
-  <span class="hud-center">
-    <span id="hudAudioGlyph" role="button" tabindex="0" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</span>
-    <span>LV <span id="lv">1</span> &nbsp; <span id="nb">6</span> oggetti</span>
-  </span>
-  <span class="hud-right">
-    <button id="pauseBtn" type="button">II</button>
-  </span>
+<div id="hud" class="hud--hidden">
+  <span class="hud-spacer" aria-hidden="true"></span>
+  <span class="hud-center">LV <span id="lv">1</span></span>
+  <div class="hud-right-stack">
+    <span class="hud-time">TEMPO <span id="t">0:00</span></span>
+    <span class="hud-nb"><span id="nb">0</span> oggetti</span>
+  </div>
 </div>
 
-<div id="pauseOverlay">PAUSA</div>
+<button type="button" id="audioCornerBtn" class="js-no-start" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</button>
 
 <div id="countdownOverlay" aria-hidden="true">
   <div id="cdInner" class="cd-inner cd-r cd-popping">
@@ -326,6 +341,7 @@ canvas {
 
 <div id="screen">
   <h1 class="menu-logo">DODGE</h1>
+  <input type="text" id="playerNameInput" class="player-name-input js-no-start" maxlength="18" placeholder="Il tuo nome" autocomplete="nickname" spellcheck="false">
   <p class="tap-hint">Premi ovunque per iniziare</p>
 </div>
 
@@ -337,11 +353,11 @@ const shieldHud = document.getElementById('shield-hud');
 const slowHud = document.getElementById('slow-hud');
 const sfill = document.getElementById('sfill');
 const bluefill = document.getElementById('bluefill');
+const hudEl = document.getElementById('hud');
 const tEl = document.getElementById('t');
 const lvEl = document.getElementById('lv');
 const nbEl = document.getElementById('nb');
-const pauseBtn = document.getElementById('pauseBtn');
-const pauseOverlay = document.getElementById('pauseOverlay');
+const audioCornerBtn = document.getElementById('audioCornerBtn');
 
 let W, H;
 function safeLocalGet(key, def) {
@@ -403,7 +419,6 @@ const INTRO_CD_MS = 850;
 
 // GAME STATE
 let running = false;
-let paused = false, pausedAt = 0;
 let px = -999, py = -999;          // cursore visibile (segue tx/ty con lerp)
 let tx = -999, ty = -999;          // cursore target (dito/mouse)
 let fingerDown = false;
@@ -456,37 +471,46 @@ function renderRecordsInto(el) {
   body += '</ol>';
   el.innerHTML = body;
 }
-function syncHudAudioGlyph() {
-  const el = document.getElementById('hudAudioGlyph');
-  if (!el) return;
-  el.classList.toggle('audio-on', audioEnabled);
-  el.classList.toggle('audio-off', !audioEnabled);
-  el.setAttribute('aria-pressed', audioEnabled ? 'true' : 'false');
-  el.setAttribute('aria-label', audioEnabled ? 'Disattiva audio' : 'Attiva audio');
-  el.title = audioEnabled ? 'Audio attivo — tocca per silenziare' : 'Audio spento — tocca per attivare';
+function syncAudioCornerBtn() {
+  if (!audioCornerBtn) return;
+  audioCornerBtn.classList.toggle('audio-on', audioEnabled);
+  audioCornerBtn.classList.toggle('audio-off', !audioEnabled);
+  audioCornerBtn.setAttribute('aria-pressed', audioEnabled ? 'true' : 'false');
+  audioCornerBtn.setAttribute('aria-label', audioEnabled ? 'Disattiva audio' : 'Attiva audio');
+  audioCornerBtn.title = audioEnabled ? 'Audio attivo — tocca per silenziare' : 'Audio spento — tocca per attivare';
 }
-function bindHudAudioGlyph() {
-  const el = document.getElementById('hudAudioGlyph');
-  if (!el || el.dataset.bound === '1') return;
-  el.dataset.bound = '1';
+function bindAudioCornerBtn() {
+  if (!audioCornerBtn || audioCornerBtn.dataset.bound === '1') return;
+  audioCornerBtn.dataset.bound = '1';
   const toggle = (e) => {
     e.stopPropagation();
     audioEnabled = !audioEnabled;
     safeLocalSet('dodge_audio', audioEnabled ? '1' : '0');
-    syncHudAudioGlyph();
+    syncAudioCornerBtn();
   };
-  el.addEventListener('click', toggle);
-  el.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      toggle(e);
-    }
-  });
+  audioCornerBtn.addEventListener('click', toggle);
+}
+/** menu: solo titolo; play: HUD gioco senza audio; gameover: HUD statistiche + audio. */
+function updateShellForPhase(phase) {
+  if (hudEl) {
+    if (phase === 'menu') hudEl.classList.add('hud--hidden');
+    else hudEl.classList.remove('hud--hidden');
+  }
+  if (audioCornerBtn) {
+    if (phase === 'playing') audioCornerBtn.classList.add('audio-corner--hidden');
+    else audioCornerBtn.classList.remove('audio-corner--hidden');
+  }
+}
+function hydratePlayerNameInput() {
+  const el = document.getElementById('playerNameInput');
+  if (!el) return;
+  el.value = safeLocalGet('dodge_player_name', '') || '';
 }
 
 function setupMenuUI() {
   const recEl = document.getElementById('records-block');
   renderRecordsInto(recEl);
+  hydratePlayerNameInput();
 }
 
 // ===================== AUDIO ENGINE =====================
@@ -782,29 +806,6 @@ function stopMusic() {
     padGain.gain.linearRampToValueAtTime(0, t + 1.5);
   }
   droneStopTimer = setTimeout(() => { droneStopTimer = null; killDroneNow(); }, 1700);
-}
-/** Pausa: ferma subito beat, drone e volume (nessuna musica in sottofondo). */
-function pauseAllMusic() {
-  clearBeatOnly();
-  if (droneStopTimer !== null) { clearTimeout(droneStopTimer); droneStopTimer = null; }
-  killDroneNow();
-  if (masterGain && audioCtx) {
-    const t = audioCtx.currentTime;
-    masterGain.gain.cancelScheduledValues(t);
-    masterGain.gain.setValueAtTime(0, t);
-  }
-}
-function resumeMusicAfterPause() {
-  if (!audioCtx || !masterGain) return;
-  const t = audioCtx.currentTime;
-  masterGain.gain.cancelScheduledValues(t);
-  masterGain.gain.setValueAtTime(0.0001, t);
-  masterGain.gain.linearRampToValueAtTime(0.5, t + 0.12);
-  if (audioEnabled) {
-    startDrone();
-    startBeat(level);
-    updateAudio(level);
-  }
 }
 // ===================== END AUDIO =====================
 
@@ -1122,7 +1123,6 @@ function finishIntroCountdown() {
   lastYellow = startTime;
   for (let i = 0; i < WHITE_START_TRIANGLES; i++) spawnBall('white', { movement: 'straight' });
   for (let i = 0; i < WHITE_START_SQUARES; i++) spawnBall('white', { movement: 'spiral' });
-  pauseBtn.style.display = 'inline-block';
   setTimeout(() => {
     if (audioEnabled && running) {
       startDrone();
@@ -1147,14 +1147,16 @@ function syncPowerHud(now) {
 }
 
 function startGame() {
+  screen.classList.remove('screen-death');
+  screen.style.background = '';
+  const nameInput = document.getElementById('playerNameInput');
+  const rawName = nameInput ? nameInput.value.trim() : '';
+  safeLocalSet('dodge_player_name', rawName.slice(0, 18));
   if (audioEnabled) initAudio();
   stopMusic();
   screen.style.display = 'none';
   running = true;
-  paused = false;
-  pauseOverlay.style.display = 'none';
-  pauseBtn.style.display = 'none';
-  pauseBtn.textContent = 'II';
+  updateShellForPhase('playing');
   balls = []; parts = []; sparkles = [];
   level = 1;
   baseTriangles = WHITE_START_TRIANGLES;
@@ -1188,55 +1190,26 @@ function die() {
   syncPowerHud(performance.now());
   stopMusic();
   running = false;
-  pauseBtn.style.display = 'none';
-  paused = false;
-  pauseOverlay.style.display = 'none';
+  const diedElapsed = elapsed;
+  const diedLevel = level;
+  const diedNb = balls.filter(b => b.type === 'white').length;
   addRecord(elapsed);
   burst(px,py,'#fff',40);
   setTimeout(()=>{
+    tEl.textContent = fmt(diedElapsed);
+    lvEl.textContent = String(diedLevel);
+    nbEl.textContent = String(diedNb);
+    updateShellForPhase('gameover');
+    screen.classList.add('screen-death');
     screen.innerHTML = `
-      <h1 class="death-heading">SEI MORTO</h1>
-      <p class="death-sub">sopravvissuto ${fmt(elapsed)}</p>
+      <h1 class="death-heading" aria-hidden="true">⊙_⊙</h1>
+      <p class="death-sub">sopravvissuto ${fmt(diedElapsed)}</p>
       <div id="records-block"></div>
       <p class="tap-hint">Premi ovunque per riprovare</p>`;
     screen.style.display = 'flex';
     setupMenuUI();
   }, 600);
 }
-
-// PAUSE
-function togglePause() {
-  if (!running) return;
-  if (introCountdown) return;
-  paused = !paused;
-  if (paused) {
-    pausedAt = performance.now();
-    pauseOverlay.style.display = 'flex';
-    pauseBtn.textContent = '▶';
-    pauseAllMusic();
-  } else {
-    const pauseDur = performance.now() - pausedAt;
-    // sposta tutti i timer in avanti del tempo di pausa
-    startTime += pauseDur;
-    lastRed += pauseDur;
-    lastBlue += pauseDur;
-    lastYellow += pauseDur;
-    if (shieldActive) shieldEnd += pauseDur;
-    if (slowActive) slowEnd += pauseDur;
-    balls.forEach(b => { if (b.expireAt) b.expireAt += pauseDur; });
-    pauseOverlay.style.display = 'none';
-    pauseBtn.textContent = 'II';
-    last = 0; // evita un dt enorme al prossimo frame
-    resumeMusicAfterPause();
-  }
-}
-pauseBtn.addEventListener('click', e => { e.stopPropagation(); togglePause(); });
-pauseBtn.addEventListener('touchstart', e => { e.stopPropagation(); e.preventDefault(); togglePause(); }, { passive: false });
-window.addEventListener('keydown', e => {
-  if (e.key === 'p' || e.key === 'P' || e.key === ' ') {
-    if (running) { e.preventDefault(); togglePause(); }
-  }
-});
 
 // INPUT — ora con cursore che TRASLAA (lerp) invece di teletrasportarsi
 function getXY(e){ const t=e.touches?e.touches[0]:e; return [t.clientX,t.clientY]; }
@@ -1261,8 +1234,7 @@ function applyTouchRelativeTarget(fx, fy) {
 }
 function isControlTarget(el) {
   if (!el) return false;
-  if (el.id === 'pauseBtn' || (el.closest && el.closest('#pauseBtn'))) return true;
-  if (el.id === 'hudAudioGlyph' || (el.closest && el.closest('#hudAudioGlyph'))) return true;
+  if (el.id === 'audioCornerBtn' || (el.closest && el.closest('#audioCornerBtn'))) return true;
   return false;
 }
 
@@ -1285,11 +1257,6 @@ window.addEventListener('mouseup', ()=>{ fingerDown=false; });
 
 window.addEventListener('touchstart', e=>{
   if (isControlTarget(e.target)) return;
-  if (running && e.touches.length >= 2) {
-    e.preventDefault();
-    togglePause();
-    return;
-  }
   if (!running && e.target.closest('.js-no-start')) return;
   e.preventDefault();
   const [x,y]=getXY(e);
@@ -1382,18 +1349,6 @@ function loop(now){
     tEl.textContent = '0:00';
     lvEl.textContent = '1';
     nbEl.textContent = '0';
-    return;
-  }
-
-  // PAUSED: disegna lo stato corrente, niente update
-  if (paused) {
-    drawBg(now, level);
-    // ridisegna palline statiche
-    for (const b of balls) {
-      if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow') drawBonusAura(b, now);
-      drawShape(b, b.x, b.y, b.r, 1);
-    }
-    drawPlayer(now);
     return;
   }
 
@@ -1766,8 +1721,9 @@ function drawBg(now, lv){
 }
 
 setupMenuUI();
-syncHudAudioGlyph();
-bindHudAudioGlyph();
+syncAudioCornerBtn();
+bindAudioCornerBtn();
+updateShellForPhase('menu');
 if (ctx) {
   requestAnimationFrame(loop);
 }
