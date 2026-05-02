@@ -58,6 +58,7 @@ canvas {
   bottom:max(14px, env(safe-area-inset-bottom));
   z-index:25;
   pointer-events:auto;
+  touch-action:manipulation;
   width:clamp(44px, 12vw, 52px);
   height:clamp(44px, 12vw, 52px);
   padding:0;
@@ -170,6 +171,9 @@ canvas {
   border:1px solid rgba(255,255,255,0.28);
   border-radius:8px;
   outline:none;
+  touch-action:auto;
+  user-select:text;
+  -webkit-user-select:text;
 }
 #screen .player-name-input::placeholder {
   color:rgba(255,255,255,0.35);
@@ -1147,6 +1151,7 @@ function syncPowerHud(now) {
 }
 
 function startGame() {
+  fingerDown = false;
   screen.classList.remove('screen-death');
   screen.style.background = '';
   const nameInput = document.getElementById('playerNameInput');
@@ -1190,6 +1195,7 @@ function die() {
   syncPowerHud(performance.now());
   stopMusic();
   running = false;
+  fingerDown = false;
   const diedElapsed = elapsed;
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
@@ -1275,12 +1281,13 @@ window.addEventListener('touchstart', e=>{
   fingerDown=true;
 },{passive:false});
 window.addEventListener('touchmove', e=>{
+  if (!running) return;
   e.preventDefault();
   const [x,y] = getXY(e);
   applyTouchRelativeTarget(x, y);
 },{passive:false});
 function syncFingerDownFromTouches(e) {
-  e.preventDefault();
+  if (running) e.preventDefault();
   fingerDown = e.touches.length > 0;
 }
 window.addEventListener('touchend', syncFingerDownFromTouches, { passive: false });
