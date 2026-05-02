@@ -180,12 +180,15 @@ canvas {
 }
 #screen h1.death-heading {
   color:#fff;
-  font-size:clamp(3.2rem, 20vw, 6rem);
-  letter-spacing:0.04em;
-  line-height:1;
+  font-size:clamp(1.35rem, 5.5vw, 2rem);
+  letter-spacing:0.06em;
+  line-height:1.25;
   margin-bottom:clamp(12px, 3vw, 20px);
   text-shadow:none;
-  font-weight:600;
+  font-weight:700;
+  max-width:min(340px, 92vw);
+  padding:0 12px;
+  box-sizing:border-box;
 }
 #screen.screen-death {
   background:#000;
@@ -277,6 +280,13 @@ canvas {
   background: rgba(255,255,255,0.03);
   box-shadow: none;
   text-shadow: none;
+}
+#records-block .rec-tag {
+  display: inline-block;
+  min-width: 3.2ch;
+  margin-right: 0.45em;
+  letter-spacing: 0.12em;
+  font-weight: 700;
 }
 #shield-hud, #slow-hud {
   position:fixed; z-index:10; pointer-events:none;
@@ -446,30 +456,59 @@ const cdNumEl = document.getElementById('cdNum');
 
 let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
-function getRecords() {
+const RECORDS_KEY = 'dodge_records_v2';
+const RECORDS_KEY_LEGACY = 'dodge_records';
+
+function getPlayerTag3() {
+  const raw = (safeLocalGet('dodge_player_name', '') || '').trim();
+  if (!raw) return '???';
+  const u = raw.slice(0, 3).toUpperCase();
+  return u.length >= 3 ? u : u + '·'.repeat(3 - u.length);
+}
+
+function normalizeRecordEntry(item) {
+  if (typeof item === 'number' && item > 0) return { ms: Math.floor(item), tag: '···' };
+  if (item && typeof item === 'object' && typeof item.ms === 'number' && item.ms > 0) {
+    let tag = (item.tag != null ? String(item.tag) : '???').trim().toUpperCase().replace(/\s+/g, '');
+    if (!tag) tag = '???';
+    tag = tag.slice(0, 3);
+    return { ms: Math.floor(item.ms), tag };
+  }
+  return null;
+}
+
+function loadRecordsRaw() {
   try {
-    const j = localStorage.getItem('dodge_records');
+    let j = localStorage.getItem(RECORDS_KEY);
+    if (!j) j = localStorage.getItem(RECORDS_KEY_LEGACY);
     if (!j) return [];
     const arr = JSON.parse(j);
     if (!Array.isArray(arr)) return [];
-    return arr.filter((n) => typeof n === 'number' && n > 0).sort((a, b) => b - a).slice(0, 5);
+    return arr.map(normalizeRecordEntry).filter(Boolean);
   } catch (e) { return []; }
 }
+
+function getRecords() {
+  return loadRecordsRaw().sort((a, b) => b.ms - a.ms).slice(0, 5);
+}
+
 function addRecord(ms) {
   const t = Math.floor(ms);
   if (t <= 0) return;
-  const next = [...getRecords(), t].sort((a, b) => b - a).slice(0, 5);
-  safeLocalSet('dodge_records', JSON.stringify(next));
+  const tag = getPlayerTag3();
+  const next = [...getRecords(), { ms: t, tag }].sort((a, b) => b.ms - a.ms).slice(0, 5);
+  safeLocalSet(RECORDS_KEY, JSON.stringify(next));
 }
+
 function renderRecordsInto(el) {
   if (!el) return;
   const rec = getRecords();
   let body = '<h2>TOP 5</h2><ol>';
   if (rec.length === 0) body += '<li class="rec-empty">nessun record</li>';
   else {
-    rec.forEach((ms, i) => {
+    rec.forEach((row, i) => {
       const cls = i === 0 ? 'rec-r1' : '';
-      body += `<li${cls ? ` class="${cls}"` : ''}>${i + 1}. ${fmt(ms)}</li>`;
+      body += `<li${cls ? ` class="${cls}"` : ''}>${i + 1}. <span class="rec-tag">${row.tag}</span> ${fmt(row.ms)}</li>`;
     });
   }
   body += '</ol>';
@@ -1208,7 +1247,7 @@ function die() {
     updateShellForPhase('gameover');
     screen.classList.add('screen-death');
     screen.innerHTML = `
-      <h1 class="death-heading" aria-hidden="true">⊙_⊙</h1>
+      <h1 class="death-heading">Sei scarso amico!</h1>
       <p class="death-sub">sopravvissuto ${fmt(diedElapsed)}</p>
       <div id="records-block"></div>
       <p class="tap-hint">Premi ovunque per riprovare</p>`;
