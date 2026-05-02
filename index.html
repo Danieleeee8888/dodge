@@ -6,7 +6,8 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#05060c">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
 <title>DODGE</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -17,8 +18,9 @@ html, body {
   touch-action:none;
   -webkit-touch-callout:none;
   -webkit-tap-highlight-color:transparent;
+  background:#000;
 }
-body { background:#05060c; font-family:monospace; user-select:none; }
+body { background:#000; font-family:monospace; user-select:none; }
 canvas {
   display:block; position:fixed; top:0; left:0;
   touch-action:none;
@@ -92,7 +94,7 @@ canvas {
 #audioCornerBtn.audio-corner--hidden { display:none; }
 #pauseOverlay {
   position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-  background:rgba(5,6,12,0.55);
+  background:rgba(0,0,0,0.58);
   color:#fff;
   font-size:clamp(1.75rem, 12vw, 3rem);
   letter-spacing:clamp(0.2em, 1.5vw, 0.4em);
@@ -106,7 +108,7 @@ canvas {
   position:fixed; inset:0; z-index:24;
   display:none; align-items:center; justify-content:center;
   pointer-events:none;
-  background:rgba(5,6,12,0.42);
+  background:rgba(0,0,0,0.45);
 }
 #countdownOverlay.show { display:flex; }
 .cd-inner {
@@ -155,6 +157,7 @@ canvas {
   z-index:20;
   cursor:pointer;
   touch-action:manipulation;
+  background:#000;
 }
 #screen > * {
   position: relative;
@@ -1383,7 +1386,20 @@ function syncPowerHud(now) {
   }
 }
 
+function requestGameFullscreen() {
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) return;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) {
+      const p = req.call(el);
+      if (p && typeof p.catch === 'function') p.catch(function () {});
+    }
+  } catch (e) {}
+}
+
 function startGame() {
+  requestGameFullscreen();
   fingerDown = false;
   paused = false;
   if (pauseOverlay) pauseOverlay.style.display = 'none';
@@ -1632,7 +1648,7 @@ function loop(now){
   if (!ctx) return;
   const dt = Math.min((now-last)/16.67,3); last=now;
 
-  ctx.fillStyle = '#05060c';
+  ctx.fillStyle = '#000000';
   ctx.fillRect(0,0,W,H);
 
   if(!running){
@@ -2117,7 +2133,7 @@ function drawBonusAura(b, now) {
 function drawBg(now, lv){
   const intensity = Math.min((lv-1)*0.09, 0.65);
   if(intensity<0.01) return;
-  ctx.strokeStyle=`rgba(200,215,255,${intensity*0.09})`;
+  ctx.strokeStyle=`rgba(200,215,255,${intensity*0.045})`;
   ctx.lineWidth=0.5;
   const cols=14, rows=9;
   for(let i=0;i<=cols;i++){
@@ -2130,7 +2146,7 @@ function drawBg(now, lv){
   }
   const g=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);
   g.addColorStop(0,'rgba(0,0,0,0)');
-  g.addColorStop(1,`rgba(4,8,22,${0.48+0.06*Math.sin(now*0.001*(1+lv*0.1))})`);
+  g.addColorStop(1,`rgba(0,0,0,${0.22+0.05*Math.sin(now*0.001*(1+lv*0.1))})`);
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 }
 
