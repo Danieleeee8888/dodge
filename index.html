@@ -22,8 +22,9 @@ html, body {
 }
 body { background:#000; font-family:monospace; user-select:none; }
 canvas {
-  display:block; position:fixed; top:0; left:0;
+  display:block; position:fixed;
   touch-action:none;
+  /* top/left/width/height: impostati da JS (scala al viewport, area di gioco fissa). */
 }
 #hud {
   position:fixed; top:max(10px, env(safe-area-inset-top)); left:0; right:0;
@@ -92,6 +93,36 @@ canvas {
   text-shadow:0 0 12px rgba(248,113,113,0.45);
 }
 #audioCornerBtn.audio-corner--hidden { display:none; }
+#fullscreenCornerBtn {
+  position:fixed;
+  left:max(12px, env(safe-area-inset-left));
+  bottom:max(14px, env(safe-area-inset-bottom));
+  z-index:25;
+  pointer-events:auto;
+  touch-action:manipulation;
+  width:clamp(44px, 12vw, 52px);
+  height:clamp(44px, 12vw, 52px);
+  padding:0;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,0.28);
+  background:rgba(0,0,0,0.35);
+  color:#fff;
+  font-family:inherit;
+  font-size:clamp(15px, 4.2vw, 20px);
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 4px 18px rgba(0,0,0,0.35);
+}
+#fullscreenCornerBtn.fs-active {
+  color:#93c5fd;
+  border-color:rgba(147,197,253,0.45);
+  text-shadow:0 0 10px rgba(147,197,253,0.4);
+}
+#fullscreenCornerBtn.fullscreen-corner--hidden { display:none; }
 #pauseOverlay {
   position:fixed; inset:0; display:none; align-items:center; justify-content:center;
   background:rgba(0,0,0,0.58);
@@ -411,6 +442,7 @@ canvas {
 
 <div id="pauseOverlay">PAUSA</div>
 
+<button type="button" id="fullscreenCornerBtn" class="js-no-start" aria-pressed="false" aria-label="Tutto schermo" title="Tutto schermo">⛶</button>
 <button type="button" id="audioCornerBtn" class="js-no-start" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</button>
 
 <div id="countdownOverlay" aria-hidden="true">
@@ -446,10 +478,15 @@ const hudEl = document.getElementById('hud');
 const tEl = document.getElementById('t');
 const lvEl = document.getElementById('lv');
 const nbEl = document.getElementById('nb');
+const fullscreenCornerBtn = document.getElementById('fullscreenCornerBtn');
 const audioCornerBtn = document.getElementById('audioCornerBtn');
 const pauseOverlay = document.getElementById('pauseOverlay');
 
 let W, H;
+/** Area di gioco fissa (pixel logici). Stessa difficoltà per tutti: zoom/desktop non ridimensionano ostacoli. */
+const FIXED_GAME_W = 400;
+const FIXED_GAME_H = 720;
+
 function safeLocalGet(key, def) {
   try {
     const v = localStorage.getItem(key);
@@ -462,10 +499,19 @@ function safeLocalSet(key, val) {
 function resize() {
   if (!canvas) return;
   const vv = window.visualViewport;
-  const w = vv && vv.width > 0 ? vv.width : window.innerWidth;
-  const h = vv && vv.height > 0 ? vv.height : window.innerHeight;
-  W = canvas.width = Math.max(1, Math.floor(w));
-  H = canvas.height = Math.max(1, Math.floor(h));
+  const winW = vv && vv.width > 0 ? vv.width : window.innerWidth;
+  const winH = vv && vv.height > 0 ? vv.height : window.innerHeight;
+  W = FIXED_GAME_W;
+  H = FIXED_GAME_H;
+  canvas.width = W;
+  canvas.height = H;
+  const scale = Math.min(winW / W, winH / H);
+  const dispW = W * scale;
+  const dispH = H * scale;
+  canvas.style.width = dispW + 'px';
+  canvas.style.height = dispH + 'px';
+  canvas.style.left = (winW - dispW) * 0.5 + 'px';
+  canvas.style.top = (winH - dispH) * 0.5 + 'px';
 }
 resize();
 window.addEventListener('resize', resize);
@@ -644,7 +690,7 @@ function bindAudioCornerBtn() {
   };
   audioCornerBtn.addEventListener('click', toggle);
 }
-/** menu: solo titolo; play: HUD gioco senza audio; gameover: HUD statistiche + audio. */
+/** menu: solo titolo; play: HUD gioco senza audio/tutto-schermo; gameover: statistiche + controlli angolo. */
 function updateShellForPhase(phase) {
   if (hudEl) {
     if (phase === 'menu') hudEl.classList.add('hud--hidden');
@@ -653,6 +699,10 @@ function updateShellForPhase(phase) {
   if (audioCornerBtn) {
     if (phase === 'playing') audioCornerBtn.classList.add('audio-corner--hidden');
     else audioCornerBtn.classList.remove('audio-corner--hidden');
+  }
+  if (fullscreenCornerBtn) {
+    if (phase === 'playing') fullscreenCornerBtn.classList.add('fullscreen-corner--hidden');
+    else fullscreenCornerBtn.classList.remove('fullscreen-corner--hidden');
   }
 }
 function hydratePlayerNameInput() {
@@ -1386,20 +1436,51 @@ function syncPowerHud(now) {
   }
 }
 
-function requestGameFullscreen() {
+function isPageFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function togglePageFullscreen() {
   try {
-    if (document.fullscreenElement || document.webkitFullscreenElement) return;
-    const el = document.documentElement;
-    const req = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (req) {
-      const p = req.call(el);
-      if (p && typeof p.catch === 'function') p.catch(function () {});
+    if (isPageFullscreen()) {
+      const ex = document.exitFullscreen || document.webkitExitFullscreen;
+      if (ex) {
+        const p = ex.call(document);
+        if (p && typeof p.catch === 'function') p.catch(function () {});
+      }
+    } else {
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) {
+        const p = req.call(el);
+        if (p && typeof p.catch === 'function') p.catch(function () {});
+      }
     }
   } catch (e) {}
 }
 
+function syncFullscreenCornerBtn() {
+  if (!fullscreenCornerBtn) return;
+  const on = isPageFullscreen();
+  fullscreenCornerBtn.classList.toggle('fs-active', on);
+  fullscreenCornerBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  fullscreenCornerBtn.setAttribute('aria-label', on ? 'Esci da tutto schermo' : 'Tutto schermo');
+  fullscreenCornerBtn.title = on ? 'Esci da tutto schermo' : 'Tutto schermo';
+  fullscreenCornerBtn.textContent = on ? '\u2715' : '\u26F6';
+}
+
+function bindFullscreenCornerBtn() {
+  if (!fullscreenCornerBtn || fullscreenCornerBtn.dataset.bound === '1') return;
+  fullscreenCornerBtn.dataset.bound = '1';
+  fullscreenCornerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePageFullscreen();
+  });
+  document.addEventListener('fullscreenchange', syncFullscreenCornerBtn);
+  document.addEventListener('webkitfullscreenchange', syncFullscreenCornerBtn);
+}
+
 function startGame() {
-  requestGameFullscreen();
   fingerDown = false;
   paused = false;
   if (pauseOverlay) pauseOverlay.style.display = 'none';
@@ -1523,8 +1604,21 @@ function togglePause() {
   }
 }
 
-// INPUT — ora con cursore che TRASLAA (lerp) invece di teletrasportarsi
-function getXY(e){ const t=e.touches?e.touches[0]:e; return [t.clientX,t.clientY]; }
+// INPUT — coordinate schermo → area di gioco fissa (stesso bounding del canvas scalato)
+function clientToGame(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  const rw = Math.max(1e-6, r.width);
+  const rh = Math.max(1e-6, r.height);
+  let gx = (clientX - r.left) * (W / rw);
+  let gy = (clientY - r.top) * (H / rh);
+  gx = Math.max(0, Math.min(W, gx));
+  gy = Math.max(0, Math.min(H, gy));
+  return [gx, gy];
+}
+function getXY(e) {
+  const t = e.touches ? e.touches[0] : e;
+  return clientToGame(t.clientX, t.clientY);
+}
 /** Tiene il target giocatore dentro lo schermo (come prima i diti tiravano fuori). */
 function clampPlayerTarget(cx, cy) {
   const m = Math.max(48, SCREEN_MARGIN + 8);
@@ -1547,6 +1641,7 @@ function applyTouchRelativeTarget(fx, fy) {
 function isControlTarget(el) {
   if (!el) return false;
   if (el.id === 'audioCornerBtn' || (el.closest && el.closest('#audioCornerBtn'))) return true;
+  if (el.id === 'fullscreenCornerBtn' || (el.closest && el.closest('#fullscreenCornerBtn'))) return true;
   return false;
 }
 
@@ -2154,6 +2249,8 @@ setupMenuUI();
 bindLeaderboardRowDeleteOnce();
 syncAudioCornerBtn();
 bindAudioCornerBtn();
+syncFullscreenCornerBtn();
+bindFullscreenCornerBtn();
 updateShellForPhase('menu');
 if (ctx) {
   requestAnimationFrame(loop);
