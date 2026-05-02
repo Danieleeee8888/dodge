@@ -36,60 +36,6 @@ canvas {
   pointer-events:none; z-index:10;
 }
 #hud.hud--hidden { display:none; }
-#bonusTicker {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: calc(50px + env(safe-area-inset-top));
-  height: 1.6rem;
-  overflow: hidden;
-  z-index: 11;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.12s ease-out;
-}
-#bonusTicker.bonus-ticker--active {
-  opacity: 1;
-}
-.bonus-ticker__text {
-  display: inline-block;
-  white-space: nowrap;
-  font-size: clamp(11px, 3.2vw, 15px);
-  font-weight: 700;
-  letter-spacing: 0.38em;
-  will-change: transform;
-}
-.bonus-ticker__text--run {
-  animation: bonusTickScroll 2.35s linear forwards;
-}
-@keyframes bonusTickScroll {
-  from { transform: translateX(-35%); }
-  to { transform: translateX(115vw); }
-}
-.bonus-ticker--r {
-  color: #ff9aaa;
-  text-shadow:
-    0 0 10px #ff2244, 0 0 22px rgba(255,50,80,0.65),
-    0 0 36px rgba(255,60,90,0.35);
-}
-.bonus-ticker--b {
-  color: #9ecbff;
-  text-shadow:
-    0 0 10px #2288ff, 0 0 22px rgba(50,140,255,0.55),
-    0 0 34px rgba(80,160,255,0.3);
-}
-.bonus-ticker--y {
-  color: #fff0a0;
-  text-shadow:
-    0 0 10px #ddb010, 0 0 22px rgba(230,200,40,0.5),
-    0 0 32px rgba(255,220,80,0.28);
-}
-.bonus-ticker--g {
-  color: #7af5a8;
-  text-shadow:
-    0 0 10px #22aa55, 0 0 22px rgba(50,200,100,0.5),
-    0 0 32px rgba(80,220,130,0.28);
-}
 #hud .hud-spacer { pointer-events:none; }
 #hud .hud-center {
   justify-self:center; text-align:center;
@@ -454,10 +400,6 @@ canvas {
   </div>
 </div>
 
-<div id="bonusTicker" aria-hidden="true">
-  <span id="bonusTickerText" class="bonus-ticker__text"></span>
-</div>
-
 <div id="erase-hud">
   <div id="greentrack"><div id="greenfill"></div></div>
 </div>
@@ -495,8 +437,6 @@ const sfill = document.getElementById('sfill');
 const bluefill = document.getElementById('bluefill');
 const eraseHud = document.getElementById('erase-hud');
 const greenfill = document.getElementById('greenfill');
-const bonusTickerEl = document.getElementById('bonusTicker');
-const bonusTickerTextEl = document.getElementById('bonusTickerText');
 const hudEl = document.getElementById('hud');
 const tEl = document.getElementById('t');
 const lvEl = document.getElementById('lv');
@@ -1418,29 +1358,6 @@ function syncPowerHud(now) {
   }
 }
 
-function showBonusTicker(kind) {
-  if (!bonusTickerEl || !bonusTickerTextEl) return;
-  const map = {
-    red: { t: 'SCUDO', c: 'bonus-ticker--r' },
-    blue: { t: 'RALLENTA', c: 'bonus-ticker--b' },
-    yellow: { t: 'DIMEZZA', c: 'bonus-ticker--y' },
-    green: { t: 'CANCELLA', c: 'bonus-ticker--g' },
-  };
-  const m = map[kind];
-  if (!m) return;
-  bonusTickerTextEl.textContent = m.t;
-  bonusTickerTextEl.className = 'bonus-ticker__text ' + m.c;
-  bonusTickerEl.classList.add('bonus-ticker--active');
-  bonusTickerTextEl.classList.remove('bonus-ticker__text--run');
-  void bonusTickerTextEl.offsetWidth;
-  bonusTickerTextEl.classList.add('bonus-ticker__text--run');
-  clearTimeout(showBonusTicker._t);
-  showBonusTicker._t = setTimeout(() => {
-    bonusTickerEl.classList.remove('bonus-ticker--active');
-    bonusTickerTextEl.classList.remove('bonus-ticker__text--run');
-  }, 2400);
-}
-
 function startGame() {
   fingerDown = false;
   paused = false;
@@ -1814,7 +1731,6 @@ function loop(now){
         if(b.type==='red'){
           shieldActive=true; shieldEnd=now+SHIELD_DURATION_MS;
           if (audioEnabled) playSoundBonus('red');
-          showBonusTicker('red');
           burst(b.x,b.y,'#f44',22);
           flash=0.35; flashCol='rgba(255,68,68,0.18)';
           balls.splice(i,1);
@@ -1825,7 +1741,6 @@ function loop(now){
           const alreadySlow = slowActive;
           slowActive=true; slowEnd=now+SLOW_DURATION_MS;
           if (audioEnabled) playSoundBonus('blue');
-          showBonusTicker('blue');
           if (!alreadySlow) {
             balls.forEach(bb=>{
               if(bb.type==='white'){
@@ -1844,7 +1759,6 @@ function loop(now){
         }
         if(b.type==='yellow'){
           if (audioEnabled) playSoundBonus('yellow');
-          showBonusTicker('yellow');
           removeHalfOfWhites();
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
@@ -1855,7 +1769,6 @@ function loop(now){
           eraseModeActive = true;
           eraseModeEnd = now + ERASE_MODE_DURATION_MS;
           if (audioEnabled) playSoundBonus('green');
-          showBonusTicker('green');
           burst(b.x, b.y, '#34cc6e', 22);
           flash = 0.32; flashCol = 'rgba(52,200,110,0.22)';
           balls.splice(i, 1);
@@ -1969,32 +1882,6 @@ function drawPlayer(now) {
   ctx.arc(0, 0, rMain + 28, 0, Math.PI * 2);
   ctx.fill();
 
-  if (shieldActive) {
-    ctx.beginPath();
-    ctx.arc(0, 0, rMain + 14, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255,68,68,${0.48 + 0.32 * Math.sin(now * 0.008)})`;
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-  }
-  if (slowActive) {
-    ctx.beginPath();
-    ctx.arc(0, 0, rMain + (shieldActive ? 26 : 14), 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(68,136,255,${0.4 + 0.22 * Math.sin(now * 0.006)})`;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-  if (eraseModeActive && now < eraseModeEnd) {
-    let er = rMain + 16;
-    if (shieldActive && slowActive) er = rMain + 34;
-    else if (shieldActive) er = rMain + 28;
-    else if (slowActive) er = rMain + 26;
-    ctx.beginPath();
-    ctx.arc(0, 0, er, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(60,220,130,${0.48 + 0.28 * Math.sin(now * 0.009)})`;
-    ctx.lineWidth = 2.2;
-    ctx.stroke();
-  }
-
   if (velShow) {
     const vm = Math.min(1.15, Math.sqrt(distSq) / 100);
     ctx.rotate(velAng);
@@ -2028,7 +1915,11 @@ function drawPlayer(now) {
     ctx.stroke();
   }
 
-  ctx.strokeStyle = `rgba(255,255,255,${0.68 + 0.22 * pulse})`;
+  if (shieldActive) {
+    ctx.strokeStyle = `rgba(255,68,68,${0.62 + 0.28 * Math.sin(now * 0.008)})`;
+  } else {
+    ctx.strokeStyle = `rgba(255,255,255,${0.68 + 0.22 * pulse})`;
+  }
   ctx.lineWidth = 2.25;
   ctx.beginPath();
   ctx.arc(0, 0, rMain, 0, Math.PI * 2);
@@ -2053,6 +1944,25 @@ function drawPlayer(now) {
   ctx.beginPath();
   ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
   ctx.fill();
+
+  if (eraseModeActive && now < eraseModeEnd) {
+    const orbitR = rMain + 13;
+    const ang = now * 0.0031;
+    const ox = Math.cos(ang) * orbitR;
+    const oy = Math.sin(ang) * orbitR;
+    const sr = 4.2;
+    const sg = ctx.createRadialGradient(ox - 1.2, oy - 1.2, 0, ox, oy, sr);
+    sg.addColorStop(0, '#d8ffe8');
+    sg.addColorStop(0.45, '#3cdd7a');
+    sg.addColorStop(1, 'rgba(18,110,55,0.55)');
+    ctx.beginPath();
+    ctx.arc(ox, oy, sr, 0, Math.PI * 2);
+    ctx.fillStyle = sg;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(200,255,220,${0.75 + 0.2 * Math.sin(now * 0.012)})`;
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+  }
 
   ctx.restore();
 
