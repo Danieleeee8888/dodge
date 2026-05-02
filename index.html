@@ -25,14 +25,48 @@ canvas {
 }
 #hud {
   position:fixed; top:max(10px, env(safe-area-inset-top)); left:0; right:0;
-  display:flex; justify-content:space-between; align-items:center;
-  padding:0 max(12px, env(safe-area-inset-left)) 0 max(12px, env(safe-area-inset-right));
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:clamp(6px, 2vw, 12px);
+  padding:0 max(10px, env(safe-area-inset-left)) 0 max(10px, env(safe-area-inset-right));
   color:#fff;
   font-size:clamp(10px, 3.1vw, 13px);
   letter-spacing:0.1em;
   pointer-events:none; z-index:10;
 }
-#hud .right { display:flex; align-items:center; gap:14px; }
+#hud .hud-left { justify-self:start; text-align:left; }
+#hud .hud-center {
+  justify-self:center; text-align:center;
+  white-space:nowrap;
+  display:inline-flex; align-items:baseline; justify-content:center;
+  gap:0.12em;
+}
+#hud .hud-right { justify-self:end; display:flex; align-items:center; gap:8px; }
+#hudAudioGlyph {
+  pointer-events:auto;
+  display:inline-block;
+  cursor:pointer;
+  padding:4px 5px;
+  margin-right:0.04em;
+  font-size:1.2em;
+  line-height:1;
+  font-weight:700;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  border:none;
+  background:none;
+  font-family:inherit;
+  vertical-align:baseline;
+}
+#hudAudioGlyph.audio-on {
+  color:#4ade80;
+  text-shadow:0 0 10px rgba(74,222,128,0.55);
+}
+#hudAudioGlyph.audio-off {
+  color:#f87171;
+  text-shadow:0 0 10px rgba(248,113,113,0.5);
+}
 #pauseBtn {
   pointer-events:auto;
   background: rgba(255,255,255,0.08);
@@ -114,7 +148,7 @@ canvas {
   cursor:pointer;
   touch-action:manipulation;
 }
-#screen > :not(#audioToggle) {
+#screen > * {
   position: relative;
   z-index: 1;
 }
@@ -147,26 +181,6 @@ canvas {
   padding:0 max(12px, env(safe-area-inset-left)) 0 max(12px, env(safe-area-inset-right));
   box-sizing:border-box;
 }
-#audioToggle {
-  position:absolute; top:max(12px, env(safe-area-inset-top));
-  left:50%; right:auto;
-  transform:translateX(-50%);
-  width:clamp(40px, 11vw, 46px); height:clamp(40px, 11vw, 46px);
-  display:flex; align-items:center; justify-content:center;
-  padding:0; border:none; border-radius:10px;
-  background:rgba(255,255,255,0.08);
-  border:1px solid rgba(255,255,255,0.22);
-  color:rgba(220,230,255,0.92);
-  cursor:pointer;
-  pointer-events:auto;
-  z-index:0;
-}
-#audioToggle:hover { background:rgba(255,255,255,0.14); }
-#audioToggle svg { width:22px; height:22px; display:block; }
-#audioToggle .icon-off { display:none; }
-#audioToggle.audio-off { color:rgba(255,255,255,0.38); }
-#audioToggle.audio-off .icon-on { display:none; }
-#audioToggle.audio-off .icon-off { display:block; }
 #screen .tap-hint {
   margin-top: clamp(4px, 1.5vw, 10px);
   color: rgba(255,255,255,0.52);
@@ -283,9 +297,12 @@ canvas {
 <canvas id="c"></canvas>
 
 <div id="hud">
-  <span>TEMPO: <span id="t">0:00</span></span>
-  <span class="right">
+  <span class="hud-left">TEMPO: <span id="t">0:00</span></span>
+  <span class="hud-center">
+    <span id="hudAudioGlyph" role="button" tabindex="0" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</span>
     <span>LV <span id="lv">1</span> &nbsp; <span id="nb">6</span> oggetti</span>
+  </span>
+  <span class="hud-right">
     <button id="pauseBtn" type="button">II</button>
   </span>
 </div>
@@ -308,18 +325,6 @@ canvas {
 </div>
 
 <div id="screen">
-  <button type="button" id="audioToggle" class="js-no-start" aria-label="Audio attivo" aria-pressed="true" title="Audio">
-    <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M11 5 6 9H3v6h3l5 4V5Z"/>
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-      <path d="M17.66 6.34a8 8 0 0 1 0 11.32"/>
-    </svg>
-    <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M11 5 6 9H3v6h3l5 4V5Z"/>
-      <path d="m22 9-6 6"/>
-      <path d="m16 9 6 6"/>
-    </svg>
-  </button>
   <h1 class="menu-logo">DODGE</h1>
   <p class="tap-hint">Premi ovunque per iniziare</p>
 </div>
@@ -440,7 +445,7 @@ function addRecord(ms) {
 function renderRecordsInto(el) {
   if (!el) return;
   const rec = getRecords();
-  let body = '<h2>TOP 5 TEMPO</h2><ol>';
+  let body = '<h2>TOP 5</h2><ol>';
   if (rec.length === 0) body += '<li class="rec-empty">nessun record</li>';
   else {
     rec.forEach((ms, i) => {
@@ -451,26 +456,36 @@ function renderRecordsInto(el) {
   body += '</ol>';
   el.innerHTML = body;
 }
-function syncAudioToggleButton(btn) {
-  if (!btn) return;
-  btn.classList.toggle('audio-off', !audioEnabled);
-  btn.setAttribute('aria-pressed', audioEnabled ? 'true' : 'false');
-  btn.setAttribute('aria-label', audioEnabled ? 'Disattiva audio' : 'Attiva audio');
-  btn.title = audioEnabled ? 'Disattiva audio' : 'Attiva audio';
+function syncHudAudioGlyph() {
+  const el = document.getElementById('hudAudioGlyph');
+  if (!el) return;
+  el.classList.toggle('audio-on', audioEnabled);
+  el.classList.toggle('audio-off', !audioEnabled);
+  el.setAttribute('aria-pressed', audioEnabled ? 'true' : 'false');
+  el.setAttribute('aria-label', audioEnabled ? 'Disattiva audio' : 'Attiva audio');
+  el.title = audioEnabled ? 'Audio attivo — tocca per silenziare' : 'Audio spento — tocca per attivare';
+}
+function bindHudAudioGlyph() {
+  const el = document.getElementById('hudAudioGlyph');
+  if (!el || el.dataset.bound === '1') return;
+  el.dataset.bound = '1';
+  const toggle = (e) => {
+    e.stopPropagation();
+    audioEnabled = !audioEnabled;
+    safeLocalSet('dodge_audio', audioEnabled ? '1' : '0');
+    syncHudAudioGlyph();
+  };
+  el.addEventListener('click', toggle);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggle(e);
+    }
+  });
 }
 
 function setupMenuUI() {
-  const audioBtn = document.getElementById('audioToggle');
   const recEl = document.getElementById('records-block');
-  if (audioBtn) {
-    syncAudioToggleButton(audioBtn);
-    audioBtn.onclick = (e) => {
-      e.stopPropagation();
-      audioEnabled = !audioEnabled;
-      safeLocalSet('dodge_audio', audioEnabled ? '1' : '0');
-      syncAudioToggleButton(audioBtn);
-    };
-  }
   renderRecordsInto(recEl);
 }
 
@@ -1180,18 +1195,6 @@ function die() {
   burst(px,py,'#fff',40);
   setTimeout(()=>{
     screen.innerHTML = `
-      <button type="button" id="audioToggle" class="js-no-start" aria-label="Audio attivo" aria-pressed="true" title="Audio">
-        <svg class="icon-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M11 5 6 9H3v6h3l5 4V5Z"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          <path d="M17.66 6.34a8 8 0 0 1 0 11.32"/>
-        </svg>
-        <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M11 5 6 9H3v6h3l5 4V5Z"/>
-          <path d="m22 9-6 6"/>
-          <path d="m16 9 6 6"/>
-        </svg>
-      </button>
       <h1 class="death-heading">SEI MORTO</h1>
       <p class="death-sub">sopravvissuto ${fmt(elapsed)}</p>
       <div id="records-block"></div>
@@ -1257,7 +1260,10 @@ function applyTouchRelativeTarget(fx, fy) {
   ty = ny;
 }
 function isControlTarget(el) {
-  return el && (el.id === 'pauseBtn' || (el.closest && el.closest('#pauseBtn')));
+  if (!el) return false;
+  if (el.id === 'pauseBtn' || (el.closest && el.closest('#pauseBtn'))) return true;
+  if (el.id === 'hudAudioGlyph' || (el.closest && el.closest('#hudAudioGlyph'))) return true;
+  return false;
 }
 
 window.addEventListener('mousedown', e=>{
@@ -1760,6 +1766,8 @@ function drawBg(now, lv){
 }
 
 setupMenuUI();
+syncHudAudioGlyph();
+bindHudAudioGlyph();
 if (ctx) {
   requestAnimationFrame(loop);
 }
