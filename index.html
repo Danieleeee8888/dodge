@@ -87,6 +87,18 @@ canvas {
   text-shadow:0 0 12px rgba(248,113,113,0.45);
 }
 #audioCornerBtn.audio-corner--hidden { display:none; }
+#pauseOverlay {
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(5,6,12,0.55);
+  color:#fff;
+  font-size:clamp(1.75rem, 12vw, 3rem);
+  letter-spacing:clamp(0.2em, 1.5vw, 0.4em);
+  z-index:15;
+  pointer-events:none;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  box-sizing:border-box;
+  text-align:center;
+}
 #countdownOverlay {
   position:fixed; inset:0; z-index:24;
   display:none; align-items:center; justify-content:center;
@@ -180,13 +192,13 @@ canvas {
 }
 #screen h1.death-heading {
   color:#fff;
-  font-size:clamp(1.35rem, 5.5vw, 2rem);
-  letter-spacing:0.06em;
-  line-height:1.25;
+  font-size:clamp(1.1rem, 4.2vw, 1.65rem);
+  letter-spacing:0.04em;
+  line-height:1.3;
   margin-bottom:clamp(12px, 3vw, 20px);
   text-shadow:none;
   font-weight:700;
-  max-width:min(340px, 92vw);
+  max-width:min(360px, 94vw);
   padding:0 12px;
   box-sizing:border-box;
 }
@@ -336,6 +348,8 @@ canvas {
   </div>
 </div>
 
+<div id="pauseOverlay">PAUSA</div>
+
 <button type="button" id="audioCornerBtn" class="js-no-start" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</button>
 
 <div id="countdownOverlay" aria-hidden="true">
@@ -372,6 +386,7 @@ const tEl = document.getElementById('t');
 const lvEl = document.getElementById('lv');
 const nbEl = document.getElementById('nb');
 const audioCornerBtn = document.getElementById('audioCornerBtn');
+const pauseOverlay = document.getElementById('pauseOverlay');
 
 let W, H;
 function safeLocalGet(key, def) {
@@ -433,6 +448,7 @@ const INTRO_CD_MS = 850;
 
 // GAME STATE
 let running = false;
+let paused = false, pausedAt = 0;
 let px = -999, py = -999;          // cursore visibile (segue tx/ty con lerp)
 let tx = -999, ty = -999;          // cursore target (dito/mouse)
 let fingerDown = false;
@@ -850,6 +866,28 @@ function stopMusic() {
   }
   droneStopTimer = setTimeout(() => { droneStopTimer = null; killDroneNow(); }, 1700);
 }
+function pauseAllMusic() {
+  clearBeatOnly();
+  if (droneStopTimer !== null) { clearTimeout(droneStopTimer); droneStopTimer = null; }
+  killDroneNow();
+  if (masterGain && audioCtx) {
+    const t = audioCtx.currentTime;
+    masterGain.gain.cancelScheduledValues(t);
+    masterGain.gain.setValueAtTime(0, t);
+  }
+}
+function resumeMusicAfterPause() {
+  if (!audioCtx || !masterGain) return;
+  const t = audioCtx.currentTime;
+  masterGain.gain.cancelScheduledValues(t);
+  masterGain.gain.setValueAtTime(0.0001, t);
+  masterGain.gain.linearRampToValueAtTime(0.5, t + 0.12);
+  if (audioEnabled) {
+    startDrone();
+    startBeat(level);
+    updateAudio(level);
+  }
+}
 // ===================== END AUDIO =====================
 
 function fmt(ms) {
@@ -1191,11 +1229,15 @@ function syncPowerHud(now) {
 
 function startGame() {
   fingerDown = false;
+  paused = false;
+  if (pauseOverlay) pauseOverlay.style.display = 'none';
   screen.classList.remove('screen-death');
   screen.style.background = '';
   const nameInput = document.getElementById('playerNameInput');
-  const rawName = nameInput ? nameInput.value.trim() : '';
-  safeLocalSet('dodge_player_name', rawName.slice(0, 18));
+  if (nameInput) {
+    const rawName = nameInput.value.trim();
+    safeLocalSet('dodge_player_name', rawName.slice(0, 18));
+  }
   if (audioEnabled) initAudio();
   stopMusic();
   screen.style.display = 'none';
@@ -1235,6 +1277,8 @@ function die() {
   stopMusic();
   running = false;
   fingerDown = false;
+  paused = false;
+  if (pauseOverlay) pauseOverlay.style.display = 'none';
   const diedElapsed = elapsed;
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
@@ -1247,13 +1291,36 @@ function die() {
     updateShellForPhase('gameover');
     screen.classList.add('screen-death');
     screen.innerHTML = `
-      <h1 class="death-heading">Sei scarso amico!</h1>
+      <h1 class="death-heading">Pensavi fosse un gioco facile?</h1>
       <p class="death-sub">sopravvissuto ${fmt(diedElapsed)}</p>
       <div id="records-block"></div>
       <p class="tap-hint">Premi ovunque per riprovare</p>`;
     screen.style.display = 'flex';
     setupMenuUI();
   }, 600);
+}
+
+function togglePause() {
+  if (!running) return;
+  if (introCountdown) return;
+  paused = !paused;
+  if (paused) {
+    pausedAt = performance.now();
+    if (pauseOverlay) pauseOverlay.style.display = 'flex';
+    pauseAllMusic();
+  } else {
+    const pauseDur = performance.now() - pausedAt;
+    startTime += pauseDur;
+    lastRed += pauseDur;
+    lastBlue += pauseDur;
+    lastYellow += pauseDur;
+    if (shieldActive) shieldEnd += pauseDur;
+    if (slowActive) slowEnd += pauseDur;
+    balls.forEach(b => { if (b.expireAt) b.expireAt += pauseDur; });
+    if (pauseOverlay) pauseOverlay.style.display = 'none';
+    last = 0;
+    resumeMusicAfterPause();
+  }
 }
 
 // INPUT — ora con cursore che TRASLAA (lerp) invece di teletrasportarsi
@@ -1286,6 +1353,7 @@ function isControlTarget(el) {
 window.addEventListener('mousedown', e=>{
   if (isControlTarget(e.target)) return;
   if (!running && e.target.closest('.js-no-start')) return;
+  if (running && paused) return;
   const [x,y]=getXY(e);
   if(!running){ startGame(); }
   // primo touch della partita: snap immediato
@@ -1294,7 +1362,7 @@ window.addEventListener('mousedown', e=>{
   fingerDown = true;
 });
 window.addEventListener('mousemove', e=>{
-  if(!fingerDown) return;
+  if (!fingerDown || paused) return;
   const [x,y] = getXY(e);
   tx = x; ty = y;
 });
@@ -1302,6 +1370,15 @@ window.addEventListener('mouseup', ()=>{ fingerDown=false; });
 
 window.addEventListener('touchstart', e=>{
   if (isControlTarget(e.target)) return;
+  if (running && e.touches.length >= 2) {
+    e.preventDefault();
+    togglePause();
+    return;
+  }
+  if (running && paused) {
+    e.preventDefault();
+    return;
+  }
   if (!running && e.target.closest('.js-no-start')) return;
   e.preventDefault();
   const [x,y]=getXY(e);
@@ -1320,7 +1397,7 @@ window.addEventListener('touchstart', e=>{
   fingerDown=true;
 },{passive:false});
 window.addEventListener('touchmove', e=>{
-  if (!running) return;
+  if (!running || paused) return;
   e.preventDefault();
   const [x,y] = getXY(e);
   applyTouchRelativeTarget(x, y);
@@ -1395,6 +1472,16 @@ function loop(now){
     tEl.textContent = '0:00';
     lvEl.textContent = '1';
     nbEl.textContent = '0';
+    return;
+  }
+
+  if (paused) {
+    drawBg(now, level);
+    for (const b of balls) {
+      if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow') drawBonusAura(b, now);
+      drawShape(b, b.x, b.y, b.r, 1);
+    }
+    drawPlayer(now);
     return;
   }
 
