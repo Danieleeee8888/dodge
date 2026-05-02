@@ -784,7 +784,12 @@ function restoreWhiteSpeedsAfterSlow() {
   });
 }
 
-/** Toglie 1/3 degli ostacoli bianchi presenti (arrotondato per difetto), mai 2/3. Aggiorna le quote. */
+/**
+ * Toglie 1/3 dei bianchi attualmente in campo (floor(n/3)).
+ * Le quote baseTriangles/baseSquares scendono solo del numero di tri/quadrati
+ * effettivamente eliminati — non vanno ricalcolate su “chi è rimasto”, altrimenti
+ * se in campo ce n’erano pochi la quota crollava (es. fino a 2 totali).
+ */
 function removeOneThirdOfWhites() {
   const whites = balls.filter((b) => b.type === 'white');
   const n = whites.length;
@@ -796,18 +801,18 @@ function removeOneThirdOfWhites() {
     const j = Math.floor(Math.random() * (i + 1));
     const t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
   }
-  const removeSet = new Set(shuffled.slice(0, removeCount));
+  const victims = shuffled.slice(0, removeCount);
+  let rT = 0, rS = 0;
+  for (let k = 0; k < victims.length; k++) {
+    if (victims[k].movement === 'spiral') rS++;
+    else rT++;
+  }
+  const removeSet = new Set(victims);
   for (let i = balls.length - 1; i >= 0; i--) {
     if (removeSet.has(balls[i])) balls.splice(i, 1);
   }
-  let nT = 0, nS = 0;
-  for (const b of balls) {
-    if (b.type !== 'white') continue;
-    if (b.movement === 'spiral') nS++;
-    else nT++;
-  }
-  baseTriangles = nT;
-  baseSquares = nS;
+  baseTriangles = Math.max(WHITE_START_TRIANGLES, baseTriangles - rT);
+  baseSquares = Math.max(WHITE_START_SQUARES, baseSquares - rS);
 }
 
 function constructWhiteBallOnce(opts) {
