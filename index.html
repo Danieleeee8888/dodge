@@ -36,19 +36,22 @@ canvas {
   pointer-events:none; z-index:10;
 }
 #hud.hud--hidden { display:none; }
-#hud .hud-spacer { pointer-events:none; }
+#hud .hud-left {
+  justify-self:start;
+  text-align:left;
+  white-space:nowrap;
+  padding-top:2px;
+}
 #hud .hud-center {
   justify-self:center; text-align:center;
   white-space:nowrap;
   padding-top:2px;
 }
-#hud .hud-right-stack {
+#hud .hud-right {
   justify-self:end;
   text-align:right;
-  display:flex; flex-direction:column;
-  align-items:flex-end;
-  gap:3px;
-  line-height:1.2;
+  white-space:nowrap;
+  padding-top:2px;
 }
 #hud .hud-time { white-space:nowrap; }
 #hud .hud-nb { white-space:nowrap; opacity:0.92; }
@@ -343,10 +346,11 @@ canvas {
 #slow-hud { right:20px; }
 #erase-hud {
   position:fixed;
+  top:calc(40px + env(safe-area-inset-top));
+  bottom:auto;
   left:50%;
   transform:translateX(-50%);
-  bottom:max(14px, env(safe-area-inset-bottom));
-  width:min(280px, 86vw);
+  width:min(260px, calc(100vw - 96px));
   height:6px;
   z-index:10;
   pointer-events:none;
@@ -363,12 +367,13 @@ canvas {
 }
 #greenfill {
   position:absolute;
-  left:0;
+  right:0;
+  left:auto;
   top:0;
   height:100%;
   width:100%;
   border-radius:inherit;
-  background:linear-gradient(90deg,#1e7a3a 0%,#3dcc6e 45%,#7af5a8 100%);
+  background:linear-gradient(270deg,#1e7a3a 0%,#3dcc6e 45%,#7af5a8 100%);
   transition:width 0.1s linear;
   box-shadow:0 0 12px rgba(80,220,130,0.35);
 }
@@ -392,12 +397,9 @@ canvas {
 <canvas id="c"></canvas>
 
 <div id="hud" class="hud--hidden">
-  <span class="hud-spacer" aria-hidden="true"></span>
+  <span class="hud-left hud-time">TEMPO <span id="t">0:00</span></span>
   <span class="hud-center">LV <span id="lv">1</span></span>
-  <div class="hud-right-stack">
-    <span class="hud-time">TEMPO <span id="t">0:00</span></span>
-    <span class="hud-nb"><span id="nb">0</span> oggetti</span>
-  </div>
+  <span class="hud-right hud-nb"><span id="nb">0</span> oggetti</span>
 </div>
 
 <div id="erase-hud">
@@ -496,11 +498,14 @@ const RED_SPAWN_INTERVAL_MS = 15000;
 const BLUE_SPAWN_INTERVAL_MS = 35000;
 const YELLOW_SPAWN_INTERVAL_MS = 57000;
 const GREEN_SPAWN_INTERVAL_MS = 22000;
+/** 2ª vita: spawn ogni 47s se non hai già il bonus né un viola in campo. */
+const PURPLE_SPAWN_INTERVAL_MS = 47000;
 /** Tempo di vita sul campo prima di despawn (ms). */
 const RED_BONUS_TTL_MS = 15000;
 const BLUE_BONUS_TTL_MS = 30000;
 const YELLOW_BONUS_TTL_MS = 45000;
 const GREEN_BONUS_TTL_MS = 20000;
+const PURPLE_BONUS_TTL_MS = 22000;
 /** Dopo aver preso il verde: toccare i bianchi li elimina (senza morire). */
 const ERASE_MODE_DURATION_MS = 5000;
 /** Durata ogni numero del countdown d’avvio (ms). */
@@ -519,6 +524,11 @@ let startTime, elapsed;
 let level, baseTriangles, baseSquares, baseSpeed;
 let shieldActive, shieldEnd, slowActive, slowEnd;
 let eraseModeActive = false, eraseModeEnd = 0;
+let hasExtraLife = false;
+/** Prossimo istante in cui può comparire il pallino viola (performance.now). */
+let nextPurpleAt = 0;
+/** Espansione gialla rapida sui bianchi tolti dal bonus giallo. */
+let yellowPopAuras = [];
 let lastRed, lastBlue, lastYellow, lastGreen, lastLevelUp;
 let bgPhase, flash, flashCol;
 /** Rettangolo (cella griglia 3×3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
@@ -925,6 +935,12 @@ function playSoundBonus(type) {
       playTone(st2hz(KEY_ROOT * 2, s), 0.2, 0.14, 'sine', i * 0.055);
     });
     playNoise(0.05, 0.06, 0, { filterType: 'highpass', cutoff: 3500 });
+  } else if (type === 'purple') {
+    [3, 7, 10, 14, 19].forEach((s, i) => {
+      playTone(st2hz(KEY_ROOT * 2, s), 0.24, 0.15, 'sine', i * 0.05);
+      playTone(st2hz(KEY_ROOT * 2, s + 3), 0.16, 0.06, 'triangle', i * 0.05 + 0.02);
+    });
+    playNoise(0.07, 0.07, 0, { filterType: 'bandpass', cutoff: 3200, q: 0.8 });
   }
 }
 function playSoundDie() {
@@ -1001,7 +1017,7 @@ function pickWhiteMovementBalanced() {
 
 // Speed multiplier widens with level: salita più graduale (stesso intervallo livelli).
 function getSpeedMul(type) {
-  if (type === 'red' || type === 'blue' || type === 'yellow' || type === 'green') {
+  if (type === 'red' || type === 'blue' || type === 'yellow' || type === 'green' || type === 'purple') {
     return rand(0.95, 1.28 + level * 0.065);
   }
   const minSpd = Math.max(0.42, 0.70 - level * 0.018);
@@ -1082,7 +1098,7 @@ function whiteTrajectoryTouchesAimSector(b) {
 }
 
 function isBonusCircle(b) {
-  return b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green';
+  return b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple';
 }
 /** Bonus: rimbalzano dentro lo schermo, non escono dal campo. */
 function clampBounceBonus(b) {
@@ -1143,7 +1159,7 @@ function restoreWhiteSpeedsAfterSlow() {
  * Toglie metà dei bianchi in campo (floor(n/2)); restano n−floor(n/2) (es. 14→7).
  * Le quote si abbassano solo per tri/quadrati effettivamente rimossi.
  */
-function removeHalfOfWhites() {
+function removeHalfOfWhites(withYellowFx) {
   const whites = balls.filter((b) => b.type === 'white');
   const n = whites.length;
   if (n < 2) return;
@@ -1156,9 +1172,15 @@ function removeHalfOfWhites() {
   }
   const victims = shuffled.slice(0, removeCount);
   let rT = 0, rS = 0;
+  const t0 = performance.now();
   for (let k = 0; k < victims.length; k++) {
     if (victims[k].movement === 'spiral') rS++;
     else rT++;
+    if (withYellowFx) {
+      yellowPopAuras.push({ x: victims[k].x, y: victims[k].y, start: t0 });
+      burst(victims[k].x, victims[k].y, '#fff4a8', 5);
+      burst(victims[k].x, victims[k].y, '#e9c81a', 7);
+    }
   }
   const removeSet = new Set(victims);
   for (let i = balls.length - 1; i >= 0; i--) {
@@ -1264,6 +1286,7 @@ function spawnBall(type, opts) {
     else if (type === 'blue') col = '#4488ff';
     else if (type === 'yellow') col = '#e9c81a';
     else if (type === 'green') col = '#34cc6e';
+    else if (type === 'purple') col = '#a855f7';
     const r = HAZARD_R;
 
     b = {
@@ -1278,6 +1301,7 @@ function spawnBall(type, opts) {
     else if (type === 'blue') b.expireAt = t0 + BLUE_BONUS_TTL_MS;
     else if (type === 'yellow') b.expireAt = t0 + YELLOW_BONUS_TTL_MS;
     else if (type === 'green') b.expireAt = t0 + GREEN_BONUS_TTL_MS;
+    else if (type === 'purple') b.expireAt = t0 + PURPLE_BONUS_TTL_MS;
 
     b.pulse = Math.random() * Math.PI * 2;
     b.lastSparkle = 0;
@@ -1321,6 +1345,7 @@ function finishIntroCountdown() {
   }
   startTime = performance.now();
   elapsed = 0;
+  nextPurpleAt = startTime + PURPLE_SPAWN_INTERVAL_MS;
   lastRed = startTime;
   lastBlue = startTime;
   lastYellow = startTime;
@@ -1381,6 +1406,8 @@ function startGame() {
   baseSpeed = 2.2;
   shieldActive = false; slowActive = false;
   eraseModeActive = false; eraseModeEnd = 0;
+  hasExtraLife = false;
+  yellowPopAuras = [];
   syncPowerHud(performance.now());
   lastLevelUp = 0;
   bgPhase = 0; flash = 0; flashCol = 'rgba(255,255,255,0.2)';
@@ -1402,10 +1429,30 @@ function die() {
     burst(px, py, '#ff4444', 24);
     return;
   }
+  if (hasExtraLife) {
+    hasExtraLife = false;
+    const now = performance.now();
+    nextPurpleAt = now + PURPLE_SPAWN_INTERVAL_MS;
+    syncPowerHud(now);
+    const [sx, sy] = getExtraLifeSatelliteXY(now);
+    flash = 0.72; flashCol = 'rgba(168,85,247,0.32)';
+    burst(sx, sy, '#ffffff', 6);
+    burst(sx, sy, '#ede0ff', 12);
+    burst(sx, sy, '#c4a0ff', 16);
+    burst(sx, sy, '#a855f7', 12);
+    burst(sx, sy, '#6b21a8', 8);
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + Math.random() * 0.4;
+      spawnSparkle(sx + Math.cos(a) * (4 + Math.random() * 8), sy + Math.sin(a) * (4 + Math.random() * 8), i % 2 ? '#e9d5ff' : '#c084fc');
+    }
+    if (audioEnabled) playSoundBonus('purple');
+    return;
+  }
   if (audioEnabled) playSoundDie();
   shieldActive = false;
   slowActive = false;
   eraseModeActive = false; eraseModeEnd = 0;
+  hasExtraLife = false;
   syncPowerHud(performance.now());
   stopMusic();
   running = false;
@@ -1451,6 +1498,8 @@ function togglePause() {
     if (shieldActive) shieldEnd += pauseDur;
     if (slowActive) slowEnd += pauseDur;
     if (eraseModeActive) eraseModeEnd += pauseDur;
+    if (nextPurpleAt !== Infinity) nextPurpleAt += pauseDur;
+    yellowPopAuras.forEach((a) => { a.start += pauseDur; });
     balls.forEach(b => { if (b.expireAt) b.expireAt += pauseDur; });
     if (pauseOverlay) pauseOverlay.style.display = 'none';
     last = 0;
@@ -1613,7 +1662,7 @@ function loop(now){
   if (paused) {
     drawBg(now, level);
     for (const b of balls) {
-      if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green') drawBonusAura(b, now);
+      if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') drawBonusAura(b, now);
       drawShape(b, b.x, b.y, b.r, 1);
     }
     drawPlayer(now);
@@ -1655,6 +1704,12 @@ function loop(now){
   if (now - lastYellow >= YELLOW_SPAWN_INTERVAL_MS) { lastYellow = now; spawnBall('yellow'); }
   if (now - lastGreen >= GREEN_SPAWN_INTERVAL_MS) { lastGreen = now; spawnBall('green'); }
 
+  const purpleOnField = balls.some((b) => b.type === 'purple');
+  if (!hasExtraLife && !purpleOnField && now >= nextPurpleAt) {
+    spawnBall('purple');
+    nextPurpleAt = Infinity;
+  }
+
   // timers
   if (shieldActive && now > shieldEnd) shieldActive = false;
   if (eraseModeActive && now > eraseModeEnd) eraseModeActive = false;
@@ -1692,7 +1747,7 @@ function loop(now){
     b.trail.push({ x: b.x, y: b.y });
     if (b.trail.length > 7) b.trail.shift();
 
-    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green') {
+    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') {
       b.pulse += dt * 0.18;
       if (now - b.lastSparkle > 42) {
         spawnSparkle(b.x + rand(-b.r, b.r), b.y + rand(-b.r, b.r), b.col);
@@ -1700,7 +1755,11 @@ function loop(now){
       }
     }
 
-    if (b.expireAt != null && now > b.expireAt) { balls.splice(i, 1); continue; }
+    if (b.expireAt != null && now > b.expireAt) {
+      if (b.type === 'purple') nextPurpleAt = now + PURPLE_SPAWN_INTERVAL_MS;
+      balls.splice(i, 1);
+      continue;
+    }
 
     // Fuori schermo: respawn bianchi; i bonus cerchio rimbalzano e non vengono persi ai bordi.
     const cx = b.x, cy = b.y;
@@ -1759,10 +1818,21 @@ function loop(now){
         }
         if(b.type==='yellow'){
           if (audioEnabled) playSoundBonus('yellow');
-          removeHalfOfWhites();
+          removeHalfOfWhites(true);
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
           balls.splice(i,1);
+          continue;
+        }
+        if (b.type === 'purple') {
+          hasExtraLife = true;
+          nextPurpleAt = Infinity;
+          if (audioEnabled) playSoundBonus('purple');
+          burst(b.x, b.y, '#e9d5ff', 24);
+          burst(b.x, b.y, '#a855f7', 20);
+          flash = 0.38; flashCol = 'rgba(168,85,247,0.22)';
+          balls.splice(i, 1);
+          syncPowerHud(now);
           continue;
         }
         if (b.type === 'green') {
@@ -1778,7 +1848,7 @@ function loop(now){
       }
     }
 
-    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green') drawBonusAura(b, now);
+    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') drawBonusAura(b, now);
 
     // trail
     for(let t=0;t<b.trail.length;t++){
@@ -1846,6 +1916,28 @@ function loop(now){
   }
   ctx.globalAlpha=1;
 
+  const yPopMax = 155;
+  for (let yi = yellowPopAuras.length - 1; yi >= 0; yi--) {
+    const a = yellowPopAuras[yi];
+    const u = (now - a.start) / yPopMax;
+    if (u >= 1) { yellowPopAuras.splice(yi, 1); continue; }
+    const ease = 1 - u;
+    ctx.save();
+    ctx.globalAlpha = ease * 0.9;
+    const R = 10 + u * 48;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, R, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 235, 120, ${0.62 * ease})`;
+    ctx.lineWidth = 2.2 * (0.35 + ease * 0.65);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, R * 0.55, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 220, 60, ${0.35 * ease})`;
+    ctx.lineWidth = 1.2 * ease;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   drawPlayer(now);
 
   if(flash>0){
@@ -1859,6 +1951,14 @@ function loop(now){
   tEl.textContent=fmt(elapsed);
   lvEl.textContent=level;
   nbEl.textContent=balls.filter(b=>b.type==='white').length;
+}
+
+/** Posizione schermo del satellite viola (2ª vita); stessa formula di drawPlayer. */
+function getExtraLifeSatelliteXY(nowMs) {
+  const rMain = 24;
+  const orbitR2 = rMain + 18;
+  const ang2 = -nowMs * 0.00285 + 1.7;
+  return [px + Math.cos(ang2) * orbitR2, py + Math.sin(ang2) * orbitR2];
 }
 
 function drawPlayer(now) {
@@ -1901,6 +2001,14 @@ function drawPlayer(now) {
     ctx.rotate(-velAng);
   }
 
+  if (eraseModeActive && now < eraseModeEnd) {
+    ctx.beginPath();
+    ctx.arc(0, 0, rMain + 16, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(52,200,110,${0.42 + 0.22 * Math.sin(now * 0.009)})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
   ctx.strokeStyle = 'rgba(255,255,255,0.22)';
   ctx.lineWidth = 1;
   const spin = now * 0.0001;
@@ -1925,8 +2033,13 @@ function drawPlayer(now) {
   ctx.arc(0, 0, rMain, 0, Math.PI * 2);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(130,180,255,0.38)';
-  ctx.lineWidth = 1;
+  if (slowActive) {
+    ctx.strokeStyle = `rgba(90,170,255,${0.82 + 0.12 * Math.sin(now * 0.006)})`;
+    ctx.lineWidth = 1.45;
+  } else {
+    ctx.strokeStyle = 'rgba(130,180,255,0.38)';
+    ctx.lineWidth = 1;
+  }
   ctx.beginPath();
   ctx.arc(0, 0, rMain - 7, 0, Math.PI * 2);
   ctx.stroke();
@@ -1945,22 +2058,22 @@ function drawPlayer(now) {
   ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
   ctx.fill();
 
-  if (eraseModeActive && now < eraseModeEnd) {
-    const orbitR = rMain + 13;
-    const ang = now * 0.0031;
-    const ox = Math.cos(ang) * orbitR;
-    const oy = Math.sin(ang) * orbitR;
-    const sr = 4.2;
-    const sg = ctx.createRadialGradient(ox - 1.2, oy - 1.2, 0, ox, oy, sr);
-    sg.addColorStop(0, '#d8ffe8');
-    sg.addColorStop(0.45, '#3cdd7a');
-    sg.addColorStop(1, 'rgba(18,110,55,0.55)');
+  if (hasExtraLife) {
+    const orbitR2 = rMain + 18;
+    const ang2 = -now * 0.00285 + 1.7;
+    const oxP = Math.cos(ang2) * orbitR2;
+    const oyP = Math.sin(ang2) * orbitR2;
+    const pr = 4;
+    const pg = ctx.createRadialGradient(oxP - 1, oyP - 1, 0, oxP, oyP, pr);
+    pg.addColorStop(0, '#f0e0ff');
+    pg.addColorStop(0.5, '#b46cf0');
+    pg.addColorStop(1, 'rgba(80,40,140,0.55)');
     ctx.beginPath();
-    ctx.arc(ox, oy, sr, 0, Math.PI * 2);
-    ctx.fillStyle = sg;
+    ctx.arc(oxP, oyP, pr, 0, Math.PI * 2);
+    ctx.fillStyle = pg;
     ctx.fill();
-    ctx.strokeStyle = `rgba(200,255,220,${0.75 + 0.2 * Math.sin(now * 0.012)})`;
-    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = `rgba(230,200,255,${0.8 + 0.15 * Math.sin(now * 0.011)})`;
+    ctx.lineWidth = 1.05;
     ctx.stroke();
   }
 
@@ -1980,7 +2093,7 @@ function drawPlayer(now) {
 }
 
 function drawBonusAura(b, now) {
-  const baseCol = b.type === 'red' ? '255,68,68' : b.type === 'blue' ? '68,136,255' : b.type === 'yellow' ? '233,200,26' : '52,200,110';
+  const baseCol = b.type === 'red' ? '255,68,68' : b.type === 'blue' ? '68,136,255' : b.type === 'yellow' ? '233,200,26' : b.type === 'purple' ? '168,85,247' : '52,200,110';
   for (let k = 0; k < 3; k++) {
     const phase = (now * 0.0009 + k * 0.33) % 1;
     const rr = b.r + 6 + phase * 36;
