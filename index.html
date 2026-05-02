@@ -51,6 +51,53 @@ canvas {
   color:#fff; font-size:48px; letter-spacing:0.4em; z-index:15;
   pointer-events:none;
 }
+#countdownOverlay {
+  position:fixed; inset:0; z-index:24;
+  display:none; align-items:center; justify-content:center;
+  pointer-events:none;
+  background:rgba(5,6,12,0.42);
+}
+#countdownOverlay.show { display:flex; }
+.cd-inner {
+  display:flex; align-items:center; justify-content:center;
+  min-width:min(72vw, 380px); min-height:min(72vw, 380px);
+  border-radius:20px;
+  padding:8px 32px;
+  box-sizing:border-box;
+}
+.cd-inner.cd-r {
+  color:#ff8a9d;
+  border:4px solid #ff3355;
+  box-shadow:
+    0 0 18px #ff2244, 0 0 42px rgba(255,50,80,0.65),
+    inset 0 0 28px rgba(255,80,100,0.12);
+}
+.cd-inner.cd-b {
+  color:#9ecbff;
+  border:4px solid #3399ff;
+  box-shadow:
+    0 0 18px #2288ff, 0 0 42px rgba(50,140,255,0.6),
+    inset 0 0 28px rgba(100,170,255,0.12);
+}
+.cd-inner.cd-y {
+  color:#ffe866;
+  border:4px solid #e9c81a;
+  box-shadow:
+    0 0 18px #ddb010, 0 0 42px rgba(233,200,26,0.55),
+    inset 0 0 28px rgba(255,220,80,0.1);
+}
+#cdNum {
+  font-size:min(38vw, 168px); font-weight:bold;
+  letter-spacing:0.08em; line-height:1;
+  text-shadow:0 0 22px currentColor;
+}
+@keyframes cdPop {
+  0% { transform:scale(0.2); opacity:0; }
+  12% { opacity:1; }
+  45% { transform:scale(1.02); opacity:1; }
+  100% { transform:scale(1.65); opacity:0; }
+}
+.cd-inner.cd-popping { animation:cdPop 0.82s cubic-bezier(0.2,0.9,0.35,1) forwards; }
 #screen {
   position:fixed; inset:0;
   display:flex; flex-direction:column;
@@ -171,6 +218,12 @@ canvas {
 
 <div id="pauseOverlay">PAUSA</div>
 
+<div id="countdownOverlay" aria-hidden="true">
+  <div id="cdInner" class="cd-inner cd-r cd-popping">
+    <span id="cdNum">3</span>
+  </div>
+</div>
+
 <div id="shield-hud">
   <span class="shield-dot" aria-hidden="true"></span>
   <div id="strack"><div id="sfill"></div></div>
@@ -265,6 +318,8 @@ const YELLOW_SPAWN_INTERVAL_MS = 60000;
 const RED_BONUS_TTL_MS = 15000;
 const BLUE_BONUS_TTL_MS = 30000;
 const YELLOW_BONUS_TTL_MS = 45000;
+/** Durata ogni numero del countdown d’avvio (ms). */
+const INTRO_CD_MS = 850;
 
 // GAME STATE
 let running = false;
@@ -283,6 +338,12 @@ let bgPhase, flash, flashCol;
 /** Rettangolo (cella griglia 3×3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
 let aimSectorRect = { left: 0, right: 0, top: 0, bottom: 0 };
 let aimSectorNextElapsed = 0;
+/** Avvio partita: { phase: 0..2 → numeri 3,2,1, phaseEnd: timestamp }. */
+let introCountdown = null;
+
+const cdOverlayEl = document.getElementById('countdownOverlay');
+const cdInnerEl = document.getElementById('cdInner');
+const cdNumEl = document.getElementById('cdNum');
 
 let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
@@ -785,16 +846,14 @@ function restoreWhiteSpeedsAfterSlow() {
 }
 
 /**
- * Toglie 1/3 dei bianchi attualmente in campo (floor(n/3)).
- * Le quote baseTriangles/baseSquares scendono solo del numero di tri/quadrati
- * effettivamente eliminati — non vanno ricalcolate su “chi è rimasto”, altrimenti
- * se in campo ce n’erano pochi la quota crollava (es. fino a 2 totali).
+ * Toglie metà dei bianchi in campo (floor(n/2)); restano n−floor(n/2) (es. 14→7).
+ * Le quote si abbassano solo per tri/quadrati effettivamente rimossi.
  */
-function removeOneThirdOfWhites() {
+function removeHalfOfWhites() {
   const whites = balls.filter((b) => b.type === 'white');
   const n = whites.length;
-  if (n < 3) return;
-  const removeCount = Math.floor(n / 3);
+  if (n < 2) return;
+  const removeCount = Math.floor(n / 2);
   if (removeCount <= 0) return;
   const shuffled = whites.slice();
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -945,6 +1004,38 @@ function spawnSparkle(x, y, col) {
   });
 }
 
+function applyIntroCdVisual(n, col) {
+  if (!cdNumEl || !cdInnerEl) return;
+  cdNumEl.textContent = String(n);
+  cdInnerEl.className = 'cd-inner cd-' + col;
+  cdInnerEl.classList.remove('cd-popping');
+  void cdInnerEl.offsetWidth;
+  cdInnerEl.classList.add('cd-popping');
+}
+
+function finishIntroCountdown() {
+  introCountdown = null;
+  if (cdOverlayEl) cdOverlayEl.classList.remove('show');
+  if (cdInnerEl) {
+    cdInnerEl.className = 'cd-inner cd-r';
+    cdInnerEl.classList.remove('cd-popping');
+  }
+  startTime = performance.now();
+  elapsed = 0;
+  lastRed = startTime;
+  lastBlue = startTime;
+  lastYellow = startTime;
+  for (let i = 0; i < WHITE_START_TRIANGLES; i++) spawnBall('white', { movement: 'straight' });
+  for (let i = 0; i < WHITE_START_SQUARES; i++) spawnBall('white', { movement: 'spiral' });
+  pauseBtn.style.display = 'inline-block';
+  setTimeout(() => {
+    if (audioEnabled && running) {
+      startDrone();
+      startBeat(1);
+    }
+  }, 300);
+}
+
 function syncPowerHud(now) {
   if (shieldActive) {
     shieldHud.style.display = 'flex';
@@ -967,32 +1058,25 @@ function startGame() {
   running = true;
   paused = false;
   pauseOverlay.style.display = 'none';
-  pauseBtn.style.display = 'inline-block';
+  pauseBtn.style.display = 'none';
   pauseBtn.textContent = 'II';
   balls = []; parts = []; sparkles = [];
-  startTime = performance.now();
-  elapsed = 0;
   level = 1;
   baseTriangles = WHITE_START_TRIANGLES;
   baseSquares = WHITE_START_SQUARES;
   baseSpeed = 2.2;
   shieldActive = false; slowActive = false;
   syncPowerHud(performance.now());
-  lastRed = startTime;
-  lastBlue = startTime;
-  lastYellow = startTime;
   lastLevelUp = 0;
   bgPhase = 0; flash = 0; flashCol = 'rgba(255,255,255,0.2)';
   syncAimSectorToPlayer();
   aimSectorNextElapsed = 0;
-  for (let i = 0; i < WHITE_START_TRIANGLES; i++) spawnBall('white', { movement: 'straight' });
-  for (let i = 0; i < WHITE_START_SQUARES; i++) spawnBall('white', { movement: 'spiral' });
-  setTimeout(() => {
-    if (audioEnabled) {
-      startDrone();
-      startBeat(1);
-    }
-  }, 300);
+  const cx = W * 0.5, cy = H * 0.5;
+  px = cx; py = cy; tx = cx; ty = cy;
+  const t0 = performance.now();
+  introCountdown = { phase: 0, phaseEnd: t0 + INTRO_CD_MS };
+  if (cdOverlayEl) cdOverlayEl.classList.add('show');
+  applyIntroCdVisual(3, 'r');
 }
 
 function die() {
@@ -1040,6 +1124,7 @@ function die() {
 // PAUSE
 function togglePause() {
   if (!running) return;
+  if (introCountdown) return;
   paused = !paused;
   if (paused) {
     pausedAt = performance.now();
@@ -1191,6 +1276,26 @@ function loop(now){
     return;
   }
 
+  if (introCountdown) {
+    if (now >= introCountdown.phaseEnd) {
+      introCountdown.phase++;
+      if (introCountdown.phase >= 3) {
+        finishIntroCountdown();
+      } else {
+        const n = 3 - introCountdown.phase;
+        const col = introCountdown.phase === 1 ? 'b' : 'y';
+        introCountdown.phaseEnd = now + INTRO_CD_MS;
+        applyIntroCdVisual(n, col);
+      }
+    }
+    drawBg(now, level);
+    drawPlayer(now);
+    tEl.textContent = '0:00';
+    lvEl.textContent = '1';
+    nbEl.textContent = '0';
+    return;
+  }
+
   // PAUSED: disegna lo stato corrente, niente update
   if (paused) {
     drawBg(now, level);
@@ -1327,7 +1432,7 @@ function loop(now){
         }
         if(b.type==='yellow'){
           if (audioEnabled) playSoundBonus('yellow');
-          removeOneThirdOfWhites();
+          removeHalfOfWhites();
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
           balls.splice(i,1);
