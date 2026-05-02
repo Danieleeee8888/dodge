@@ -36,6 +36,60 @@ canvas {
   pointer-events:none; z-index:10;
 }
 #hud.hud--hidden { display:none; }
+#bonusTicker {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(50px + env(safe-area-inset-top));
+  height: 1.6rem;
+  overflow: hidden;
+  z-index: 11;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease-out;
+}
+#bonusTicker.bonus-ticker--active {
+  opacity: 1;
+}
+.bonus-ticker__text {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: clamp(11px, 3.2vw, 15px);
+  font-weight: 700;
+  letter-spacing: 0.38em;
+  will-change: transform;
+}
+.bonus-ticker__text--run {
+  animation: bonusTickScroll 2.35s linear forwards;
+}
+@keyframes bonusTickScroll {
+  from { transform: translateX(-35%); }
+  to { transform: translateX(115vw); }
+}
+.bonus-ticker--r {
+  color: #ff9aaa;
+  text-shadow:
+    0 0 10px #ff2244, 0 0 22px rgba(255,50,80,0.65),
+    0 0 36px rgba(255,60,90,0.35);
+}
+.bonus-ticker--b {
+  color: #9ecbff;
+  text-shadow:
+    0 0 10px #2288ff, 0 0 22px rgba(50,140,255,0.55),
+    0 0 34px rgba(80,160,255,0.3);
+}
+.bonus-ticker--y {
+  color: #fff0a0;
+  text-shadow:
+    0 0 10px #ddb010, 0 0 22px rgba(230,200,40,0.5),
+    0 0 32px rgba(255,220,80,0.28);
+}
+.bonus-ticker--g {
+  color: #7af5a8;
+  text-shadow:
+    0 0 10px #22aa55, 0 0 22px rgba(50,200,100,0.5),
+    0 0 32px rgba(80,220,130,0.28);
+}
 #hud .hud-spacer { pointer-events:none; }
 #hud .hud-center {
   justify-self:center; text-align:center;
@@ -325,22 +379,43 @@ canvas {
 #shield-hud, #slow-hud {
   position:fixed; z-index:10; pointer-events:none;
   display:none; flex-direction:column; align-items:center;
-  gap:10px;
+  justify-content:flex-start;
+  gap:0;
   top:calc(46px + env(safe-area-inset-top, 0px));
   bottom:calc(1.5cm + env(safe-area-inset-bottom, 0px));
 }
 #shield-hud { left:20px; }
 #slow-hud { right:20px; }
-#shield-hud .shield-dot {
-  flex-shrink:0;
-  width:11px; height:11px; border-radius:50%;
-  background:#ff4444;
-  box-shadow:0 0 10px rgba(255,68,68,0.55);
+#erase-hud {
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:max(14px, env(safe-area-inset-bottom));
+  width:min(280px, 86vw);
+  height:6px;
+  z-index:10;
+  pointer-events:none;
+  display:none;
+  border-radius:4px;
+  overflow:hidden;
+  background:rgba(40,200,100,0.18);
+  box-shadow:0 0 14px rgba(40,200,100,0.15);
 }
-#slow-hud .slow-label {
-  flex-shrink:0;
-  color:#8af; font-size:12px; font-weight:600; letter-spacing:0.02em;
-  white-space:nowrap; line-height:1;
+#greentrack {
+  position:relative;
+  width:100%;
+  height:100%;
+}
+#greenfill {
+  position:absolute;
+  left:0;
+  top:0;
+  height:100%;
+  width:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#1e7a3a 0%,#3dcc6e 45%,#7af5a8 100%);
+  transition:width 0.1s linear;
+  box-shadow:0 0 12px rgba(80,220,130,0.35);
 }
 #strack, #bluetrack {
   position:relative; width:5px; flex:1 1 auto; min-height:48px;
@@ -370,6 +445,14 @@ canvas {
   </div>
 </div>
 
+<div id="bonusTicker" aria-hidden="true">
+  <span id="bonusTickerText" class="bonus-ticker__text"></span>
+</div>
+
+<div id="erase-hud">
+  <div id="greentrack"><div id="greenfill"></div></div>
+</div>
+
 <div id="pauseOverlay">PAUSA</div>
 
 <button type="button" id="audioCornerBtn" class="js-no-start" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</button>
@@ -381,11 +464,9 @@ canvas {
 </div>
 
 <div id="shield-hud">
-  <span class="shield-dot" aria-hidden="true"></span>
   <div id="strack"><div id="sfill"></div></div>
 </div>
 <div id="slow-hud">
-  <span class="slow-label">×0,5</span>
   <div id="bluetrack"><div id="bluefill"></div></div>
 </div>
 
@@ -403,6 +484,10 @@ const shieldHud = document.getElementById('shield-hud');
 const slowHud = document.getElementById('slow-hud');
 const sfill = document.getElementById('sfill');
 const bluefill = document.getElementById('bluefill');
+const eraseHud = document.getElementById('erase-hud');
+const greenfill = document.getElementById('greenfill');
+const bonusTickerEl = document.getElementById('bonusTicker');
+const bonusTickerTextEl = document.getElementById('bonusTickerText');
 const hudEl = document.getElementById('hud');
 const tEl = document.getElementById('t');
 const lvEl = document.getElementById('lv');
@@ -1281,6 +1366,37 @@ function syncPowerHud(now) {
   } else {
     slowHud.style.display = 'none';
   }
+  if (eraseHud && greenfill) {
+    if (eraseModeActive && now < eraseModeEnd) {
+      eraseHud.style.display = 'block';
+      greenfill.style.width = Math.max(0, (eraseModeEnd - now) / ERASE_MODE_DURATION_MS * 100) + '%';
+    } else {
+      eraseHud.style.display = 'none';
+    }
+  }
+}
+
+function showBonusTicker(kind) {
+  if (!bonusTickerEl || !bonusTickerTextEl) return;
+  const map = {
+    red: { t: 'SCUDO', c: 'bonus-ticker--r' },
+    blue: { t: 'RALLENTA', c: 'bonus-ticker--b' },
+    yellow: { t: 'DIMEZZA', c: 'bonus-ticker--y' },
+    green: { t: 'CANCELLA', c: 'bonus-ticker--g' },
+  };
+  const m = map[kind];
+  if (!m) return;
+  bonusTickerTextEl.textContent = m.t;
+  bonusTickerTextEl.className = 'bonus-ticker__text ' + m.c;
+  bonusTickerEl.classList.add('bonus-ticker--active');
+  bonusTickerTextEl.classList.remove('bonus-ticker__text--run');
+  void bonusTickerTextEl.offsetWidth;
+  bonusTickerTextEl.classList.add('bonus-ticker__text--run');
+  clearTimeout(showBonusTicker._t);
+  showBonusTicker._t = setTimeout(() => {
+    bonusTickerEl.classList.remove('bonus-ticker--active');
+    bonusTickerTextEl.classList.remove('bonus-ticker__text--run');
+  }, 2400);
 }
 
 function startGame() {
@@ -1653,6 +1769,7 @@ function loop(now){
         if(b.type==='red'){
           shieldActive=true; shieldEnd=now+SHIELD_DURATION_MS;
           if (audioEnabled) playSoundBonus('red');
+          showBonusTicker('red');
           burst(b.x,b.y,'#f44',22);
           flash=0.35; flashCol='rgba(255,68,68,0.18)';
           balls.splice(i,1);
@@ -1663,6 +1780,7 @@ function loop(now){
           const alreadySlow = slowActive;
           slowActive=true; slowEnd=now+SLOW_DURATION_MS;
           if (audioEnabled) playSoundBonus('blue');
+          showBonusTicker('blue');
           if (!alreadySlow) {
             balls.forEach(bb=>{
               if(bb.type==='white'){
@@ -1681,6 +1799,7 @@ function loop(now){
         }
         if(b.type==='yellow'){
           if (audioEnabled) playSoundBonus('yellow');
+          showBonusTicker('yellow');
           removeHalfOfWhites();
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
@@ -1691,9 +1810,11 @@ function loop(now){
           eraseModeActive = true;
           eraseModeEnd = now + ERASE_MODE_DURATION_MS;
           if (audioEnabled) playSoundBonus('green');
+          showBonusTicker('green');
           burst(b.x, b.y, '#34cc6e', 22);
           flash = 0.32; flashCol = 'rgba(52,200,110,0.22)';
           balls.splice(i, 1);
+          syncPowerHud(now);
           continue;
         }
       }
