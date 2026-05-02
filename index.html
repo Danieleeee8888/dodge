@@ -300,6 +300,28 @@ canvas {
   letter-spacing: 0.12em;
   font-weight: 700;
 }
+#records-block .records-reset-wrap {
+  margin-top: clamp(14px, 3.5vw, 20px);
+  padding-top: clamp(10px, 2.5vw, 14px);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  text-align: center;
+}
+#records-block .records-reset {
+  pointer-events: auto;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: clamp(10px, 2.8vw, 12px);
+  letter-spacing: 0.32em;
+  color: rgba(255,210,210,0.88);
+  background: rgba(255,70,70,0.12);
+  border: 1px solid rgba(255,130,130,0.4);
+  border-radius: 6px;
+  padding: 8px 20px;
+  -webkit-tap-highlight-color: transparent;
+}
+#records-block .records-reset:active {
+  background: rgba(255,70,70,0.22);
+}
 #shield-hud, #slow-hud {
   position:fixed; z-index:10; pointer-events:none;
   display:none; flex-direction:column; align-items:center;
@@ -527,8 +549,26 @@ function renderRecordsInto(el) {
       body += `<li${cls ? ` class="${cls}"` : ''}>${i + 1}. <span class="rec-tag">${row.tag}</span> ${fmt(row.ms)}</li>`;
     });
   }
-  body += '</ol>';
+  body += '</ol><div class="records-reset-wrap"><button type="button" id="recordsResetBtn" class="records-reset js-no-start">RESET</button></div>';
   el.innerHTML = body;
+}
+function resetLeaderboard() {
+  try {
+    localStorage.removeItem(RECORDS_KEY);
+    localStorage.removeItem(RECORDS_KEY_LEGACY);
+  } catch (e) {}
+  renderRecordsInto(document.getElementById('records-block'));
+}
+function bindLeaderboardResetOnce() {
+  if (document.documentElement.dataset.lbResetBound === '1') return;
+  document.documentElement.dataset.lbResetBound = '1';
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('#recordsResetBtn');
+    if (!btn) return;
+    e.stopPropagation();
+    e.preventDefault();
+    resetLeaderboard();
+  });
 }
 function syncAudioCornerBtn() {
   if (!audioCornerBtn) return;
@@ -1854,6 +1894,7 @@ function drawBg(now, lv){
 }
 
 setupMenuUI();
+bindLeaderboardResetOnce();
 syncAudioCornerBtn();
 bindAudioCornerBtn();
 updateShellForPhase('menu');
