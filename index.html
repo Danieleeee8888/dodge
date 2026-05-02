@@ -784,10 +784,12 @@ function restoreWhiteSpeedsAfterSlow() {
   });
 }
 
-/** Rimuove un terzo dei bianchi a caso e aggiorna le quote (così non si riempie subito dopo). */
-function halveWhitesOnField() {
+/** Toglie 1/3 degli ostacoli bianchi presenti (arrotondato per difetto), mai 2/3. Aggiorna le quote. */
+function removeOneThirdOfWhites() {
   const whites = balls.filter((b) => b.type === 'white');
-  const removeCount = Math.floor(whites.length / 3);
+  const n = whites.length;
+  if (n < 3) return;
+  const removeCount = Math.floor(n / 3);
   if (removeCount <= 0) return;
   const shuffled = whites.slice();
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -1320,7 +1322,7 @@ function loop(now){
         }
         if(b.type==='yellow'){
           if (audioEnabled) playSoundBonus('yellow');
-          halveWhitesOnField();
+          removeOneThirdOfWhites();
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
           balls.splice(i,1);
