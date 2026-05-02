@@ -461,10 +461,14 @@ const WHITE_ON_FIELD_MAX = 50;
 const RED_SPAWN_INTERVAL_MS = 15000;
 const BLUE_SPAWN_INTERVAL_MS = 30000;
 const YELLOW_SPAWN_INTERVAL_MS = 60000;
+const GREEN_SPAWN_INTERVAL_MS = 22000;
 /** Tempo di vita sul campo prima di despawn (ms). */
 const RED_BONUS_TTL_MS = 15000;
 const BLUE_BONUS_TTL_MS = 30000;
 const YELLOW_BONUS_TTL_MS = 45000;
+const GREEN_BONUS_TTL_MS = 20000;
+/** Dopo aver preso il verde: toccare i bianchi li elimina (senza morire). */
+const ERASE_MODE_DURATION_MS = 5000;
 /** Durata ogni numero del countdown d’avvio (ms). */
 const INTRO_CD_MS = 850;
 
@@ -480,7 +484,8 @@ let balls = [], parts = [], sparkles = [];
 let startTime, elapsed;
 let level, baseTriangles, baseSquares, baseSpeed;
 let shieldActive, shieldEnd, slowActive, slowEnd;
-let lastRed, lastBlue, lastYellow, lastLevelUp;
+let eraseModeActive = false, eraseModeEnd = 0;
+let lastRed, lastBlue, lastYellow, lastGreen, lastLevelUp;
 let bgPhase, flash, flashCol;
 /** Rettangolo (cella griglia 3×3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
 let aimSectorRect = { left: 0, right: 0, top: 0, bottom: 0 };
@@ -878,6 +883,11 @@ function playSoundBonus(type) {
       playTone(f, 0.26, 0.14, 'triangle', i * 0.045);
     });
     playNoise(0.06, 0.05, 0, { filterType: 'bandpass', cutoff: 2500, q: 0.6 });
+  } else if (type === 'green') {
+    [0, 5, 9, 12, 17].forEach((s, i) => {
+      playTone(st2hz(KEY_ROOT * 2, s), 0.2, 0.14, 'sine', i * 0.055);
+    });
+    playNoise(0.05, 0.06, 0, { filterType: 'highpass', cutoff: 3500 });
   }
 }
 function playSoundDie() {
@@ -954,7 +964,7 @@ function pickWhiteMovementBalanced() {
 
 // Speed multiplier widens with level: salita più graduale (stesso intervallo livelli).
 function getSpeedMul(type) {
-  if (type === 'red' || type === 'blue' || type === 'yellow') {
+  if (type === 'red' || type === 'blue' || type === 'yellow' || type === 'green') {
     return rand(0.95, 1.28 + level * 0.065);
   }
   const minSpd = Math.max(0.42, 0.70 - level * 0.018);
@@ -1182,7 +1192,11 @@ function spawnBall(type, opts) {
     let vy = Math.sin(ang) * spd;
 
     const shape = 'circle';
-    const col = type === 'red' ? '#ff4444' : type === 'blue' ? '#4488ff' : '#e9c81a';
+    let col = '#e9c81a';
+    if (type === 'red') col = '#ff4444';
+    else if (type === 'blue') col = '#4488ff';
+    else if (type === 'yellow') col = '#e9c81a';
+    else if (type === 'green') col = '#34cc6e';
     const r = HAZARD_R;
 
     b = {
@@ -1196,6 +1210,7 @@ function spawnBall(type, opts) {
     if (type === 'red') b.expireAt = t0 + RED_BONUS_TTL_MS;
     else if (type === 'blue') b.expireAt = t0 + BLUE_BONUS_TTL_MS;
     else if (type === 'yellow') b.expireAt = t0 + YELLOW_BONUS_TTL_MS;
+    else if (type === 'green') b.expireAt = t0 + GREEN_BONUS_TTL_MS;
 
     b.pulse = Math.random() * Math.PI * 2;
     b.lastSparkle = 0;
@@ -1242,6 +1257,7 @@ function finishIntroCountdown() {
   lastRed = startTime;
   lastBlue = startTime;
   lastYellow = startTime;
+  lastGreen = startTime;
   for (let i = 0; i < WHITE_START_TRIANGLES; i++) spawnBall('white', { movement: 'straight' });
   for (let i = 0; i < WHITE_START_SQUARES; i++) spawnBall('white', { movement: 'spiral' });
   setTimeout(() => {
@@ -1289,6 +1305,7 @@ function startGame() {
   baseSquares = WHITE_START_SQUARES;
   baseSpeed = 2.2;
   shieldActive = false; slowActive = false;
+  eraseModeActive = false; eraseModeEnd = 0;
   syncPowerHud(performance.now());
   lastLevelUp = 0;
   bgPhase = 0; flash = 0; flashCol = 'rgba(255,255,255,0.2)';
@@ -1313,6 +1330,7 @@ function die() {
   if (audioEnabled) playSoundDie();
   shieldActive = false;
   slowActive = false;
+  eraseModeActive = false; eraseModeEnd = 0;
   syncPowerHud(performance.now());
   stopMusic();
   running = false;
@@ -1354,8 +1372,10 @@ function togglePause() {
     lastRed += pauseDur;
     lastBlue += pauseDur;
     lastYellow += pauseDur;
+    lastGreen += pauseDur;
     if (shieldActive) shieldEnd += pauseDur;
     if (slowActive) slowEnd += pauseDur;
+    if (eraseModeActive) eraseModeEnd += pauseDur;
     balls.forEach(b => { if (b.expireAt) b.expireAt += pauseDur; });
     if (pauseOverlay) pauseOverlay.style.display = 'none';
     last = 0;
@@ -1518,7 +1538,7 @@ function loop(now){
   if (paused) {
     drawBg(now, level);
     for (const b of balls) {
-      if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow') drawBonusAura(b, now);
+      if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green') drawBonusAura(b, now);
       drawShape(b, b.x, b.y, b.r, 1);
     }
     drawPlayer(now);
@@ -1558,9 +1578,11 @@ function loop(now){
   if (now - lastRed >= RED_SPAWN_INTERVAL_MS) { lastRed = now; spawnBall('red'); }
   if (now - lastBlue >= BLUE_SPAWN_INTERVAL_MS) { lastBlue = now; spawnBall('blue'); }
   if (now - lastYellow >= YELLOW_SPAWN_INTERVAL_MS) { lastYellow = now; spawnBall('yellow'); }
+  if (now - lastGreen >= GREEN_SPAWN_INTERVAL_MS) { lastGreen = now; spawnBall('green'); }
 
   // timers
   if (shieldActive && now > shieldEnd) shieldActive = false;
+  if (eraseModeActive && now > eraseModeEnd) eraseModeActive = false;
   if (slowActive && now > slowEnd) {
     slowActive = false;
     restoreWhiteSpeedsAfterSlow();
@@ -1594,7 +1616,7 @@ function loop(now){
     b.trail.push({ x: b.x, y: b.y });
     if (b.trail.length > 7) b.trail.shift();
 
-    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow') {
+    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green') {
       b.pulse += dt * 0.18;
       if (now - b.lastSparkle > 42) {
         spawnSparkle(b.x + rand(-b.r, b.r), b.y + rand(-b.r, b.r), b.col);
@@ -1617,6 +1639,16 @@ function loop(now){
       const dx=b.x-px, dy=b.y-py;
       const hitR = b.r + 20;
       if(Math.sqrt(dx*dx+dy*dy)<hitR){
+        if (b.type === 'white' && eraseModeActive && now < eraseModeEnd) {
+          let rT = 0, rS = 0;
+          if (b.movement === 'spiral') rS = 1;
+          else rT = 1;
+          baseTriangles = Math.max(WHITE_START_TRIANGLES, baseTriangles - rT);
+          baseSquares = Math.max(WHITE_START_SQUARES, baseSquares - rS);
+          balls.splice(i, 1);
+          burst(b.x, b.y, '#b8f5c8', 12);
+          continue;
+        }
         if(b.type==='white'){ balls.splice(i,1); spawnBall('white', { movement: b.movement }); die(); continue; }
         if(b.type==='red'){
           shieldActive=true; shieldEnd=now+SHIELD_DURATION_MS;
@@ -1655,10 +1687,19 @@ function loop(now){
           balls.splice(i,1);
           continue;
         }
+        if (b.type === 'green') {
+          eraseModeActive = true;
+          eraseModeEnd = now + ERASE_MODE_DURATION_MS;
+          if (audioEnabled) playSoundBonus('green');
+          burst(b.x, b.y, '#34cc6e', 22);
+          flash = 0.32; flashCol = 'rgba(52,200,110,0.22)';
+          balls.splice(i, 1);
+          continue;
+        }
       }
     }
 
-    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow') drawBonusAura(b, now);
+    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green') drawBonusAura(b, now);
 
     // trail
     for(let t=0;t<b.trail.length;t++){
@@ -1776,6 +1817,17 @@ function drawPlayer(now) {
     ctx.lineWidth = 2;
     ctx.stroke();
   }
+  if (eraseModeActive && now < eraseModeEnd) {
+    let er = rMain + 16;
+    if (shieldActive && slowActive) er = rMain + 34;
+    else if (shieldActive) er = rMain + 28;
+    else if (slowActive) er = rMain + 26;
+    ctx.beginPath();
+    ctx.arc(0, 0, er, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(60,220,130,${0.48 + 0.28 * Math.sin(now * 0.009)})`;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+  }
 
   if (velShow) {
     const vm = Math.min(1.15, Math.sqrt(distSq) / 100);
@@ -1852,7 +1904,7 @@ function drawPlayer(now) {
 }
 
 function drawBonusAura(b, now) {
-  const baseCol = b.type === 'red' ? '255,68,68' : b.type === 'blue' ? '68,136,255' : '233,200,26';
+  const baseCol = b.type === 'red' ? '255,68,68' : b.type === 'blue' ? '68,136,255' : b.type === 'yellow' ? '233,200,26' : '52,200,110';
   for (let k = 0; k < 3; k++) {
     const phase = (now * 0.0009 + k * 0.33) % 1;
     const rr = b.r + 6 + phase * 36;
