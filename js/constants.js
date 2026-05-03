@@ -10,12 +10,7 @@ export const FIXED_GAME_H = 720;
  */
 export const MAX_CANVAS_CSS_W = 430;
 
-export const SLOW_DURATION_MS = 10000;
-export const SHIELD_DURATION_MS = 10000;
 export const CURSOR_LERP = 0.55;          // velocità di traslazione cursore
-export const SLOW_FACTOR = 0.45;          // un filo meno OP
-/** Spirale: omega moltiplicata da questo durante il blu (ripristino divide per questo). */
-export const SLOW_OMEGA_FACTOR = 0.6;
 export const AIM_CELL_PAD = 10;
 /** Ogni quanto la “zona di passaggio obbligato” si aggancia alla cella 3×3 dove sei ora (tempo di gioco). */
 export const AIM_SECTOR_INTERVAL_MS = 8000;
@@ -35,25 +30,50 @@ export const WHITE_START_TRIANGLES = 3;
 export const WHITE_START_SQUARES = 3;
 /** Massimo oggetti bianchi in campo (triangoli + quadrati). */
 export const WHITE_ON_FIELD_MAX = 50;
-/** Spawn bonus: intervalli fissi (ms). */
-export const RED_SPAWN_INTERVAL_MS = 15000;
-/** Primo bonus rosso: stesso ritardo dello spawn (tempo di gioco). */
-export const FIRST_RED_DELAY_MS = 15000;
-/** Ultimi ms prima della scadenza: il bonus in campo lampeggia. */
-export const BONUS_EXPIRE_WARN_MS = 3000;
-export const BLUE_SPAWN_INTERVAL_MS = 25000;
-export const YELLOW_SPAWN_INTERVAL_MS = 50000;
-export const GREEN_SPAWN_INTERVAL_MS = 40000;
-/** Satellite viola: spawn ogni 60s se non c'è viola in campo e stack < 3. */
-export const PURPLE_SPAWN_INTERVAL_MS = 60000;
-/** Tempo di vita sul campo prima di despawn (ms). */
-export const RED_BONUS_TTL_MS = 18000;
-export const BLUE_BONUS_TTL_MS = 25000;
-export const YELLOW_BONUS_TTL_MS = 40000;
-export const GREEN_BONUS_TTL_MS = 22000;
-export const PURPLE_BONUS_TTL_MS = 18000;
-/** Durata effetto verde sui bianchi (riduzione hitbox + bolla visiva). */
+
+// =============================================================================
+// Bonus (cerchi colorati): spawn, vita sul campo (rimbalzi), effetti dopo raccolta
+// =============================================================================
+
+/**
+ * Contatti bordo cumulativi prima che il bonus sparisca da solo.
+ * Dopo il 3° contatto lampeggia; al 4° contatto “puf” e rimozione (stesso per tutti i colori).
+ */
+export const BONUS_WALL_BOUNCES_MAX = 4;
+
+/** Rosso: primo spawn a questo tempo di gioco (ms, rispetta la pausa). */
+export const RED_BONUS_FIRST_SPAWN_MS = 15000;
+/** Rosso: ogni quanto dopo il primo (ms dall’ultimo spawn, clock reale). */
+export const RED_BONUS_SPAWN_EVERY_MS = 15000;
+
+/** Blu: primo spawn dopo questo tempo dall’inizio partita (ms, clock reale). */
+export const BLUE_BONUS_FIRST_SPAWN_MS = 25000;
+/** Blu: spawn successivi ogni quanto (ms dall’ultimo spawn). */
+export const BLUE_BONUS_SPAWN_EVERY_MS = 25000;
+
+export const YELLOW_BONUS_FIRST_SPAWN_MS = 50000;
+export const YELLOW_BONUS_SPAWN_EVERY_MS = 50000;
+
+export const GREEN_BONUS_FIRST_SPAWN_MS = 35000;
+export const GREEN_BONUS_SPAWN_EVERY_MS = 35000;
+
+/** Viola: primo tentativo di spawn dopo questo tempo dall’inizio partita (ms). */
+export const PURPLE_BONUS_FIRST_SPAWN_MS = 60000;
+/** Viola: dopo uno spawn riuscito, prossimo slot non prima di questi ms. */
+export const PURPLE_BONUS_SPAWN_EVERY_MS = 60000;
+
+/** Durata scudo dopo raccolta bonus rosso (ms). */
+export const SHIELD_DURATION_MS = 10000;
+/** Durata rallentamento dopo raccolta bonus blu (ms). */
+export const SLOW_DURATION_MS = 10000;
+/** Moltiplicatore velocità bianchi durante il blu (ripristino divide per questo). */
+export const SLOW_FACTOR = 0.45;
+/** Spirale: omega moltiplicata da questo durante il blu (ripristino divide per questo). */
+export const SLOW_OMEGA_FACTOR = 0.6;
+
+/** Durata effetto “rimpicciolisci” sui bianchi dopo raccolta bonus verde (ms). */
 export const GREEN_MODE_DURATION_MS = 10000;
+
 /** Durata ogni numero del countdown d’avvio (ms). */
 export const INTRO_CD_MS = 850;
 

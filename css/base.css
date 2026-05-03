@@ -173,6 +173,10 @@ canvas {
   background:rgba(0,0,0,0.45);
 }
 #countdownOverlay.show { display:flex; }
+/** Ripresa da pausa: sfondo più leggero così si vede il campo dietro. */
+#countdownOverlay.countdownOverlay--resume {
+  background:rgba(0,0,0,0.2);
+}
 .cd-inner {
   display:flex; align-items:center; justify-content:center;
   padding:0;

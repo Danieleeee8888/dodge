@@ -17,18 +17,17 @@
   WHITE_START_TRIANGLES,
   WHITE_START_SQUARES,
   WHITE_ON_FIELD_MAX,
-  RED_SPAWN_INTERVAL_MS,
-  FIRST_RED_DELAY_MS,
-  BONUS_EXPIRE_WARN_MS,
-  BLUE_SPAWN_INTERVAL_MS,
-  YELLOW_SPAWN_INTERVAL_MS,
-  GREEN_SPAWN_INTERVAL_MS,
-  PURPLE_SPAWN_INTERVAL_MS,
-  RED_BONUS_TTL_MS,
-  BLUE_BONUS_TTL_MS,
-  YELLOW_BONUS_TTL_MS,
-  GREEN_BONUS_TTL_MS,
-  PURPLE_BONUS_TTL_MS,
+  BONUS_WALL_BOUNCES_MAX,
+  RED_BONUS_FIRST_SPAWN_MS,
+  RED_BONUS_SPAWN_EVERY_MS,
+  BLUE_BONUS_FIRST_SPAWN_MS,
+  BLUE_BONUS_SPAWN_EVERY_MS,
+  YELLOW_BONUS_FIRST_SPAWN_MS,
+  YELLOW_BONUS_SPAWN_EVERY_MS,
+  GREEN_BONUS_FIRST_SPAWN_MS,
+  GREEN_BONUS_SPAWN_EVERY_MS,
+  PURPLE_BONUS_FIRST_SPAWN_MS,
+  PURPLE_BONUS_SPAWN_EVERY_MS,
   GREEN_MODE_DURATION_MS,
   INTRO_CD_MS,
   RECORDS_KEY,
@@ -191,17 +190,24 @@ let hasExtraLife = 0;
 let nextPurpleAt = 0;
 /** Espansione gialla rapida sui bianchi tolti dal bonus giallo. */
 let yellowPopAuras = [];
+/** Nuvoletta verde al rimpicciolimento (stesso stile dell’espansione gialla). */
+let greenPopAuras = [];
 /** Testi tipo arcade (salita + fade). Coordinate spazio gioco. */
 let floatingTexts = [];
 let lastRed, lastBlue, lastYellow, lastGreen, lastLevelUp;
 /** Primo rosso a 15s (solo una volta a partita). */
 let firstRedSpawned = false;
+let firstBlueSpawned = false;
+let firstYellowSpawned = false;
+let firstGreenSpawned = false;
 let bgPhase, flash, flashCol;
 /** Rettangolo (cella griglia 3×3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
 let aimSectorRect = { left: 0, right: 0, top: 0, bottom: 0 };
 let aimSectorNextElapsed = 0;
 /** Avvio partita: { phase: 0..2 → numeri 3,2,1, phaseEnd: timestamp }. */
 let introCountdown = null;
+/** Conto alla rovescia dopo “ripresa” da pausa (scena visibile dietro). */
+let resumeCountdown = null;
 /** Timeout UI game over: va cancellato se si riparte prima che scada. */
 let deathUiTimeoutId = null;
 
@@ -769,30 +775,31 @@ function whiteTrajectoryTouchesAimSector(b) {
 function isBonusCircle(b) {
   return b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple';
 }
-/** Bonus: rimbalzano dentro lo schermo, non escono dal campo. */
+/** Bonus: rimbalzano dentro lo schermo; ogni contatto bordo conta come rimbalzo (angoli possono +2 nello stesso frame). */
 function clampBounceBonus(b) {
   const r = b.r + 1;
   for (let g = 0; g < 4; g++) {
-    let hit = false;
+    let n = 0;
     if (b.x < r) {
       b.x = r;
       b.vx = b.vx < 0 ? -b.vx : Math.max(b.vx, 0.08);
-      hit = true;
+      n++;
     } else if (b.x > W - r) {
       b.x = W - r;
       b.vx = b.vx > 0 ? -b.vx : Math.min(b.vx, -0.08);
-      hit = true;
+      n++;
     }
     if (b.y < r) {
       b.y = r;
       b.vy = b.vy < 0 ? -b.vy : Math.max(b.vy, 0.08);
-      hit = true;
+      n++;
     } else if (b.y > H - r) {
       b.y = H - r;
       b.vy = b.vy > 0 ? -b.vy : Math.min(b.vy, -0.08);
-      hit = true;
+      n++;
     }
-    if (!hit) break;
+    if (n === 0) break;
+    b.bonusBounceCount = (b.bonusBounceCount || 0) + n;
   }
 }
 
@@ -870,11 +877,11 @@ function applyGreenModeToWhites(enabled) {
   for (let i = 0; i < balls.length; i++) applyGreenModeToWhite(balls[i], enabled);
 }
 
-/** Moltiplicatore alpha quando il bonus in campo è negli ultimi secondi (lampeggio). */
-function bonusPickupBlinkMul(now, expireAt) {
-  if (expireAt == null) return 1;
-  const left = expireAt - now;
-  if (left > BONUS_EXPIRE_WARN_MS || left <= 0) return 1;
+/** Lampeggio dopo il 3° contatto bordo, fino al 4° (poi il bonus sparisce). */
+function bonusPickupBlinkMul(now, b) {
+  if (!b || !isBonusCircle(b)) return 1;
+  const c = b.bonusBounceCount || 0;
+  if (c < BONUS_WALL_BOUNCES_MAX - 1) return 1;
   return 0.22 + 0.78 * (0.5 + 0.5 * Math.sin(now * 0.024));
 }
 
@@ -1025,14 +1032,8 @@ function spawnBall(type, opts) {
       trail: [],
       rotation: 0,
       rotSpeed: rand(-0.06, 0.06),
+      bonusBounceCount: 0,
     };
-
-    const t0 = performance.now();
-    if (type === 'red') b.expireAt = t0 + RED_BONUS_TTL_MS;
-    else if (type === 'blue') b.expireAt = t0 + BLUE_BONUS_TTL_MS;
-    else if (type === 'yellow') b.expireAt = t0 + YELLOW_BONUS_TTL_MS;
-    else if (type === 'green') b.expireAt = t0 + GREEN_BONUS_TTL_MS;
-    else if (type === 'purple') b.expireAt = t0 + PURPLE_BONUS_TTL_MS;
 
     b.pulse = Math.random() * Math.PI * 2;
     b.lastSparkle = 0;
@@ -1069,14 +1070,17 @@ function applyIntroCdVisual(n, col) {
 
 function finishIntroCountdown() {
   introCountdown = null;
-  if (cdOverlayEl) cdOverlayEl.classList.remove('show');
+  if (cdOverlayEl) {
+    cdOverlayEl.classList.remove('show');
+    cdOverlayEl.classList.remove('countdownOverlay--resume');
+  }
   if (cdInnerEl) {
     cdInnerEl.className = 'cd-inner cd-r';
     cdInnerEl.classList.remove('cd-popping');
   }
   startTime = performance.now();
   elapsed = 0;
-  nextPurpleAt = startTime + PURPLE_SPAWN_INTERVAL_MS;
+  nextPurpleAt = startTime + PURPLE_BONUS_FIRST_SPAWN_MS;
   lastRed = startTime;
   lastBlue = startTime;
   lastYellow = startTime;
@@ -1186,6 +1190,9 @@ function startGame() {
   balls = []; parts = []; sparkles = [];
   floatingTexts = [];
   firstRedSpawned = false;
+  firstBlueSpawned = false;
+  firstYellowSpawned = false;
+  firstGreenSpawned = false;
   level = 1;
   baseTriangles = WHITE_START_TRIANGLES;
   baseSquares = WHITE_START_SQUARES;
@@ -1194,6 +1201,7 @@ function startGame() {
   greenModeActive = false; greenModeEnd = 0;
   hasExtraLife = 0;
   yellowPopAuras = [];
+  greenPopAuras = [];
   syncPowerHud(performance.now());
   lastLevelUp = 0;
   bgPhase = 0; flash = 0; flashCol = 'rgba(255,255,255,0.2)';
@@ -1201,9 +1209,13 @@ function startGame() {
   px = cx; py = cy; tx = cx; ty = cy;
   syncAimSectorToPlayer();
   aimSectorNextElapsed = 0;
+  resumeCountdown = null;
   const t0 = performance.now();
   introCountdown = { phase: 0, phaseEnd: t0 + INTRO_CD_MS };
-  if (cdOverlayEl) cdOverlayEl.classList.add('show');
+  if (cdOverlayEl) {
+    cdOverlayEl.classList.remove('countdownOverlay--resume');
+    cdOverlayEl.classList.add('show');
+  }
   applyIntroCdVisual(3, 'r');
 }
 
@@ -1246,7 +1258,12 @@ function die() {
   running = false;
   fingerDown = false;
   paused = false;
+  resumeCountdown = null;
   if (pauseOverlay) pauseOverlay.style.display = 'none';
+  if (cdOverlayEl) {
+    cdOverlayEl.classList.remove('show');
+    cdOverlayEl.classList.remove('countdownOverlay--resume');
+  }
   const diedElapsed = elapsed;
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
@@ -1277,29 +1294,24 @@ function die() {
 function togglePause() {
   if (!running) return;
   if (introCountdown) return;
-  paused = !paused;
-  if (paused) {
+  if (resumeCountdown) return;
+
+  if (!paused) {
+    paused = true;
     pausedAt = performance.now();
     if (pauseOverlay) pauseOverlay.style.display = 'flex';
     pauseAllMusic();
-  } else {
-    const pauseDur = performance.now() - pausedAt;
-    startTime += pauseDur;
-    lastRed += pauseDur;
-    lastBlue += pauseDur;
-    lastYellow += pauseDur;
-    lastGreen += pauseDur;
-    if (shieldActive) shieldEnd += pauseDur;
-    if (slowActive) slowEnd += pauseDur;
-    if (greenModeActive) greenModeEnd += pauseDur;
-    nextPurpleAt += pauseDur;
-    yellowPopAuras.forEach((a) => { a.start += pauseDur; });
-    floatingTexts.forEach((ft) => { ft.start += pauseDur; });
-    balls.forEach(b => { if (b.expireAt) b.expireAt += pauseDur; });
-    if (pauseOverlay) pauseOverlay.style.display = 'none';
-    last = 0;
-    resumeMusicAfterPause();
+    return;
   }
+
+  if (pauseOverlay) pauseOverlay.style.display = 'none';
+  const t0 = performance.now();
+  resumeCountdown = { phase: 0, phaseEnd: t0 + INTRO_CD_MS };
+  if (cdOverlayEl) {
+    cdOverlayEl.classList.add('show');
+    cdOverlayEl.classList.add('countdownOverlay--resume');
+  }
+  applyIntroCdVisual(3, 'r');
 }
 
 // INPUT — coordinate schermo → area di gioco fissa (stesso bounding del canvas scalato)
@@ -1355,7 +1367,7 @@ function isControlTarget(el) {
 window.addEventListener('mousedown', e=>{
   if (isControlTarget(e.target)) return;
   if (!running && e.target.closest('.js-no-start')) return;
-  if (running && paused) return;
+  if (running && paused && !resumeCountdown) return;
   const [x,y]=getXY(e);
   if(!running){ startGame(); }
   const [cx, cy] = clampPlayerTarget(x, y);
@@ -1365,7 +1377,7 @@ window.addEventListener('mousedown', e=>{
   fingerDown = true;
 });
 window.addEventListener('mousemove', e=>{
-  if (!fingerDown || paused) return;
+  if (!fingerDown || (paused && !resumeCountdown)) return;
   const [x, y] = getXY(e);
   const [cx, cy] = clampPlayerTarget(x, y);
   tx = cx; ty = cy;
@@ -1379,7 +1391,7 @@ window.addEventListener('touchstart', e=>{
     togglePause();
     return;
   }
-  if (running && paused) {
+  if (running && paused && !resumeCountdown) {
     e.preventDefault();
     return;
   }
@@ -1401,7 +1413,7 @@ window.addEventListener('touchstart', e=>{
   fingerDown=true;
 },{passive:false});
 window.addEventListener('touchmove', e=>{
-  if (!running || paused) return;
+  if (!running || (paused && !resumeCountdown)) return;
   e.preventDefault();
   const [x,y] = getXY(e);
   applyTouchRelativeTarget(x, y);
@@ -1412,6 +1424,16 @@ function syncFingerDownFromTouches(e) {
 }
 window.addEventListener('touchend', syncFingerDownFromTouches, { passive: false });
 window.addEventListener('touchcancel', syncFingerDownFromTouches, { passive: false });
+
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space') return;
+  if (e.repeat) return;
+  const el = e.target;
+  if (el instanceof Element && el.closest('input, textarea, select, [contenteditable="true"]')) return;
+  if (!running) return;
+  e.preventDefault();
+  togglePause();
+});
 
 // SHAPE DRAWING
 function drawShape(b, x, y, r, alpha) {
@@ -1548,12 +1570,59 @@ function loop(now){
     return;
   }
 
+  if (resumeCountdown) {
+    if (now >= resumeCountdown.phaseEnd) {
+      resumeCountdown.phase++;
+      if (resumeCountdown.phase >= 3) {
+        const pauseDur = performance.now() - pausedAt;
+        startTime += pauseDur;
+        lastRed += pauseDur;
+        lastBlue += pauseDur;
+        lastYellow += pauseDur;
+        lastGreen += pauseDur;
+        if (shieldActive) shieldEnd += pauseDur;
+        if (slowActive) slowEnd += pauseDur;
+        if (greenModeActive) greenModeEnd += pauseDur;
+        nextPurpleAt += pauseDur;
+        yellowPopAuras.forEach((a) => { a.start += pauseDur; });
+        greenPopAuras.forEach((a) => { a.start += pauseDur; });
+        floatingTexts.forEach((ft) => { ft.start += pauseDur; });
+        resumeCountdown = null;
+        paused = false;
+        if (cdOverlayEl) {
+          cdOverlayEl.classList.remove('show');
+          cdOverlayEl.classList.remove('countdownOverlay--resume');
+        }
+        last = 0;
+        resumeMusicAfterPause();
+      } else {
+        const n = 3 - resumeCountdown.phase;
+        const col = resumeCountdown.phase === 1 ? 'b' : 'y';
+        resumeCountdown.phaseEnd = now + INTRO_CD_MS;
+        applyIntroCdVisual(n, col);
+      }
+    }
+    if (tx > -200) {
+      const k = Math.min(1, CURSOR_LERP * dt);
+      px += (tx - px) * k;
+      py += (ty - py) * k;
+    }
+    drawBg(now, level);
+    for (const b of balls) {
+      if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') drawBonusAura(b, now);
+      const bonusA = isBonusCircle(b) ? bonusPickupBlinkMul(now, b) : 1;
+      drawShape(b, b.x, b.y, b.r, bonusA);
+    }
+    updateAndDrawFloatingTexts(now, dt);
+    drawPlayer(now);
+    return;
+  }
+
   if (paused) {
     drawBg(now, level);
     for (const b of balls) {
       if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') drawBonusAura(b, now);
-      if (b.type === 'white' && b.greenBubble) drawGreenBubbleAura(b);
-      const bonusA = isBonusCircle(b) ? bonusPickupBlinkMul(now, b.expireAt) : 1;
+      const bonusA = isBonusCircle(b) ? bonusPickupBlinkMul(now, b) : 1;
       drawShape(b, b.x, b.y, b.r, bonusA);
     }
     updateAndDrawFloatingTexts(now, dt);
@@ -1590,23 +1659,44 @@ function loop(now){
     }
   }
 
-  // spawn bonus — primo rosso a 15s di tempo di gioco, poi ogni RED_SPAWN_INTERVAL_MS
-  if (!firstRedSpawned && elapsed >= FIRST_RED_DELAY_MS) {
+  // spawn bonus — tempi in `constants.js` (primo spawn / intervalli successivi)
+  if (!firstRedSpawned && elapsed >= RED_BONUS_FIRST_SPAWN_MS) {
     firstRedSpawned = true;
     lastRed = now;
     spawnBall('red');
-  } else if (firstRedSpawned && now - lastRed >= RED_SPAWN_INTERVAL_MS) {
+  } else if (firstRedSpawned && now - lastRed >= RED_BONUS_SPAWN_EVERY_MS) {
     lastRed = now;
     spawnBall('red');
   }
-  if (now - lastBlue >= BLUE_SPAWN_INTERVAL_MS) { lastBlue = now; spawnBall('blue'); }
-  if (now - lastYellow >= YELLOW_SPAWN_INTERVAL_MS) { lastYellow = now; spawnBall('yellow'); }
-  if (now - lastGreen >= GREEN_SPAWN_INTERVAL_MS) { lastGreen = now; spawnBall('green'); }
+  if (!firstBlueSpawned && elapsed >= BLUE_BONUS_FIRST_SPAWN_MS) {
+    firstBlueSpawned = true;
+    lastBlue = now;
+    spawnBall('blue');
+  } else if (firstBlueSpawned && now - lastBlue >= BLUE_BONUS_SPAWN_EVERY_MS) {
+    lastBlue = now;
+    spawnBall('blue');
+  }
+  if (!firstYellowSpawned && elapsed >= YELLOW_BONUS_FIRST_SPAWN_MS) {
+    firstYellowSpawned = true;
+    lastYellow = now;
+    spawnBall('yellow');
+  } else if (firstYellowSpawned && now - lastYellow >= YELLOW_BONUS_SPAWN_EVERY_MS) {
+    lastYellow = now;
+    spawnBall('yellow');
+  }
+  if (!firstGreenSpawned && elapsed >= GREEN_BONUS_FIRST_SPAWN_MS) {
+    firstGreenSpawned = true;
+    lastGreen = now;
+    spawnBall('green');
+  } else if (firstGreenSpawned && now - lastGreen >= GREEN_BONUS_SPAWN_EVERY_MS) {
+    lastGreen = now;
+    spawnBall('green');
+  }
 
   const purpleOnField = balls.some((b) => b.type === 'purple');
   if (hasExtraLife < 3 && !purpleOnField && now >= nextPurpleAt) {
     spawnBall('purple');
-    nextPurpleAt = now + PURPLE_SPAWN_INTERVAL_MS;
+    nextPurpleAt = now + PURPLE_BONUS_SPAWN_EVERY_MS;
   }
 
   // timers
@@ -1644,6 +1734,13 @@ function loop(now){
       if (isBonusCircle(b)) clampBounceBonus(b);
     }
 
+    if (isBonusCircle(b) && (b.bonusBounceCount || 0) >= BONUS_WALL_BOUNCES_MAX) {
+      burst(b.x, b.y, '#ff4444', 14);
+      burst(b.x, b.y, '#ff8888', 8);
+      balls.splice(i, 1);
+      continue;
+    }
+
     b.rotation += b.rotSpeed * dt;
 
     b.trail.push({ x: b.x, y: b.y });
@@ -1655,11 +1752,6 @@ function loop(now){
         spawnSparkle(b.x + rand(-b.r, b.r), b.y + rand(-b.r, b.r), b.col);
         b.lastSparkle = now;
       }
-    }
-
-    if (b.expireAt != null && now > b.expireAt) {
-      balls.splice(i, 1);
-      continue;
     }
 
     // Fuori schermo: respawn bianchi; i bonus cerchio rimbalzano e non vengono persi ai bordi.
@@ -1713,7 +1805,9 @@ function loop(now){
           removeThirdOfWhites(true);
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
-          balls.splice(i,1);
+          // Non usare `i`: removeThirdOfWhites ha già mutato `balls`, l’indice del giallo è cambiato.
+          const yi = balls.indexOf(b);
+          if (yi !== -1) balls.splice(yi, 1);
           continue;
         }
         if (b.type === 'purple') {
@@ -1731,6 +1825,13 @@ function loop(now){
           greenModeActive = true;
           greenModeEnd = now + GREEN_MODE_DURATION_MS;
           applyGreenModeToWhites(true);
+          for (let wi = 0; wi < balls.length; wi++) {
+            const wb = balls[wi];
+            if (wb.type !== 'white') continue;
+            greenPopAuras.push({ x: wb.x, y: wb.y, start: now });
+            burst(wb.x, wb.y, '#d4ffe4', 6);
+            burst(wb.x, wb.y, '#34cc6e', 8);
+          }
           if (audioEnabled) playSoundBonus('green');
           spawnFloatingText(b.x, b.y, 'RIMPICCIOLISCI', '#7af5a8');
           burst(b.x, b.y, '#34cc6e', 22);
@@ -1744,7 +1845,7 @@ function loop(now){
 
     if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') drawBonusAura(b, now);
 
-    const pickupBlink = isBonusCircle(b) ? bonusPickupBlinkMul(now, b.expireAt) : 1;
+    const pickupBlink = isBonusCircle(b) ? bonusPickupBlinkMul(now, b) : 1;
     // trail
     for(let t=0;t<b.trail.length;t++){
       const tt = t / b.trail.length;
@@ -1764,7 +1865,6 @@ function loop(now){
     }
     ctx.globalAlpha = 1;
 
-    if (b.type === 'white' && b.greenBubble) drawGreenBubbleAura(b);
     drawShape(b, b.x, b.y, b.r, pickupBlink);
   }
 
@@ -1812,6 +1912,18 @@ function loop(now){
   }
   ctx.globalAlpha=1;
 
+  updateAndDrawFloatingTexts(now, dt);
+
+  drawPlayer(now);
+
+  if(flash>0){
+    ctx.fillStyle=flashCol;
+    ctx.globalAlpha=flash;
+    ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha=1;
+    flash-=0.05*dt;
+  }
+
   const yPopMax = 155;
   for (let yi = yellowPopAuras.length - 1; yi >= 0; yi--) {
     const a = yellowPopAuras[yi];
@@ -1834,16 +1946,26 @@ function loop(now){
     ctx.restore();
   }
 
-  updateAndDrawFloatingTexts(now, dt);
-
-  drawPlayer(now);
-
-  if(flash>0){
-    ctx.fillStyle=flashCol;
-    ctx.globalAlpha=flash;
-    ctx.fillRect(0,0,W,H);
-    ctx.globalAlpha=1;
-    flash-=0.05*dt;
+  const gPopMax = 155;
+  for (let gi = greenPopAuras.length - 1; gi >= 0; gi--) {
+    const a = greenPopAuras[gi];
+    const u = (now - a.start) / gPopMax;
+    if (u >= 1) { greenPopAuras.splice(gi, 1); continue; }
+    const ease = 1 - u;
+    ctx.save();
+    ctx.globalAlpha = ease * 0.9;
+    const R = 10 + u * 48;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, R, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(160, 255, 205, ${0.62 * ease})`;
+    ctx.lineWidth = 2.2 * (0.35 + ease * 0.65);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, R * 0.55, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(52, 220, 130, ${0.36 * ease})`;
+    ctx.lineWidth = 1.2 * ease;
+    ctx.stroke();
+    ctx.restore();
   }
 
   tEl.textContent=fmt(elapsed);
@@ -1863,33 +1985,6 @@ function getExtraLifeSatelliteState(index, nowMs) {
     orbitR,
     size: 3.8 + index * 0.45,
   };
-}
-
-/** Contorno verde alla stessa scala del vecchio cerchio (HAZARD_R): triangolo / quadrato come l’ostacolo. */
-function drawGreenBubbleAura(b) {
-  ctx.save();
-  ctx.strokeStyle = 'rgba(88, 178, 118, 0.52)';
-  ctx.lineWidth = 1.55;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  if (b.shape === 'triangle') {
-    const ang = Math.atan2(b.vy, b.vx);
-    const h = HAZARD_R * 1.45;
-    ctx.translate(b.x, b.y);
-    ctx.rotate(ang);
-    ctx.beginPath();
-    ctx.moveTo(h, 0);
-    ctx.lineTo(-h * 0.65, h * 0.78);
-    ctx.lineTo(-h * 0.65, -h * 0.78);
-    ctx.closePath();
-    ctx.stroke();
-  } else if (b.shape === 'square') {
-    const s = HAZARD_R * 1.05;
-    ctx.translate(b.x, b.y);
-    ctx.rotate(b.rotation);
-    ctx.strokeRect(-s, -s, s * 2, s * 2);
-  }
-  ctx.restore();
 }
 
 function drawPlayer(now) {
@@ -2015,7 +2110,7 @@ function drawPlayer(now) {
 }
 
 function drawBonusAura(b, now) {
-  const blink = bonusPickupBlinkMul(now, b.expireAt);
+  const blink = bonusPickupBlinkMul(now, b);
   const baseCol = b.type === 'red' ? '255,68,68' : b.type === 'blue' ? '68,136,255' : b.type === 'yellow' ? '233,200,26' : b.type === 'purple' ? '168,85,247' : '52,200,110';
   for (let k = 0; k < 3; k++) {
     const phase = (now * 0.0009 + k * 0.33) % 1;
