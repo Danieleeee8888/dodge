@@ -47,8 +47,16 @@
 </div>
 
 <div id="screen">
-  <header class="menu-header">
-    <h1 class="menu-logo"><span class="menu-logo-text">DODGE</span></h1>
+  <div class="menu-mid-layer">
+    <header class="menu-header menu-header--title">
+      <h1 class="menu-logo"><span class="menu-logo-text">DODGE</span></h1>
+    </header>
+    <div class="menu-center-block">
+      <input type="text" id="playerNameInput" class="player-name-input js-no-start" maxlength="18" placeholder="Il tuo nome" autocomplete="nickname" spellcheck="false">
+      <p class="tap-hint">Premi ovunque per iniziare</p>
+    </div>
+  </div>
+  <div class="menu-bottom">
     <div class="menu-bonus-dots" aria-hidden="true">
       <span class="menu-bonus-dot menu-bonus-dot--red"></span>
       <span class="menu-bonus-dot menu-bonus-dot--blue"></span>
@@ -57,9 +65,7 @@
       <span class="menu-bonus-dot menu-bonus-dot--purple"></span>
     </div>
     <p class="menu-tagline">Prendi i bonus per resistere.</p>
-  </header>
-  <input type="text" id="playerNameInput" class="player-name-input js-no-start" maxlength="18" placeholder="Il tuo nome" autocomplete="nickname" spellcheck="false">
-  <p class="tap-hint">Premi ovunque per iniziare</p>
+  </div>
 </div>
 
 </div>

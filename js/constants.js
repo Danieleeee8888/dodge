@@ -1,4 +1,7 @@
-/** Area di gioco fissa (pixel logici). Stessa difficoltà per tutti: zoom/desktop non ridimensionano ostacoli. */
+/**
+ * Area di gioco fissa (pixel logici): spawn, velocità e hitbox sono sempre in questo spazio.
+ * Lo schermo fisico scala solo in presentazione (`resize`); difficoltà identica su ogni dispositivo.
+ */
 export const FIXED_GAME_W = 400;
 export const FIXED_GAME_H = 720;
 /**
@@ -18,6 +21,11 @@ export const AIM_CELL_PAD = 10;
 export const AIM_SECTOR_INTERVAL_MS = 8000;
 /** Margine fuori schermo prima di despawn + respawn (px). */
 export const SCREEN_MARGIN = 40;
+/**
+ * Distanza minima del centro giocatore dai bordi (px logici).
+ * Prima era ~48px e il cursore non arrivava ai bordi come gli ostacoli; ~24 ≈ rMain in drawPlayer.
+ */
+export const PLAYER_BOUND_PAD = 24;
 /** Dimensioni “fisse” gameplay (px). */
 export const HAZARD_R = 12;
 /** Distanza minima tra centri alla creazione (meno blob e sovrapposizioni improbabili). */

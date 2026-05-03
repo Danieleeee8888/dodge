@@ -10,6 +10,7 @@
   AIM_CELL_PAD,
   AIM_SECTOR_INTERVAL_MS,
   SCREEN_MARGIN,
+  PLAYER_BOUND_PAD,
   HAZARD_R,
   SPAWN_MIN_DIST,
   LEVEL_INTERVAL_MS,
@@ -101,28 +102,41 @@ function syncDodgeShellFullscreenClass() {
   dodgeShell.classList.toggle('dodge-shell--fullscreen', isPageFullscreen());
 }
 
-function resize() {
-  if (!canvas) return;
-  syncDodgeShellFullscreenClass();
+/**
+ * Pixel CSS disponibili per adattare il canvas (contain). Su telefono la #dodgeShell a volte
+ * riporta un’altezza inferiore al visualViewport → scala limitata dall’altezza e bande nere ai lati
+ * (“campo più stretto dello schermo”). Alziamo solo l’altezza effettiva con visualViewport;
+ * la larghezza resta quella della shell.
+ */
+function getViewportForCanvasScale() {
+  const shell = dodgeShell;
+  const vv = window.visualViewport;
   let winW = window.innerWidth;
   let winH = window.innerHeight;
   let vx = 0;
   let vy = 0;
-  const shell = dodgeShell;
-  if (shell && shell.isConnected && shell.clientWidth > 0 && shell.clientHeight > 0) {
-    winW = shell.clientWidth;
-    winH = shell.clientHeight;
+  if (shell && shell.isConnected) {
+    const br = shell.getBoundingClientRect();
+    winW = Math.max(1, br.width);
+    winH = Math.max(1, br.height);
     vx = 0;
     vy = 0;
-  } else {
-    const vv = window.visualViewport;
-    if (vv && vv.width > 0 && vv.height > 0) {
-      winW = vv.width;
+    if (vv && vv.height > 0 && vv.height > winH) {
       winH = vv.height;
-      vx = vv.offsetLeft || 0;
-      vy = vv.offsetTop || 0;
     }
+  } else if (vv && vv.width > 0 && vv.height > 0) {
+    winW = vv.width;
+    winH = vv.height;
+    vx = vv.offsetLeft || 0;
+    vy = vv.offsetTop || 0;
   }
+  return { winW, winH, vx, vy };
+}
+
+function resize() {
+  if (!canvas) return;
+  syncDodgeShellFullscreenClass();
+  const { winW, winH, vx, vy } = getViewportForCanvasScale();
   W = FIXED_GAME_W;
   H = FIXED_GAME_H;
   canvas.width = W;
@@ -1303,9 +1317,9 @@ function getXY(e) {
   const t = e.touches ? e.touches[0] : e;
   return clientToGame(t.clientX, t.clientY);
 }
-/** Tiene il target giocatore dentro lo schermo (come prima i diti tiravano fuori). */
+/** Tiene il target giocatore dentro lo schermo (allineato al raggio visivo, non ~48px). */
 function clampPlayerTarget(cx, cy) {
-  const m = Math.max(48, SCREEN_MARGIN + 8);
+  const m = PLAYER_BOUND_PAD;
   return [
     Math.min(W - m, Math.max(m, cx)),
     Math.min(H - m, Math.max(m, cy)),
@@ -1335,15 +1349,17 @@ window.addEventListener('mousedown', e=>{
   if (running && paused) return;
   const [x,y]=getXY(e);
   if(!running){ startGame(); }
+  const [cx, cy] = clampPlayerTarget(x, y);
   // primo touch della partita: snap immediato
-  if (px < -200) { px = x; py = y; }
-  tx = x; ty = y;
+  if (px < -200) { px = cx; py = cy; }
+  tx = cx; ty = cy;
   fingerDown = true;
 });
 window.addEventListener('mousemove', e=>{
   if (!fingerDown || paused) return;
-  const [x,y] = getXY(e);
-  tx = x; ty = y;
+  const [x, y] = getXY(e);
+  const [cx, cy] = clampPlayerTarget(x, y);
+  tx = cx; ty = cy;
 });
 window.addEventListener('mouseup', ()=>{ fingerDown=false; });
 

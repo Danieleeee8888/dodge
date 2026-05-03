@@ -3,11 +3,78 @@
   min-height:100%;
   min-height:100dvh;
   display:flex; flex-direction:column;
-  align-items:center; justify-content:center;
+  align-items:stretch;
+  justify-content:center;
   z-index:20;
   cursor:pointer;
   touch-action:manipulation;
   background:#000;
+  font-family:inherit;
+}
+/*
+ * Menu: nome + “premi ovunque” centrati nel telefono; DODGE a metà tra bordo alto
+ * e top del blocco nome; pallini+tagline in basso.
+ */
+#screen:not(.screen-death) {
+  --menu-stack-h:5.85rem;
+  justify-content:flex-start;
+  padding-top:max(0.5rem, env(safe-area-inset-top, 0px));
+  padding-bottom:max(4.75rem, calc(env(safe-area-inset-bottom, 0px) + 3.25rem));
+  padding-left:0;
+  padding-right:0;
+  box-sizing:border-box;
+}
+#screen:not(.screen-death) .menu-mid-layer {
+  flex:1;
+  min-height:0;
+  width:100%;
+  position:relative;
+}
+#screen:not(.screen-death) .menu-center-block {
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%, -50%);
+  width:min(17.5rem, calc(100% - 2rem));
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:0.6rem;
+  box-sizing:border-box;
+  z-index:2;
+}
+#screen:not(.screen-death) .menu-header--title {
+  position:absolute;
+  left:0;
+  right:0;
+  top:calc((50% - var(--menu-stack-h) / 2) / 2);
+  transform:translateY(-50%);
+  pointer-events:none;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  width:100%;
+  max-width:100%;
+  padding:0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
+  box-sizing:border-box;
+  margin:0;
+  z-index:3;
+}
+/* Il titolo non eredita width:100% + translateX(-50%) sul contenitore: si centra davvero */
+#screen:not(.screen-death) .menu-header--title h1.menu-logo {
+  width:fit-content;
+  max-width:100%;
+  margin:0;
+  padding:0;
+}
+#screen:not(.screen-death) .menu-bottom {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:100%;
+  margin-top:auto;
+  flex-shrink:0;
+  gap:0.65rem;
 }
 #screen > * {
   position: relative;
@@ -22,43 +89,41 @@
   line-height:1.05;
 }
 #screen h1.menu-logo {
-  font-size:2.85rem;
-  margin-bottom:1.35rem;
+  font-size:clamp(2.05rem, 9.5vmin, 3.15rem);
+  margin-bottom:0;
+  font-weight:800;
+  letter-spacing:normal;
 }
-/* letter-spacing senza spazio dopo l’ultima lettera: compensiamo così il titolo resta otticamente centrato */
+/* letter-spacing: compensazione simmetrica così il blocco non “pesa” a destra */
 #screen .menu-header .menu-logo-text {
   display:inline-block;
   letter-spacing:0.26em;
-  padding-right:0.26em;
+  padding-left:0.13em;
+  padding-right:0.13em;
 }
-/* Menu iniziale: titolo un po’ più in alto, pallini bonus + tagline */
 #screen .menu-header {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
+  display:block;
   width:100%;
   max-width:100%;
   padding:0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
   box-sizing:border-box;
-  margin-top:-0.75rem;
-  margin-bottom:0.35rem;
-}
-#screen .menu-header .menu-logo {
-  margin-bottom:0.55rem;
+  margin:0;
 }
 #screen .menu-bonus-dots {
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:0.55rem;
-  margin-bottom:0.5rem;
+  gap:clamp(0.45rem, 2vmin, 0.65rem);
+  margin:0;
+  min-height:clamp(10px, 2.8vmin, 14px);
 }
+/* rem troppo piccolo su html 11px → pallini quasi invisibili su Android; vmin scala col viewport */
 #screen .menu-bonus-dot {
-  width:0.42rem;
-  height:0.42rem;
+  width:clamp(9px, 2.6vmin, 12px);
+  height:clamp(9px, 2.6vmin, 12px);
   border-radius:50%;
   flex-shrink:0;
-  box-shadow:0 0 0 1px rgba(255,255,255,0.12);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.18);
 }
 #screen .menu-bonus-dot--red { background:#ff4444; box-shadow:0 0 10px rgba(255,68,68,0.35), 0 0 0 1px rgba(255,255,255,0.1); }
 #screen .menu-bonus-dot--blue { background:#4488ff; box-shadow:0 0 10px rgba(68,136,255,0.32), 0 0 0 1px rgba(255,255,255,0.1); }
@@ -67,21 +132,26 @@
 #screen .menu-bonus-dot--purple { background:#a855f7; box-shadow:0 0 10px rgba(168,85,247,0.3), 0 0 0 1px rgba(255,255,255,0.1); }
 #screen .menu-tagline {
   margin:0;
-  color:rgba(255,255,255,0.42);
-  font-size:0.68rem;
-  letter-spacing:0.22em;
+  padding:0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
+  color:rgba(255,255,255,0.88);
+  font-size:clamp(0.78rem, 2.8vmin, 0.9rem);
+  letter-spacing:0.06em;
   text-align:center;
-  line-height:1.45;
+  line-height:1.5;
   font-weight:500;
   max-width:min(20rem, calc(100% - 2rem));
 }
+#screen .menu-center-block .player-name-input {
+  width:100%;
+  margin-bottom:0;
+}
 #screen .player-name-input {
   width:min(17.5rem, calc(100% - 2rem));
-  margin-bottom:1.1rem;
+  margin-bottom:0;
   padding:0.75rem 0.85rem;
-  font-family:monospace;
-  font-size:0.95rem;
-  letter-spacing:0.12em;
+  font-family:inherit;
+  font-size:clamp(0.88rem, 3vmin, 1rem);
+  letter-spacing:0.06em;
   text-align:center;
   color:#fff;
   background:rgba(255,255,255,0.06);
@@ -110,6 +180,7 @@
 #screen.screen-death {
   background:#000;
   justify-content:center;
+  align-items:center;
 }
 #screen .death-sub {
   color:rgba(255,255,255,0.5);
@@ -123,23 +194,23 @@
   box-sizing:border-box;
 }
 #screen .tap-hint {
-  margin-top:0.35rem;
-  color: rgba(255,255,255,0.52);
-  font-size:0.72rem;
-  letter-spacing:0.18em;
-  text-transform: uppercase;
-  text-align: center;
-  width: 100%;
-  max-width: 100%;
-  padding: 0 max(12px, env(safe-area-inset-left)) 0 max(12px, env(safe-area-inset-right));
-  box-sizing: border-box;
-  line-height: 1.35;
-  pointer-events: none;
-  animation: tapPulse 2.2s ease-in-out infinite;
+  margin:0;
+  color:rgba(255,255,255,0.92);
+  font-size:clamp(0.72rem, 2.6vmin, 0.82rem);
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  text-align:center;
+  width:100%;
+  max-width:100%;
+  padding:0 max(12px, env(safe-area-inset-left)) 0 max(12px, env(safe-area-inset-right));
+  box-sizing:border-box;
+  line-height:1.4;
+  pointer-events:none;
+  animation:tapPulse 2.4s ease-in-out infinite;
 }
 @keyframes tapPulse {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 0.95; }
+  0%, 100% { opacity:0.9; }
+  50% { opacity:1; }
 }
 #records-block {
   margin:0.85rem 0 0.45rem;
