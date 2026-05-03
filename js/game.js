@@ -32,7 +32,7 @@
   INTRO_CD_MS,
   RECORDS_KEY,
   RECORDS_KEY_LEGACY,
-} from './constants.js?v=20260503';
+} from './constants.js?v=20260504';
 
 const canvas = document.getElementById('c');
 const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
@@ -1052,6 +1052,26 @@ function burst(x,y,col,n){
     parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:rand(1.5,4),alpha:1,col,life:rand(20,50)});
   }
 }
+
+/** Particelle azzurre su ogni bianco: rallentamento (blu) attivo o appena finito. */
+function burstPufWhitesBlue() {
+  for (let i = 0; i < balls.length; i++) {
+    const wb = balls[i];
+    if (wb.type !== 'white') continue;
+    burst(wb.x, wb.y, '#c8ecff', 5);
+    burst(wb.x, wb.y, '#4a9fff', 8);
+  }
+}
+
+/** Particelle verdi su ogni bianco: modalità verde on / off. */
+function burstPufWhitesGreen() {
+  for (let i = 0; i < balls.length; i++) {
+    const wb = balls[i];
+    if (wb.type !== 'white') continue;
+    burst(wb.x, wb.y, '#d4ffe4', 6);
+    burst(wb.x, wb.y, '#34cc6e', 9);
+  }
+}
 function spawnSparkle(x, y, col) {
   const a = Math.random() * Math.PI * 2;
   const s = rand(0.3, 1.4);
@@ -1706,10 +1726,12 @@ function loop(now){
   if (greenModeActive && now > greenModeEnd) {
     greenModeActive = false;
     applyGreenModeToWhites(false);
+    burstPufWhitesGreen();
   }
   if (slowActive && now > slowEnd) {
     slowActive = false;
     restoreWhiteSpeedsAfterSlow();
+    burstPufWhitesBlue();
   }
   syncPowerHud(now);
 
@@ -1794,6 +1816,7 @@ function loop(now){
                 }
               }
             });
+            burstPufWhitesBlue();
           }
           burst(b.x,b.y,'#48f',22);
           flash=0.45; flashCol='rgba(68,136,255,0.28)';
@@ -1831,9 +1854,8 @@ function loop(now){
             const wb = balls[wi];
             if (wb.type !== 'white') continue;
             greenPopAuras.push({ x: wb.x, y: wb.y, start: now });
-            burst(wb.x, wb.y, '#d4ffe4', 6);
-            burst(wb.x, wb.y, '#34cc6e', 8);
           }
+          burstPufWhitesGreen();
           if (audioEnabled) playSoundBonus('green');
           spawnFloatingText(b.x, b.y, 'RIMPICCIOLISCI', '#7af5a8');
           burst(b.x, b.y, '#34cc6e', 22);

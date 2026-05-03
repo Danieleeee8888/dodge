@@ -1,6 +1,6 @@
 /**
  * Cache bust: stesso `?v=` in index.html (CSS + game.js) e in game.js su questo import.
- * Al prossimo deploy che deve invalidare la cache, incrementa ovunque (es. data).
+ * Al prossimo deploy che deve invalidare la cache, incrementa ovunque (es. 20260504).
  *
  * Area di gioco fissa (pixel logici): spawn, velocità e hitbox sono sempre in questo spazio.
  * Lo schermo fisico scala solo in presentazione (`resize`); difficoltà identica su ogni dispositivo.
