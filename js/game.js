@@ -1330,11 +1330,20 @@ function getPlayerSpawnXY() {
   return clampPlayerTarget(W * 0.5, H / 3);
 }
 function applyTouchRelativeTarget(fx, fy) {
-  let nx = touchAnchPx + (fx - touchAnchFx);
-  let ny = touchAnchPy + (fy - touchAnchFy);
-  [nx, ny] = clampPlayerTarget(nx, ny);
-  tx = nx;
-  ty = ny;
+  const nx = touchAnchPx + (fx - touchAnchFx);
+  const ny = touchAnchPy + (fy - touchAnchFy);
+  const [cx, cy] = clampPlayerTarget(nx, ny);
+  tx = cx;
+  ty = cy;
+  /* Se il bordo ha “tagliato” il movimento, l’ancora deve seguire il dito: altrimenti il delta
+   * accumula slop oltre il limite e al ritorno dal bordo c’è ritardo. */
+  const slip = 1e-4;
+  if (Math.abs(nx - cx) > slip || Math.abs(ny - cy) > slip) {
+    touchAnchFx = fx;
+    touchAnchFy = fy;
+    touchAnchPx = cx;
+    touchAnchPy = cy;
+  }
 }
 function isControlTarget(el) {
   if (!el) return false;
