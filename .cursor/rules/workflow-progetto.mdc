@@ -1,0 +1,14 @@
+---
+description: Come lavoriamo su DODGE — modifiche, test locale, produzione GitHub Pages
+alwaysApply: true
+---
+
+# Workflow progetto DODGE
+
+1. **Modifiche:** l’utente chiede cambiamenti; l’agente li implementa nel codice (preferire diff piccoli e mirati).
+
+2. **Test locale:** il gioco usa ES modules (`js/game.js` importa `constants.js`). Non contare sul doppio click su `index.html` (`file://`). Per provare come in produzione servono HTTP locale (`python -m http.server`, Live Server, ecc.). Su Windows possono esistere script locali ignorati da git (es. `serve.bat`): non committarli.
+
+3. **Produzione:** quando l’utente è soddisfatto, fare **commit** e **push** su `main` — GitHub Pages pubblica solo ciò che serve al gioco (`index.html`, `css/`, `js/`). Non pushare utility solo per sviluppo locale.
+
+4. **Lingua:** comunicazione con l’utente in italiano quando usa l’italiano.
