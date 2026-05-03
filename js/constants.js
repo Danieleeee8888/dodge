@@ -1,4 +1,7 @@
 /**
+ * Cache bust: stesso `?v=` in index.html (CSS + game.js) e in game.js su questo import.
+ * Al prossimo deploy che deve invalidare la cache, incrementa ovunque (es. data).
+ *
  * Area di gioco fissa (pixel logici): spawn, velocità e hitbox sono sempre in questo spazio.
  * Lo schermo fisico scala solo in presentazione (`resize`); difficoltà identica su ogni dispositivo.
  */
@@ -47,15 +50,15 @@ export const RED_BONUS_FIRST_SPAWN_MS = 15000;
 export const RED_BONUS_SPAWN_EVERY_MS = 15000;
 
 /** Blu: primo spawn dopo questo tempo dall’inizio partita (ms, clock reale). */
-export const BLUE_BONUS_FIRST_SPAWN_MS = 25000;
+export const BLUE_BONUS_FIRST_SPAWN_MS = 26000;
 /** Blu: spawn successivi ogni quanto (ms dall’ultimo spawn). */
-export const BLUE_BONUS_SPAWN_EVERY_MS = 25000;
+export const BLUE_BONUS_SPAWN_EVERY_MS = 26000;
 
-export const YELLOW_BONUS_FIRST_SPAWN_MS = 50000;
-export const YELLOW_BONUS_SPAWN_EVERY_MS = 50000;
+export const YELLOW_BONUS_FIRST_SPAWN_MS = 48000;
+export const YELLOW_BONUS_SPAWN_EVERY_MS = 48000;
 
-export const GREEN_BONUS_FIRST_SPAWN_MS = 35000;
-export const GREEN_BONUS_SPAWN_EVERY_MS = 35000;
+export const GREEN_BONUS_FIRST_SPAWN_MS = 37000;
+export const GREEN_BONUS_SPAWN_EVERY_MS = 37000;
 
 /** Viola: primo tentativo di spawn dopo questo tempo dall’inizio partita (ms). */
 export const PURPLE_BONUS_FIRST_SPAWN_MS = 60000;

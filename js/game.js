@@ -32,7 +32,7 @@
   INTRO_CD_MS,
   RECORDS_KEY,
   RECORDS_KEY_LEGACY,
-} from './constants.js';
+} from './constants.js?v=20260503';
 
 const canvas = document.getElementById('c');
 const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
@@ -957,7 +957,9 @@ function constructWhiteBallOnce(opts) {
     b.cvx = vx; b.cvy = vy;
     const spiralRMin = Math.max(46, Math.min(W, H) * 0.078);
     b.orbR = rand(spiralRMin, Math.max(spiralRMin + 24, 130));
-    const tangentialSpeed = rand(1.2, 4.0) * (1 + level * 0.04);
+    /* Tetto tangenziale più basso ai primi livelli (feedback: quadrati troppo veloci da subito); torna ~al vecchio 4.0 verso level 10. */
+    const spiralTanMax = Math.min(4.0, 3.32 + level * 0.068);
+    const tangentialSpeed = rand(1.2, spiralTanMax) * (1 + level * 0.04);
     b.omega = (tangentialSpeed / b.orbR) * (Math.random() < 0.5 ? -1 : 1);
     /* Come al pickup blu su spiral già in campo: senza questo, a fine slow omega viene divisa e risulta troppo alta ("scatto"). */
     if (slowActive) b.omega *= SLOW_OMEGA_FACTOR;
@@ -1975,15 +1977,15 @@ function loop(now){
 
 function getExtraLifeSatelliteState(index, nowMs) {
   const rMain = 24;
-  const orbitR = rMain + 16 + index * 9;
-  const omega = 0.00245 + index * 0.00038;
+  const orbitR = rMain + 16;
+  const omega = 0.002 + index * 0.00075;
   const phase = 1.1 + index * 1.6;
   const ang = -nowMs * omega + phase;
   return {
     x: px + Math.cos(ang) * orbitR,
     y: py + Math.sin(ang) * orbitR,
     orbitR,
-    size: 3.8 + index * 0.45,
+    size: 4,
   };
 }
 
