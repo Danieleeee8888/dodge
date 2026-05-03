@@ -1,6 +1,7 @@
 ﻿import {
   FIXED_GAME_W,
   FIXED_GAME_H,
+  MAX_CANVAS_CSS_W,
   SLOW_DURATION_MS,
   SHIELD_DURATION_MS,
   CURSOR_LERP,
@@ -16,6 +17,8 @@
   WHITE_START_SQUARES,
   WHITE_ON_FIELD_MAX,
   RED_SPAWN_INTERVAL_MS,
+  FIRST_RED_DELAY_MS,
+  BONUS_EXPIRE_WARN_MS,
   BLUE_SPAWN_INTERVAL_MS,
   YELLOW_SPAWN_INTERVAL_MS,
   GREEN_SPAWN_INTERVAL_MS,
@@ -25,7 +28,7 @@
   YELLOW_BONUS_TTL_MS,
   GREEN_BONUS_TTL_MS,
   PURPLE_BONUS_TTL_MS,
-  ERASE_MODE_DURATION_MS,
+  GREEN_MODE_DURATION_MS,
   INTRO_CD_MS,
   RECORDS_KEY,
   RECORDS_KEY_LEGACY,
@@ -33,13 +36,14 @@
 
 const canvas = document.getElementById('c');
 const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+const dodgeShell = document.getElementById('dodgeShell');
 const screen = document.getElementById('screen');
 const shieldHud = document.getElementById('shield-hud');
 const slowHud = document.getElementById('slow-hud');
 const sfill = document.getElementById('sfill');
 const bluefill = document.getElementById('bluefill');
-const eraseHud = document.getElementById('erase-hud');
-const greenfill = document.getElementById('greenfill');
+const greenModeHud = document.getElementById('green-mode-hud');
+const greenmodefill = document.getElementById('greenmodefill');
 const hudEl = document.getElementById('hud');
 const tEl = document.getElementById('t');
 const lvEl = document.getElementById('lv');
@@ -59,11 +63,66 @@ function safeLocalGet(key, def) {
 function safeLocalSet(key, val) {
   try { localStorage.setItem(key, val); } catch (e) {}
 }
+
+/** iOS / iPadOS Safari (UA “Mac” su iPad con touch). */
+function isIOSLike() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  try {
+    if (navigator.maxTouchPoints > 1 && /MacIntel|Mac OS X/i.test(navigator.platform || '')) return true;
+  } catch (e) {}
+  return false;
+}
+
+/**
+ * Fullscreen “vero” sul documento: su Safari iPhone non è disponibile come su desktop;
+ * nascondiamo il pulsante per non promettere un comportamento impossibile.
+ */
+function isDocumentFullscreenUsable() {
+  const root = document.documentElement;
+  if (!root) return false;
+  const canCall = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+  if (!canCall) return false;
+  if (isIOSLike()) return false;
+  const d = document;
+  if (d.fullscreenEnabled === false || d.webkitFullscreenEnabled === false) return false;
+  return true;
+}
+
+function applyFullscreenCornerSupport() {
+  if (!fullscreenCornerBtn) return;
+  if (isDocumentFullscreenUsable()) return;
+  fullscreenCornerBtn.classList.add('fullscreen-corner--unsupported');
+  fullscreenCornerBtn.setAttribute('aria-hidden', 'true');
+}
+
+function syncDodgeShellFullscreenClass() {
+  if (!dodgeShell) return;
+  dodgeShell.classList.toggle('dodge-shell--fullscreen', isPageFullscreen());
+}
+
 function resize() {
   if (!canvas) return;
-  const vv = window.visualViewport;
-  const winW = vv && vv.width > 0 ? vv.width : window.innerWidth;
-  const winH = vv && vv.height > 0 ? vv.height : window.innerHeight;
+  syncDodgeShellFullscreenClass();
+  let winW = window.innerWidth;
+  let winH = window.innerHeight;
+  let vx = 0;
+  let vy = 0;
+  const shell = dodgeShell;
+  if (shell && shell.isConnected && shell.clientWidth > 0 && shell.clientHeight > 0) {
+    winW = shell.clientWidth;
+    winH = shell.clientHeight;
+    vx = 0;
+    vy = 0;
+  } else {
+    const vv = window.visualViewport;
+    if (vv && vv.width > 0 && vv.height > 0) {
+      winW = vv.width;
+      winH = vv.height;
+      vx = vv.offsetLeft || 0;
+      vy = vv.offsetTop || 0;
+    }
+  }
   W = FIXED_GAME_W;
   H = FIXED_GAME_H;
   canvas.width = W;
@@ -73,10 +132,11 @@ function resize() {
   const dispH = H * scale;
   canvas.style.width = dispW + 'px';
   canvas.style.height = dispH + 'px';
-  canvas.style.left = (winW - dispW) * 0.5 + 'px';
-  canvas.style.top = (winH - dispH) * 0.5 + 'px';
+  canvas.style.left = vx + (winW - dispW) * 0.5 + 'px';
+  canvas.style.top = vy + (winH - dispH) * 0.5 + 'px';
   document.documentElement.style.setProperty('--ui-scale', String(scale));
 }
+document.documentElement.style.setProperty('--dodge-shell-max-px', `${MAX_CANVAS_CSS_W}px`);
 resize();
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => { setTimeout(resize, 120); });
@@ -84,6 +144,20 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', resize);
   window.visualViewport.addEventListener('scroll', resize);
 }
+
+/** Safari iOS: blocca pinch-zoom a livello gesture (il viewport meta non basta sempre). */
+function preventDefaultNonPassive(e) {
+  e.preventDefault();
+}
+try {
+  document.addEventListener('gesturestart', preventDefaultNonPassive, { passive: false });
+  document.addEventListener('gesturechange', preventDefaultNonPassive, { passive: false });
+  document.addEventListener('gestureend', preventDefaultNonPassive, { passive: false });
+} catch (e) {}
+/** Zoom tastiera/trackpad (Chrome: ctrl+rotellina). */
+window.addEventListener('wheel', (e) => {
+  if (e.ctrlKey) e.preventDefault();
+}, { passive: false });
 
 // GAME STATE
 let running = false;
@@ -97,19 +171,25 @@ let balls = [], parts = [], sparkles = [];
 let startTime, elapsed;
 let level, baseTriangles, baseSquares, baseSpeed;
 let shieldActive, shieldEnd, slowActive, slowEnd;
-let eraseModeActive = false, eraseModeEnd = 0;
-let hasExtraLife = false;
+let greenModeActive = false, greenModeEnd = 0;
+let hasExtraLife = 0;
 /** Prossimo istante in cui può comparire il pallino viola (performance.now). */
 let nextPurpleAt = 0;
 /** Espansione gialla rapida sui bianchi tolti dal bonus giallo. */
 let yellowPopAuras = [];
+/** Testi tipo arcade (salita + fade). Coordinate spazio gioco. */
+let floatingTexts = [];
 let lastRed, lastBlue, lastYellow, lastGreen, lastLevelUp;
+/** Primo rosso a 15s (solo una volta a partita). */
+let firstRedSpawned = false;
 let bgPhase, flash, flashCol;
 /** Rettangolo (cella griglia 3×3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
 let aimSectorRect = { left: 0, right: 0, top: 0, bottom: 0 };
 let aimSectorNextElapsed = 0;
 /** Avvio partita: { phase: 0..2 → numeri 3,2,1, phaseEnd: timestamp }. */
 let introCountdown = null;
+/** Timeout UI game over: va cancellato se si riparte prima che scada. */
+let deathUiTimeoutId = null;
 
 const cdOverlayEl = document.getElementById('countdownOverlay');
 const cdInnerEl = document.getElementById('cdInner');
@@ -731,14 +811,15 @@ function restoreWhiteSpeedsAfterSlow() {
 }
 
 /**
- * Toglie metà dei bianchi in campo (floor(n/2)); restano n−floor(n/2) (es. 14→7).
- * Le quote si abbassano solo per tri/quadrati effettivamente rimossi.
+ * Toglie un terzo dei bianchi in campo, arrotondato per ECCESSO: ceil(n/3) da togliere.
+ * Esempio: 14 bianchi → toglie 5 → restano 9. Al level-up (+1 tri +1 quad in quota) il target sale di 2 (es. 9→11).
+ * Abbassa le quote target (tri / spirali) come i tipi effettivamente rimossi.
  */
-function removeHalfOfWhites(withYellowFx) {
+function removeThirdOfWhites(withYellowFx) {
   const whites = balls.filter((b) => b.type === 'white');
   const n = whites.length;
-  if (n < 2) return;
-  const removeCount = Math.floor(n / 2);
+  if (n < 1) return;
+  const removeCount = Math.ceil(n / 3);
   if (removeCount <= 0) return;
   const shuffled = whites.slice();
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -763,6 +844,63 @@ function removeHalfOfWhites(withYellowFx) {
   }
   baseTriangles = Math.max(WHITE_START_TRIANGLES, baseTriangles - rT);
   baseSquares = Math.max(WHITE_START_SQUARES, baseSquares - rS);
+}
+
+function applyGreenModeToWhite(b, enabled) {
+  if (!b || b.type !== 'white') return;
+  b.greenBubble = !!enabled;
+  b.r = enabled ? HAZARD_R * 0.5 : HAZARD_R;
+}
+
+function applyGreenModeToWhites(enabled) {
+  for (let i = 0; i < balls.length; i++) applyGreenModeToWhite(balls[i], enabled);
+}
+
+/** Moltiplicatore alpha quando il bonus in campo è negli ultimi secondi (lampeggio). */
+function bonusPickupBlinkMul(now, expireAt) {
+  if (expireAt == null) return 1;
+  const left = expireAt - now;
+  if (left > BONUS_EXPIRE_WARN_MS || left <= 0) return 1;
+  return 0.22 + 0.78 * (0.5 + 0.5 * Math.sin(now * 0.024));
+}
+
+const FLOAT_TEXT_LIFE_MS = 1650;
+
+function spawnFloatingText(gx, gy, text, color) {
+  floatingTexts.push({
+    x: gx,
+    y: gy,
+    text,
+    color,
+    start: performance.now(),
+    lifeMs: FLOAT_TEXT_LIFE_MS,
+  });
+}
+
+function updateAndDrawFloatingTexts(now, dt) {
+  const rise = 48 * dt;
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const ft = floatingTexts[i];
+    const age = now - ft.start;
+    if (age >= ft.lifeMs) {
+      floatingTexts.splice(i, 1);
+      continue;
+    }
+    ft.y -= rise;
+    const u = age / ft.lifeMs;
+    const alpha = (1 - u) * (1 - u);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(0,0,0,0.62)';
+    ctx.fillStyle = ft.color;
+    ctx.strokeText(ft.text, ft.x, ft.y);
+    ctx.fillText(ft.text, ft.x, ft.y);
+    ctx.restore();
+  }
 }
 
 function constructWhiteBallOnce(opts) {
@@ -800,6 +938,8 @@ function constructWhiteBallOnce(opts) {
     b.orbR = rand(spiralRMin, Math.max(spiralRMin + 24, 130));
     const tangentialSpeed = rand(1.2, 4.0) * (1 + level * 0.04);
     b.omega = (tangentialSpeed / b.orbR) * (Math.random() < 0.5 ? -1 : 1);
+    /* Come al pickup blu su spiral già in campo: senza questo, a fine slow omega viene divisa e risulta troppo alta ("scatto"). */
+    if (slowActive) b.omega *= SLOW_OMEGA_FACTOR;
     b.phase = Math.random() * Math.PI * 2;
     // Il centro non può stare sul bordo con R grande: altrimenti il punto visibile nasce già nel campo.
     b.cx = x - Math.cos(b.phase) * b.orbR;
@@ -813,6 +953,8 @@ function constructWhiteBallOnce(opts) {
       Math.max(Math.abs(b.omega) * rand(1.55, 2.25), spinBoost * rand(1.0, 1.65)),
     );
   }
+
+  if (greenModeActive) applyGreenModeToWhite(b, true);
 
   return b;
 }
@@ -948,12 +1090,12 @@ function syncPowerHud(now) {
   } else {
     slowHud.style.display = 'none';
   }
-  if (eraseHud && greenfill) {
-    if (eraseModeActive && now < eraseModeEnd) {
-      eraseHud.style.display = 'block';
-      greenfill.style.width = Math.max(0, (eraseModeEnd - now) / ERASE_MODE_DURATION_MS * 100) + '%';
+  if (greenModeHud && greenmodefill) {
+    if (greenModeActive && now < greenModeEnd) {
+      greenModeHud.style.display = 'block';
+      greenmodefill.style.width = Math.max(0, (greenModeEnd - now) / GREEN_MODE_DURATION_MS * 100) + '%';
     } else {
-      eraseHud.style.display = 'none';
+      greenModeHud.style.display = 'none';
     }
   }
 }
@@ -998,11 +1140,20 @@ function bindFullscreenCornerBtn() {
     e.stopPropagation();
     togglePageFullscreen();
   });
-  document.addEventListener('fullscreenchange', syncFullscreenCornerBtn);
-  document.addEventListener('webkitfullscreenchange', syncFullscreenCornerBtn);
+  const onFsLayout = () => {
+    syncDodgeShellFullscreenClass();
+    syncFullscreenCornerBtn();
+    resize();
+  };
+  document.addEventListener('fullscreenchange', onFsLayout);
+  document.addEventListener('webkitfullscreenchange', onFsLayout);
 }
 
 function startGame() {
+  if (deathUiTimeoutId != null) {
+    clearTimeout(deathUiTimeoutId);
+    deathUiTimeoutId = null;
+  }
   fingerDown = false;
   paused = false;
   if (pauseOverlay) pauseOverlay.style.display = 'none';
@@ -1019,13 +1170,15 @@ function startGame() {
   running = true;
   updateShellForPhase('playing');
   balls = []; parts = []; sparkles = [];
+  floatingTexts = [];
+  firstRedSpawned = false;
   level = 1;
   baseTriangles = WHITE_START_TRIANGLES;
   baseSquares = WHITE_START_SQUARES;
   baseSpeed = 2.2;
   shieldActive = false; slowActive = false;
-  eraseModeActive = false; eraseModeEnd = 0;
-  hasExtraLife = false;
+  greenModeActive = false; greenModeEnd = 0;
+  hasExtraLife = 0;
   yellowPopAuras = [];
   syncPowerHud(performance.now());
   lastLevelUp = 0;
@@ -1048,12 +1201,14 @@ function die() {
     burst(px, py, '#ff4444', 24);
     return;
   }
-  if (hasExtraLife) {
-    hasExtraLife = false;
+  if (hasExtraLife > 0) {
+    const consumedIndex = hasExtraLife - 1;
+    hasExtraLife--;
     const now = performance.now();
-    nextPurpleAt = now + PURPLE_SPAWN_INTERVAL_MS;
     syncPowerHud(now);
-    const [sx, sy] = getExtraLifeSatelliteXY(now);
+    const sat = getExtraLifeSatelliteState(consumedIndex, now);
+    const sx = sat.x;
+    const sy = sat.y;
     flash = 0.72; flashCol = 'rgba(168,85,247,0.32)';
     burst(sx, sy, '#ffffff', 6);
     burst(sx, sy, '#ede0ff', 12);
@@ -1070,8 +1225,8 @@ function die() {
   if (audioEnabled) playSoundDie();
   shieldActive = false;
   slowActive = false;
-  eraseModeActive = false; eraseModeEnd = 0;
-  hasExtraLife = false;
+  greenModeActive = false; greenModeEnd = 0;
+  hasExtraLife = 0;
   syncPowerHud(performance.now());
   stopMusic();
   running = false;
@@ -1083,7 +1238,13 @@ function die() {
   const diedNb = balls.filter(b => b.type === 'white').length;
   addRecord(elapsed);
   burst(px,py,'#fff',40);
-  setTimeout(()=>{
+  if (deathUiTimeoutId != null) {
+    clearTimeout(deathUiTimeoutId);
+    deathUiTimeoutId = null;
+  }
+  deathUiTimeoutId = setTimeout(() => {
+    deathUiTimeoutId = null;
+    if (running) return;
     tEl.textContent = fmt(diedElapsed);
     lvEl.textContent = String(diedLevel);
     nbEl.textContent = String(diedNb);
@@ -1116,9 +1277,10 @@ function togglePause() {
     lastGreen += pauseDur;
     if (shieldActive) shieldEnd += pauseDur;
     if (slowActive) slowEnd += pauseDur;
-    if (eraseModeActive) eraseModeEnd += pauseDur;
-    if (nextPurpleAt !== Infinity) nextPurpleAt += pauseDur;
+    if (greenModeActive) greenModeEnd += pauseDur;
+    nextPurpleAt += pauseDur;
     yellowPopAuras.forEach((a) => { a.start += pauseDur; });
+    floatingTexts.forEach((ft) => { ft.start += pauseDur; });
     balls.forEach(b => { if (b.expireAt) b.expireAt += pauseDur; });
     if (pauseOverlay) pauseOverlay.style.display = 'none';
     last = 0;
@@ -1258,6 +1420,75 @@ function drawShape(b, x, y, r, alpha) {
   ctx.globalAlpha = 1;
 }
 
+/** Raggio “morso” del giocatore attorno a (px,py), come il vecchio hitR = b.r + 20 */
+const PLAYER_HIT_R = 20;
+
+function circleHitsPlayer(b, px, py) {
+  const dx = b.x - px;
+  const dy = b.y - py;
+  const rs = b.r + PLAYER_HIT_R;
+  return dx * dx + dy * dy < rs * rs;
+}
+
+function distSqPointSeg(px, py, ax, ay, bx, by) {
+  const abx = bx - ax;
+  const aby = by - ay;
+  const apx = px - ax;
+  const apy = py - ay;
+  const ab2 = abx * abx + aby * aby;
+  let t = ab2 > 1e-12 ? (apx * abx + apy * aby) / ab2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const qx = ax + t * abx;
+  const qy = ay + t * aby;
+  const dx = px - qx;
+  const dy = py - qy;
+  return dx * dx + dy * dy;
+}
+
+function pointInTriangle(lx, ly, x0, y0, x1, y1, x2, y2) {
+  function sign(px, py, ax, ay, bx, by) {
+    return (px - bx) * (ay - by) - (ax - bx) * (py - by);
+  }
+  const d1 = sign(lx, ly, x0, y0, x1, y1);
+  const d2 = sign(lx, ly, x1, y1, x2, y2);
+  const d3 = sign(lx, ly, x2, y2, x0, y0);
+  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
+  const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
+  return !(hasNeg && hasPos);
+}
+
+/** Triangolo allineato come drawShape; disco giocatore raggio PLAYER_HIT_R */
+function triangleHitsPlayer(b, px, py) {
+  const r = b.r;
+  const h = r * 1.45;
+  const ang = Math.atan2(b.vy, b.vx);
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  const dx = px - b.x;
+  const dy = py - b.y;
+  const lx = dx * c + dy * s;
+  const ly = -dx * s + dy * c;
+  const x0 = h;
+  const y0 = 0;
+  const x1 = -h * 0.65;
+  const y1 = h * 0.78;
+  const x2 = -h * 0.65;
+  const y2 = -h * 0.78;
+  const pr2 = PLAYER_HIT_R * PLAYER_HIT_R;
+  if (pointInTriangle(lx, ly, x0, y0, x1, y1, x2, y2)) return true;
+  if (distSqPointSeg(lx, ly, x0, y0, x1, y1) < pr2) return true;
+  if (distSqPointSeg(lx, ly, x1, y1, x2, y2) < pr2) return true;
+  if (distSqPointSeg(lx, ly, x2, y2, x0, y0) < pr2) return true;
+  return false;
+}
+
+function checkCollision(b, px, py) {
+  if (b.shape === 'circle') return circleHitsPlayer(b, px, py);
+  if (b.shape === 'triangle') return triangleHitsPlayer(b, px, py);
+  /* quadrati: hitbox circolare sul centro come prima */
+  return circleHitsPlayer(b, px, py);
+}
+
 // LOOP
 let last=0;
 function loop(now){
@@ -1296,8 +1527,11 @@ function loop(now){
     drawBg(now, level);
     for (const b of balls) {
       if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') drawBonusAura(b, now);
-      drawShape(b, b.x, b.y, b.r, 1);
+      if (b.type === 'white' && b.greenBubble) drawGreenBubbleAura(b);
+      const bonusA = isBonusCircle(b) ? bonusPickupBlinkMul(now, b.expireAt) : 1;
+      drawShape(b, b.x, b.y, b.r, bonusA);
     }
+    updateAndDrawFloatingTexts(now, dt);
     drawPlayer(now);
     return;
   }
@@ -1331,21 +1565,31 @@ function loop(now){
     }
   }
 
-  // spawn bonus
-  if (now - lastRed >= RED_SPAWN_INTERVAL_MS) { lastRed = now; spawnBall('red'); }
+  // spawn bonus — primo rosso a 15s di tempo di gioco, poi ogni RED_SPAWN_INTERVAL_MS
+  if (!firstRedSpawned && elapsed >= FIRST_RED_DELAY_MS) {
+    firstRedSpawned = true;
+    lastRed = now;
+    spawnBall('red');
+  } else if (firstRedSpawned && now - lastRed >= RED_SPAWN_INTERVAL_MS) {
+    lastRed = now;
+    spawnBall('red');
+  }
   if (now - lastBlue >= BLUE_SPAWN_INTERVAL_MS) { lastBlue = now; spawnBall('blue'); }
   if (now - lastYellow >= YELLOW_SPAWN_INTERVAL_MS) { lastYellow = now; spawnBall('yellow'); }
   if (now - lastGreen >= GREEN_SPAWN_INTERVAL_MS) { lastGreen = now; spawnBall('green'); }
 
   const purpleOnField = balls.some((b) => b.type === 'purple');
-  if (!hasExtraLife && !purpleOnField && now >= nextPurpleAt) {
+  if (hasExtraLife < 3 && !purpleOnField && now >= nextPurpleAt) {
     spawnBall('purple');
-    nextPurpleAt = Infinity;
+    nextPurpleAt = now + PURPLE_SPAWN_INTERVAL_MS;
   }
 
   // timers
   if (shieldActive && now > shieldEnd) shieldActive = false;
-  if (eraseModeActive && now > eraseModeEnd) eraseModeActive = false;
+  if (greenModeActive && now > greenModeEnd) {
+    greenModeActive = false;
+    applyGreenModeToWhites(false);
+  }
   if (slowActive && now > slowEnd) {
     slowActive = false;
     restoreWhiteSpeedsAfterSlow();
@@ -1389,7 +1633,6 @@ function loop(now){
     }
 
     if (b.expireAt != null && now > b.expireAt) {
-      if (b.type === 'purple') nextPurpleAt = now + PURPLE_SPAWN_INTERVAL_MS;
       balls.splice(i, 1);
       continue;
     }
@@ -1406,23 +1649,12 @@ function loop(now){
 
     // collisione
     if(px>-200){
-      const dx=b.x-px, dy=b.y-py;
-      const hitR = b.r + 20;
-      if(Math.sqrt(dx*dx+dy*dy)<hitR){
-        if (b.type === 'white' && eraseModeActive && now < eraseModeEnd) {
-          let rT = 0, rS = 0;
-          if (b.movement === 'spiral') rS = 1;
-          else rT = 1;
-          baseTriangles = Math.max(WHITE_START_TRIANGLES, baseTriangles - rT);
-          baseSquares = Math.max(WHITE_START_SQUARES, baseSquares - rS);
-          balls.splice(i, 1);
-          burst(b.x, b.y, '#b8f5c8', 12);
-          continue;
-        }
+      if (checkCollision(b, px, py)) {
         if(b.type==='white'){ balls.splice(i,1); spawnBall('white', { movement: b.movement }); die(); continue; }
         if(b.type==='red'){
           shieldActive=true; shieldEnd=now+SHIELD_DURATION_MS;
           if (audioEnabled) playSoundBonus('red');
+          spawnFloatingText(b.x, b.y, 'SCUDO', '#ff6b6b');
           burst(b.x,b.y,'#f44',22);
           flash=0.35; flashCol='rgba(255,68,68,0.18)';
           balls.splice(i,1);
@@ -1433,6 +1665,7 @@ function loop(now){
           const alreadySlow = slowActive;
           slowActive=true; slowEnd=now+SLOW_DURATION_MS;
           if (audioEnabled) playSoundBonus('blue');
+          spawnFloatingText(b.x, b.y, 'RALLENTA', '#6eb3ff');
           if (!alreadySlow) {
             balls.forEach(bb=>{
               if(bb.type==='white'){
@@ -1451,16 +1684,17 @@ function loop(now){
         }
         if(b.type==='yellow'){
           if (audioEnabled) playSoundBonus('yellow');
-          removeHalfOfWhites(true);
+          spawnFloatingText(b.x, b.y, '− UN TERZO', '#f5e6a0');
+          removeThirdOfWhites(true);
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
           balls.splice(i,1);
           continue;
         }
         if (b.type === 'purple') {
-          hasExtraLife = true;
-          nextPurpleAt = Infinity;
+          hasExtraLife = Math.min(3, hasExtraLife + 1);
           if (audioEnabled) playSoundBonus('purple');
+          spawnFloatingText(b.x, b.y, 'VITA IN PIÙ', '#e9d5ff');
           burst(b.x, b.y, '#e9d5ff', 24);
           burst(b.x, b.y, '#a855f7', 20);
           flash = 0.38; flashCol = 'rgba(168,85,247,0.22)';
@@ -1469,9 +1703,11 @@ function loop(now){
           continue;
         }
         if (b.type === 'green') {
-          eraseModeActive = true;
-          eraseModeEnd = now + ERASE_MODE_DURATION_MS;
+          greenModeActive = true;
+          greenModeEnd = now + GREEN_MODE_DURATION_MS;
+          applyGreenModeToWhites(true);
           if (audioEnabled) playSoundBonus('green');
+          spawnFloatingText(b.x, b.y, 'RIMPICCIOLISCI', '#7af5a8');
           burst(b.x, b.y, '#34cc6e', 22);
           flash = 0.32; flashCol = 'rgba(52,200,110,0.22)';
           balls.splice(i, 1);
@@ -1483,10 +1719,11 @@ function loop(now){
 
     if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') drawBonusAura(b, now);
 
+    const pickupBlink = isBonusCircle(b) ? bonusPickupBlinkMul(now, b.expireAt) : 1;
     // trail
     for(let t=0;t<b.trail.length;t++){
       const tt = t / b.trail.length;
-      ctx.globalAlpha = tt * 0.22;
+      ctx.globalAlpha = tt * 0.22 * pickupBlink;
       const tr = b.r * tt * 0.85;
       if (b.shape === 'circle') {
         ctx.beginPath();
@@ -1502,7 +1739,8 @@ function loop(now){
     }
     ctx.globalAlpha = 1;
 
-    drawShape(b, b.x, b.y, b.r, 1);
+    if (b.type === 'white' && b.greenBubble) drawGreenBubbleAura(b);
+    drawShape(b, b.x, b.y, b.r, pickupBlink);
   }
 
   let nTri = 0, nSqr = 0;
@@ -1571,6 +1809,8 @@ function loop(now){
     ctx.restore();
   }
 
+  updateAndDrawFloatingTexts(now, dt);
+
   drawPlayer(now);
 
   if(flash>0){
@@ -1586,12 +1826,45 @@ function loop(now){
   nbEl.textContent=balls.filter(b=>b.type==='white').length;
 }
 
-/** Posizione schermo del satellite viola (2ª vita); stessa formula di drawPlayer. */
-function getExtraLifeSatelliteXY(nowMs) {
+function getExtraLifeSatelliteState(index, nowMs) {
   const rMain = 24;
-  const orbitR2 = rMain + 18;
-  const ang2 = -nowMs * 0.00285 + 1.7;
-  return [px + Math.cos(ang2) * orbitR2, py + Math.sin(ang2) * orbitR2];
+  const orbitR = rMain + 16 + index * 9;
+  const omega = 0.00245 + index * 0.00038;
+  const phase = 1.1 + index * 1.6;
+  const ang = -nowMs * omega + phase;
+  return {
+    x: px + Math.cos(ang) * orbitR,
+    y: py + Math.sin(ang) * orbitR,
+    orbitR,
+    size: 3.8 + index * 0.45,
+  };
+}
+
+/** Contorno verde alla stessa scala del vecchio cerchio (HAZARD_R): triangolo / quadrato come l’ostacolo. */
+function drawGreenBubbleAura(b) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(88, 178, 118, 0.52)';
+  ctx.lineWidth = 1.55;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  if (b.shape === 'triangle') {
+    const ang = Math.atan2(b.vy, b.vx);
+    const h = HAZARD_R * 1.45;
+    ctx.translate(b.x, b.y);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(h, 0);
+    ctx.lineTo(-h * 0.65, h * 0.78);
+    ctx.lineTo(-h * 0.65, -h * 0.78);
+    ctx.closePath();
+    ctx.stroke();
+  } else if (b.shape === 'square') {
+    const s = HAZARD_R * 1.05;
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.rotation);
+    ctx.strokeRect(-s, -s, s * 2, s * 2);
+  }
+  ctx.restore();
 }
 
 function drawPlayer(now) {
@@ -1632,14 +1905,6 @@ function drawPlayer(now) {
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
     ctx.rotate(-velAng);
-  }
-
-  if (eraseModeActive && now < eraseModeEnd) {
-    ctx.beginPath();
-    ctx.arc(0, 0, rMain + 16, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(52,200,110,${0.42 + 0.22 * Math.sin(now * 0.009)})`;
-    ctx.lineWidth = 2;
-    ctx.stroke();
   }
 
   ctx.strokeStyle = 'rgba(255,255,255,0.22)';
@@ -1691,12 +1956,11 @@ function drawPlayer(now) {
   ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
   ctx.fill();
 
-  if (hasExtraLife) {
-    const orbitR2 = rMain + 18;
-    const ang2 = -now * 0.00285 + 1.7;
-    const oxP = Math.cos(ang2) * orbitR2;
-    const oyP = Math.sin(ang2) * orbitR2;
-    const pr = 4;
+  for (let i = 0; i < hasExtraLife; i++) {
+    const sat = getExtraLifeSatelliteState(i, now);
+    const oxP = sat.x - px;
+    const oyP = sat.y - py;
+    const pr = sat.size;
     const pg = ctx.createRadialGradient(oxP - 1, oyP - 1, 0, oxP, oyP, pr);
     pg.addColorStop(0, '#f0e0ff');
     pg.addColorStop(0.5, '#b46cf0');
@@ -1705,7 +1969,7 @@ function drawPlayer(now) {
     ctx.arc(oxP, oyP, pr, 0, Math.PI * 2);
     ctx.fillStyle = pg;
     ctx.fill();
-    ctx.strokeStyle = `rgba(230,200,255,${0.8 + 0.15 * Math.sin(now * 0.011)})`;
+    ctx.strokeStyle = `rgba(230,200,255,${0.78 + 0.14 * Math.sin(now * (0.009 + i * 0.0014))})`;
     ctx.lineWidth = 1.05;
     ctx.stroke();
   }
@@ -1726,11 +1990,12 @@ function drawPlayer(now) {
 }
 
 function drawBonusAura(b, now) {
+  const blink = bonusPickupBlinkMul(now, b.expireAt);
   const baseCol = b.type === 'red' ? '255,68,68' : b.type === 'blue' ? '68,136,255' : b.type === 'yellow' ? '233,200,26' : b.type === 'purple' ? '168,85,247' : '52,200,110';
   for (let k = 0; k < 3; k++) {
     const phase = (now * 0.0009 + k * 0.33) % 1;
     const rr = b.r + 6 + phase * 36;
-    const a = (1 - phase) * 0.3;
+    const a = (1 - phase) * 0.3 * blink;
     ctx.beginPath();
     ctx.arc(b.x, b.y, rr, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(${baseCol},${a})`;
@@ -1739,7 +2004,7 @@ function drawBonusAura(b, now) {
   }
   const haloR = b.r + 13 + Math.sin(b.pulse) * 4;
   const grad = ctx.createRadialGradient(b.x, b.y, b.r * 0.4, b.x, b.y, haloR);
-  grad.addColorStop(0, `rgba(${baseCol},0.52)`);
+  grad.addColorStop(0, `rgba(${baseCol},${0.52 * blink})`);
   grad.addColorStop(1, `rgba(${baseCol},0)`);
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -1771,6 +2036,7 @@ setupMenuUI();
 bindLeaderboardRowDeleteOnce();
 syncAudioCornerBtn();
 bindAudioCornerBtn();
+applyFullscreenCornerSupport();
 syncFullscreenCornerBtn();
 bindFullscreenCornerBtn();
 updateShellForPhase('menu');

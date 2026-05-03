@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, shrink-to-fit=no, viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content">
 <meta name="format-detection" content="telephone=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -15,6 +15,7 @@
 </head>
 <body>
 
+<div id="dodgeShell" class="dodge-shell">
 <canvas id="c"></canvas>
 
 <div id="hud" class="hud--hidden">
@@ -23,8 +24,8 @@
   <span class="hud-right hud-nb"><span id="nb">0</span> oggetti</span>
 </div>
 
-<div id="erase-hud">
-  <div id="greentrack"><div id="greenfill"></div></div>
+<div id="green-mode-hud" aria-hidden="true">
+  <div id="greenmodetrack"><div id="greenmodefill"></div></div>
 </div>
 
 <div id="pauseOverlay">PAUSA</div>
@@ -46,9 +47,21 @@
 </div>
 
 <div id="screen">
-  <h1 class="menu-logo">DODGE</h1>
+  <header class="menu-header">
+    <h1 class="menu-logo"><span class="menu-logo-text">DODGE</span></h1>
+    <div class="menu-bonus-dots" aria-hidden="true">
+      <span class="menu-bonus-dot menu-bonus-dot--red"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--blue"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--yellow"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--green"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--purple"></span>
+    </div>
+    <p class="menu-tagline">Prendi i bonus per resistere.</p>
+  </header>
   <input type="text" id="playerNameInput" class="player-name-input js-no-start" maxlength="18" placeholder="Il tuo nome" autocomplete="nickname" spellcheck="false">
   <p class="tap-hint">Premi ovunque per iniziare</p>
+</div>
+
 </div>
 
 <script type="module" src="js/game.js"></script>

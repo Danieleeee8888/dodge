@@ -1,5 +1,7 @@
 ﻿#screen {
   position:fixed; inset:0;
+  min-height:100%;
+  min-height:100dvh;
   display:flex; flex-direction:column;
   align-items:center; justify-content:center;
   z-index:20;
@@ -21,8 +23,57 @@
 }
 #screen h1.menu-logo {
   font-size:2.85rem;
-  letter-spacing:0.26em;
   margin-bottom:1.35rem;
+}
+/* letter-spacing senza spazio dopo l’ultima lettera: compensiamo così il titolo resta otticamente centrato */
+#screen .menu-header .menu-logo-text {
+  display:inline-block;
+  letter-spacing:0.26em;
+  padding-right:0.26em;
+}
+/* Menu iniziale: titolo un po’ più in alto, pallini bonus + tagline */
+#screen .menu-header {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:100%;
+  max-width:100%;
+  padding:0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
+  box-sizing:border-box;
+  margin-top:-0.75rem;
+  margin-bottom:0.35rem;
+}
+#screen .menu-header .menu-logo {
+  margin-bottom:0.55rem;
+}
+#screen .menu-bonus-dots {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:0.55rem;
+  margin-bottom:0.5rem;
+}
+#screen .menu-bonus-dot {
+  width:0.42rem;
+  height:0.42rem;
+  border-radius:50%;
+  flex-shrink:0;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.12);
+}
+#screen .menu-bonus-dot--red { background:#ff4444; box-shadow:0 0 10px rgba(255,68,68,0.35), 0 0 0 1px rgba(255,255,255,0.1); }
+#screen .menu-bonus-dot--blue { background:#4488ff; box-shadow:0 0 10px rgba(68,136,255,0.32), 0 0 0 1px rgba(255,255,255,0.1); }
+#screen .menu-bonus-dot--yellow { background:#e9c81a; box-shadow:0 0 10px rgba(233,200,26,0.28), 0 0 0 1px rgba(255,255,255,0.1); }
+#screen .menu-bonus-dot--green { background:#34cc6e; box-shadow:0 0 10px rgba(52,200,110,0.28), 0 0 0 1px rgba(255,255,255,0.1); }
+#screen .menu-bonus-dot--purple { background:#a855f7; box-shadow:0 0 10px rgba(168,85,247,0.3), 0 0 0 1px rgba(255,255,255,0.1); }
+#screen .menu-tagline {
+  margin:0;
+  color:rgba(255,255,255,0.42);
+  font-size:0.68rem;
+  letter-spacing:0.22em;
+  text-align:center;
+  line-height:1.45;
+  font-weight:500;
+  max-width:min(20rem, calc(100% - 2rem));
 }
 #screen .player-name-input {
   width:min(17.5rem, calc(100% - 2rem));

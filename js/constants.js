@@ -1,9 +1,14 @@
 /** Area di gioco fissa (pixel logici). Stessa difficoltà per tutti: zoom/desktop non ridimensionano ostacoli. */
 export const FIXED_GAME_W = 400;
 export const FIXED_GAME_H = 720;
+/**
+ * Larghezza massima della colonna gioco + UI (px CSS), vedi #dodgeShell.
+ * Su PC simula un telefono; su schermo stretto resta 100%.
+ */
+export const MAX_CANVAS_CSS_W = 430;
 
 export const SLOW_DURATION_MS = 10000;
-export const SHIELD_DURATION_MS = 15000;
+export const SHIELD_DURATION_MS = 10000;
 export const CURSOR_LERP = 0.55;          // velocità di traslazione cursore
 export const SLOW_FACTOR = 0.45;          // un filo meno OP
 /** Spirale: omega moltiplicata da questo durante il blu (ripristino divide per questo). */
@@ -24,19 +29,23 @@ export const WHITE_START_SQUARES = 3;
 export const WHITE_ON_FIELD_MAX = 50;
 /** Spawn bonus: intervalli fissi (ms). */
 export const RED_SPAWN_INTERVAL_MS = 15000;
-export const BLUE_SPAWN_INTERVAL_MS = 35000;
-export const YELLOW_SPAWN_INTERVAL_MS = 57000;
-export const GREEN_SPAWN_INTERVAL_MS = 22000;
-/** 2ª vita: spawn ogni 47s se non hai già il bonus né un viola in campo. */
-export const PURPLE_SPAWN_INTERVAL_MS = 47000;
+/** Primo bonus rosso: stesso ritardo dello spawn (tempo di gioco). */
+export const FIRST_RED_DELAY_MS = 15000;
+/** Ultimi ms prima della scadenza: il bonus in campo lampeggia. */
+export const BONUS_EXPIRE_WARN_MS = 3000;
+export const BLUE_SPAWN_INTERVAL_MS = 25000;
+export const YELLOW_SPAWN_INTERVAL_MS = 50000;
+export const GREEN_SPAWN_INTERVAL_MS = 40000;
+/** Satellite viola: spawn ogni 60s se non c'è viola in campo e stack < 3. */
+export const PURPLE_SPAWN_INTERVAL_MS = 60000;
 /** Tempo di vita sul campo prima di despawn (ms). */
-export const RED_BONUS_TTL_MS = 15000;
-export const BLUE_BONUS_TTL_MS = 30000;
-export const YELLOW_BONUS_TTL_MS = 45000;
-export const GREEN_BONUS_TTL_MS = 20000;
-export const PURPLE_BONUS_TTL_MS = 22000;
-/** Dopo aver preso il verde: toccare i bianchi li elimina (senza morire). */
-export const ERASE_MODE_DURATION_MS = 5000;
+export const RED_BONUS_TTL_MS = 18000;
+export const BLUE_BONUS_TTL_MS = 25000;
+export const YELLOW_BONUS_TTL_MS = 40000;
+export const GREEN_BONUS_TTL_MS = 22000;
+export const PURPLE_BONUS_TTL_MS = 18000;
+/** Durata effetto verde sui bianchi (riduzione hitbox + bolla visiva). */
+export const GREEN_MODE_DURATION_MS = 10000;
 /** Durata ogni numero del countdown d’avvio (ms). */
 export const INTRO_CD_MS = 850;
 
