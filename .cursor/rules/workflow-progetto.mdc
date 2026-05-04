@@ -11,8 +11,8 @@ alwaysApply: true
 
 3. **Produzione:** quando l’utente è soddisfatto, fare **commit** e **push** su `main` — GitHub Pages pubblica solo ciò che serve al gioco originale (`index.html`, `css/`, `js/` nella root). Non pushare utility solo per sviluppo locale.
 
-4. **DODGE evoluzione:** la versione online (Auth, Firestore, Realtime DB, PWA) vive in `evoluzione/` con Firebase Hosting (`firebase.json`, cartella `public/`). Deploy da quella cartella (`firebase deploy`). Non confondere asset della root con `evoluzione/public/`.
+4. **DODGE evoluzione:** la versione online (Auth, Firestore, Realtime DB, PWA) vive in `evoluzione/` con Firebase Hosting (`firebase.json`, cartella `public/`). Dopo modifiche a `evoluzione/public/`, fare **`firebase deploy --only hosting`** da `evoluzione/` (PowerShell: `Set-Location` poi comando; non usare `&&` su PS vecchie) così il sito live si aggiorna. Non confondere asset della root con `evoluzione/public/`.
 
 5. **Lingua:** comunicazione con l’utente in italiano quando usa l’italiano.
 
-6. **Evoluzione (correzioni fuori roadmap):** se cambiano UI, testi o flussi in `evoluzione/`, aggiornare `evoluzione/CONTINUA_DA_QUI.md` quando serve e chiudere con **commit + push** su `main` per tenere il team allineato.
+6. **Evoluzione (correzioni fuori roadmap):** se cambiano UI, testi o flussi in `evoluzione/`, aggiornare `evoluzione/CONTINUA_DA_QUI.md` quando serve, poi **commit + push** su `main` e **deploy hosting** (punto 4) così repo e sito restano allineati.
