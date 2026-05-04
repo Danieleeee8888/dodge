@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>DODGE</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── LOGIN ─────────────────────────────────────────────────────────── -->
+  <div id="view-login" class="view" style="display:none">
+    <h1 class="logo"> DODGE</h1>
+    <div class="form-card">
+      <form id="form-login" novalidate>
+        <input type="email" id="login-email" placeholder="Email" autocomplete="email" inputmode="email">
+        <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+        <button type="submit" id="btn-login" class="btn-primary">Accedi</button>
+      </form>
+      <p id="login-error" class="form-msg form-msg--error" style="display:none"></p>
+      <div class="form-links">
+        <a href="#" id="to-reset">Password dimenticata?</a>
+        <a href="#" id="to-register">Crea un account</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REGISTER ──────────────────────────────────────────────────────── -->
+  <div id="view-register" class="view" style="display:none">
+    <h1 class="logo"> DODGE</h1>
+    <div class="form-card">
+      <form id="form-register" novalidate>
+        <input type="text" id="reg-username" placeholder="Username (es. mario99)" autocomplete="username" maxlength="20" spellcheck="false">
+        <input type="email" id="reg-email" placeholder="Email" autocomplete="email" inputmode="email">
+        <input type="password" id="reg-password" placeholder="Password (min 8 caratteri)" autocomplete="new-password">
+        <input type="password" id="reg-confirm" placeholder="Conferma password" autocomplete="new-password">
+        <button type="submit" id="btn-register" class="btn-primary">Crea account</button>
+      </form>
+      <p id="reg-error" class="form-msg form-msg--error" style="display:none"></p>
+      <div class="form-links">
+        <a href="#" id="to-login-from-register">Hai già un account? Accedi</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── VERIFICA EMAIL ────────────────────────────────────────────────── -->
+  <div id="view-verify" class="view" style="display:none">
+    <h1 class="logo"> DODGE</h1>
+    <div class="form-card verify-card">
+      <p class="verify-title">Controlla la tua email</p>
+      <p class="verify-text">
+        Abbiamo inviato un link di conferma a<br>
+        <strong id="verify-email-placeholder"></strong>
+      </p>
+      <p class="verify-hint">Clicca il link nell'email per attivare l'account, poi torna qui e premi il tasto sotto.</p>
+      <button type="button" id="btn-verified" class="btn-primary">Ho verificato, entra</button>
+      <button type="button" id="btn-resend" class="btn-secondary">Reinvia email</button>
+      <p id="verify-msg" class="form-msg" style="display:none"></p>
+      <div class="form-links">
+        <a href="#" id="to-login-from-verify">Torna al login</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RESET PASSWORD ────────────────────────────────────────────────── -->
+  <div id="view-reset" class="view" style="display:none">
+    <h1 class="logo"> DODGE</h1>
+    <div class="form-card">
+      <form id="form-reset" novalidate>
+        <p class="reset-hint">Inserisci la tua email: ti mandiamo un link per reimpostare la password.</p>
+        <input type="email" id="reset-email" placeholder="Email" autocomplete="email" inputmode="email">
+        <button type="submit" id="btn-reset" class="btn-primary">Invia link</button>
+      </form>
+      <p id="reset-msg" class="form-msg" style="display:none"></p>
+      <div class="form-links">
+        <a href="#" id="to-login-from-reset">Torna al login</a>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .shell -->
+
+<script type="module" src="/js/auth.js"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</body>
+</html>

@@ -1,3 +1,9 @@
 # Solo uso locale (server HTTP + finestra tipo telefono) — non servono su GitHub Pages
 serve.bat
 open-phone-preview.ps1
+
+# Firebase CLI (cache deploy locale)
+.firebase/
+
+# Claude Code: worktree/checkout locale (non parte del gioco)
+.claude/

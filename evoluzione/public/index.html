@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, shrink-to-fit=no, viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<title>     DODGE</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="authLoading" class="loading-screen">
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+</div>
+
+<div id="dodgeShell" class="dodge-shell">
+<canvas id="c"></canvas>
+
+<div id="hud" class="hud--hidden">
+  <span class="hud-left hud-time">TEMPO <span id="t">0:00</span></span>
+  <span class="hud-center">LV <span id="lv">1</span></span>
+  <span class="hud-right hud-nb"><span id="nb">0</span> oggetti</span>
+</div>
+
+<div id="green-mode-hud" aria-hidden="true">
+  <div id="greenmodetrack"><div id="greenmodefill"></div></div>
+</div>
+
+<div id="pauseOverlay">PAUSA</div>
+
+<button type="button" id="fullscreenCornerBtn" class="js-no-start" aria-pressed="false" aria-label="Tutto schermo" title="Tutto schermo">⛶</button>
+<button type="button" id="audioCornerBtn" class="js-no-start" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</button>
+
+<div id="countdownOverlay" aria-hidden="true">
+  <div id="cdInner" class="cd-inner cd-r cd-popping">
+    <span id="cdNum">3</span>
+  </div>
+</div>
+
+<div id="shield-hud">
+  <div id="strack"><div id="sfill"></div></div>
+</div>
+<div id="slow-hud">
+  <div id="bluetrack"><div id="bluefill"></div></div>
+</div>
+
+<div id="screen" style="display:none">
+
+  <!-- ── HOME ──────────────────────────────────────────────── -->
+  <div id="view-home" class="screen-view">
+    <h1 class="screen-logo"> DODGE</h1>
+    <p class="menu-player-name" id="menuPlayerName">···</p>
+    <nav class="home-nav">
+      <button id="btn-play"        class="home-btn home-btn--primary js-no-start">GIOCA</button>
+      <button id="btn-coop"        class="home-btn home-btn--muted   js-no-start" disabled>CO&#8209;OP <span class="badge-soon">presto</span></button>
+      <button id="btn-leaderboard" class="home-btn js-no-start">CLASSIFICA</button>
+      <button id="btn-howto"       class="home-btn js-no-start">COME SI GIOCA</button>
+      <button id="btn-profile"     class="home-btn home-btn--small js-no-start">PROFILO</button>
+    </nav>
+    <div class="menu-bonus-dots" aria-hidden="true">
+      <span class="menu-bonus-dot menu-bonus-dot--red"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--blue"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--yellow"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--green"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--purple"></span>
+    </div>
+  </div>
+
+  <!-- ── CLASSIFICA ────────────────────────────────────────── -->
+  <div id="view-leaderboard" class="screen-view" hidden>
+    <button class="back-btn js-back-home js-no-start">← HOME</button>
+    <div id="records-block-lb"></div>
+  </div>
+
+  <!-- ── PROFILO ───────────────────────────────────────────── -->
+  <div id="view-profile" class="screen-view" hidden>
+    <button class="back-btn js-back-home js-no-start">← HOME</button>
+    <h2 class="view-title">PROFILO</h2>
+    <p id="profile-info-name"  class="profile-info"></p>
+    <p id="profile-info-email" class="profile-info profile-info--dim"></p>
+    <button id="btn-reset-pw" class="home-btn js-no-start">RESET PASSWORD</button>
+    <button id="btn-logout"   class="home-btn home-btn--danger js-no-start">ESCI</button>
+    <p id="profile-msg" class="profile-msg"></p>
+  </div>
+
+  <!-- ── COME SI GIOCA ─────────────────────────────────────── -->
+  <div id="view-howto" class="screen-view" hidden>
+    <button class="back-btn js-back-home js-no-start">← HOME</button>
+    <h2 class="view-title">COME SI GIOCA</h2>
+    <div class="howto-body">
+      <p>Muovi il dito per spostare il cursore bianco.</p>
+      <p>Schiva i <b>triangoli</b> e <b>quadrati</b> bianchi.</p>
+      <p>Raccogli i bonus colorati:</p>
+      <ul class="howto-list">
+        <li><span class="hd hd-r"></span>Rosso &mdash; vita extra</li>
+        <li><span class="hd hd-b"></span>Blu &mdash; rallenta i nemici</li>
+        <li><span class="hd hd-y"></span>Giallo &mdash; rimpicciolisce i nemici</li>
+        <li><span class="hd hd-g"></span>Verde &mdash; breve invulnerabilità</li>
+        <li><span class="hd hd-p"></span>Viola &mdash; scudo protettivo</li>
+      </ul>
+      <p class="howto-tip">Due dita = pausa.</p>
+    </div>
+  </div>
+
+  <!-- ── MORTE ─────────────────────────────────────────────── -->
+  <div id="view-death" class="screen-view" hidden>
+    <h1 class="death-heading">Pensavi fosse un gioco facile?</h1>
+    <p class="death-sub" id="death-time"></p>
+    <div id="records-block"><p class="rec-saving">salvataggio···</p></div>
+    <div class="death-actions">
+      <p class="tap-hint">Premi ovunque per riprovare</p>
+      <button id="btn-home-from-death" class="home-btn home-btn--small js-no-start">HOME</button>
+    </div>
+  </div>
+
+</div>
+
+</div>
+
+<script type="module" src="/js/game-engine.js"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</body>
+</html>

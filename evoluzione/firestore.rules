@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Profilo utente: solo il proprietario può leggere e modificare
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.username is string
+                    && request.resource.data.email is string
+                    && request.resource.data.gamesPlayed == 0
+                    && request.resource.data.bestTime == 0;
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && !('username' in request.resource.data.diff(resource.data).affectedKeys())
+                    && !('email' in request.resource.data.diff(resource.data).affectedKeys())
+                    && !('createdAt' in request.resource.data.diff(resource.data).affectedKeys());
+      allow delete: if false;
+    }
+
+    // Indice username → uid: pubblicamente leggibile per check unicità,
+    // creabile solo al momento della registrazione, mai modificabile
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && username.size() >= 3
+                    && username.size() <= 20
+                    && username.matches('^[a-z0-9_]+$');
+      allow update, delete: if false;
+    }
+
+    // Punteggi: leggibili da tutti, scrivibili solo da utenti verificati,
+    // mai modificabili o cancellabili (anti-cheat)
+    match /scores/{scoreId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.ms is int
+                    && request.resource.data.ms > 0
+                    && request.resource.data.ms <= 7200000;
+      allow update, delete: if false;
+    }
+
+    // Tutto il resto: negato
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

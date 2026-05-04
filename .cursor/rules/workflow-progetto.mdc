@@ -9,6 +9,8 @@ alwaysApply: true
 
 2. **Test locale:** il gioco usa ES modules (`js/game.js` importa `constants.js`). Non contare sul doppio click su `index.html` (`file://`). Per provare come in produzione servono HTTP locale (`python -m http.server`, Live Server, ecc.). Su Windows possono esistere script locali ignorati da git (es. `serve.bat`): non committarli.
 
-3. **Produzione:** quando l’utente è soddisfatto, fare **commit** e **push** su `main` — GitHub Pages pubblica solo ciò che serve al gioco (`index.html`, `css/`, `js/`). Non pushare utility solo per sviluppo locale.
+3. **Produzione:** quando l’utente è soddisfatto, fare **commit** e **push** su `main` — GitHub Pages pubblica solo ciò che serve al gioco originale (`index.html`, `css/`, `js/` nella root). Non pushare utility solo per sviluppo locale.
 
-4. **Lingua:** comunicazione con l’utente in italiano quando usa l’italiano.
+4. **DODGE evoluzione:** la versione online (Auth, Firestore, Realtime DB, PWA) vive in `evoluzione/` con Firebase Hosting (`firebase.json`, cartella `public/`). Deploy da quella cartella (`firebase deploy`). Non confondere asset della root con `evoluzione/public/`.
+
+5. **Lingua:** comunicazione con l’utente in italiano quando usa l’italiano.

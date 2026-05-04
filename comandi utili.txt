@@ -1,0 +1,13 @@
+cd "c:\Users\Daniele\Desktop\dodge"
+python -m http.server 8080
+
+http://localhost:8080/
+
+GitHub Pages (gioco originale):
+https://danieleeee8888.github.io/dodge/index.html
+
+--- DODGE evoluzione (Firebase) ---
+Cartella progetto: c:\Users\Daniele\Desktop\dodge\evoluzione
+Deploy: cd evoluzione  poi  firebase deploy --only hosting
+Hosting: https://dodge-84439.web.app
+Handoff / roadmap: evoluzione\CONTINUA_DA_QUI.md
