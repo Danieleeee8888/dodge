@@ -1399,7 +1399,7 @@ window.addEventListener('mousedown', e=>{
   fingerDown = true;
 });
 window.addEventListener('mousemove', e=>{
-  if (!fingerDown || (paused && !resumeCountdown)) return;
+  if (!fingerDown || paused) return;
   const [x, y] = getXY(e);
   const [cx, cy] = clampPlayerTarget(x, y);
   tx = cx; ty = cy;
@@ -1435,7 +1435,7 @@ window.addEventListener('touchstart', e=>{
   fingerDown=true;
 },{passive:false});
 window.addEventListener('touchmove', e=>{
-  if (!running || (paused && !resumeCountdown)) return;
+  if (!running || paused) return;
   e.preventDefault();
   const [x,y] = getXY(e);
   applyTouchRelativeTarget(x, y);
