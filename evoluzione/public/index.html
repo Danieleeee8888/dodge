@@ -54,39 +54,40 @@
 
   <!-- ── HOME ──────────────────────────────────────────────── -->
   <div id="view-home" class="screen-view screen-view--home">
-    <button type="button" id="btn-home-leaderboard" class="home-top-btn home-top-btn--records js-no-start" aria-label="Classifica globale" title="Classifica">🏅</button>
-    <button type="button" id="btn-home-profile" class="home-top-btn home-top-btn--profile js-no-start" aria-label="Profilo" title="Profilo">👤</button>
+    <button type="button" id="btn-home-leaderboard" class="home-top-btn home-top-btn--records js-no-start" aria-label="Classifica globale" title="Classifica">
+      <svg class="home-top-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="4"/><path d="M8.5 13L7 20h10l-1.5-7"/><path d="M10 20l2-4 2 4"/></svg>
+    </button>
+    <button type="button" id="btn-home-profile" class="home-top-btn home-top-btn--profile js-no-start" aria-label="Profilo" title="Profilo">
+      <svg class="home-top-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"><circle cx="12" cy="9" r="3.2"/><path d="M6.5 19.5c0-3.2 2.7-5.2 5.5-5.2s5.5 2 5.5 5.2"/></svg>
+    </button>
     <header class="home-hero">
       <h1 class="screen-logo"><span class="screen-logo__text">DODGE</span></h1>
+      <div class="home-title-dots" aria-hidden="true"><span></span><span></span><span></span></div>
       <p class="menu-player-name" id="menuPlayerName">···</p>
     </header>
-    <nav class="home-nav home-nav--modes" aria-label="Modalità di gioco">
-      <button id="btn-play"        class="home-btn home-btn--primary js-no-start">GIOCA</button>
-      <button id="btn-coop"        class="home-btn home-btn--muted   js-no-start" disabled>CO&#8209;OP <span class="badge-soon">presto</span></button>
-      <button id="btn-leaderboard" class="home-btn home-btn--ghost js-no-start">CLASSIFICA</button>
+    <nav class="home-nav home-nav--modes home-nav--row" aria-label="Modalità di gioco">
+      <button id="btn-play"   class="home-btn home-btn--mode home-btn--mode-on js-no-start" type="button">GIOCA</button>
+      <button id="btn-coop"   class="home-btn home-btn--mode home-btn--mode-off js-no-start" type="button" disabled>CO&#8209;OP<span class="badge-soon" aria-hidden="true">presto</span></button>
+      <button id="btn-1v1"    class="home-btn home-btn--mode home-btn--mode-off js-no-start" type="button" disabled>1&#8209;VS&#8209;1<span class="badge-soon" aria-hidden="true">presto</span></button>
     </nav>
-    <div class="menu-bonus-dots menu-bonus-dots--home" aria-hidden="true">
-      <span class="menu-bonus-dot menu-bonus-dot--red"></span>
-      <span class="menu-bonus-dot menu-bonus-dot--blue"></span>
-      <span class="menu-bonus-dot menu-bonus-dot--yellow"></span>
-      <span class="menu-bonus-dot menu-bonus-dot--green"></span>
-      <span class="menu-bonus-dot menu-bonus-dot--purple"></span>
-    </div>
     <p class="home-hint-block">
-      <span class="home-hint-line">Muovi il dito · schiva i bianchi · due dita = pausa</span>
-      <button type="button" id="btn-howto" class="home-howto-link js-no-start">Come funzionano i bonus →</button>
+      <button type="button" id="btn-howto" class="home-howto-link js-no-start">Come funzionano i bonus</button>
     </p>
   </div>
 
   <!-- ── CLASSIFICA ────────────────────────────────────────── -->
-  <div id="view-leaderboard" class="screen-view" hidden>
-    <button class="back-btn js-back-home js-no-start">← HOME</button>
+  <div id="view-leaderboard" class="screen-view screen-view--sub" hidden>
+    <button type="button" class="subview-round-back js-back-home js-no-start" aria-label="Torna alla home" title="Home">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
+    </button>
     <div id="records-block-lb"></div>
   </div>
 
   <!-- ── PROFILO ───────────────────────────────────────────── -->
-  <div id="view-profile" class="screen-view" hidden>
-    <button class="back-btn js-back-home js-no-start">← HOME</button>
+  <div id="view-profile" class="screen-view screen-view--sub" hidden>
+    <button type="button" class="subview-round-back js-back-home js-no-start" aria-label="Torna alla home" title="Home">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
+    </button>
     <h2 class="view-title">PROFILO</h2>
     <p id="profile-info-name"  class="profile-info"></p>
     <p id="profile-info-email" class="profile-info profile-info--dim"></p>
@@ -96,8 +97,10 @@
   </div>
 
   <!-- ── COME SI GIOCA ─────────────────────────────────────── -->
-  <div id="view-howto" class="screen-view" hidden>
-    <button class="back-btn js-back-home js-no-start">← HOME</button>
+  <div id="view-howto" class="screen-view screen-view--sub" hidden>
+    <button type="button" class="subview-round-back js-back-home js-no-start" aria-label="Torna alla home" title="Home">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
+    </button>
     <h2 class="view-title">COME SI GIOCA</h2>
     <div class="howto-body">
       <p>Muovi il dito per spostare il cursore bianco.</p>

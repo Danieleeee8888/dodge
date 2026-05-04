@@ -52,7 +52,8 @@ evoluzione/
 
 - `auth.html`: registrazione, verifica email, login, reset password.
 - `index.html` + `game-engine.js`: gioco con auth guard e home screen.
-- **Home:** titolo + nome utente; **in alto** pulsanti tondi 🏅 classifica e 👤 profilo (stile angolo); **al centro** solo le tre azioni GIOCA / CO‑OP (presto) / CLASSIFICA; sotto i pallini bonus; in basso riga istruzioni sintetiche + link “Come funzionano i bonus”.
+- **Home:** titolo **DODGE**, tre puntini animati sotto il titolo, nome utente; **in alto** icone tonde monocromatiche (medaglia classifica, profilo); **al centro** tre pillole **GIOCA** / **CO‑OP** (presto) / **1‑VS‑1** (presto); classifica solo dall’icona in alto a sinistra; in basso link minimale “Come funzionano i bonus”.
+- **Classifica / Profilo / Come si gioca:** pulsante **indietro** tondo fisso in alto a sinistra (`subview-round-back`), stile coerente con gli angoli home.
 - **Death screen:** classifica (aggiornamento ottimistico + sync Firestore), **HOME** come pulsante tondo centrale in basso (⌂) tra tutto schermo e audio, tap ovunque per riprovare.
 - **Classifica:** `applyOptimisticScore` + `renderRecordsInto` subito dopo la morte; `saveScore` aggiorna profilo utente e `fetchLeaderboard` in parallelo; ri-aprendo la classifica si fa refresh in background.
 - PWA: manifest, service worker, icone.

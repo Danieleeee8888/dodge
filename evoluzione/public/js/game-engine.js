@@ -331,7 +331,6 @@ function bindHomeNav() {
     showScreenView('leaderboard');
     fetchLeaderboard(10).then(() => renderRecordsInto(lbEl)).catch(() => {});
   };
-  document.getElementById('btn-leaderboard')?.addEventListener('click', openLeaderboard);
   document.getElementById('btn-home-leaderboard')?.addEventListener('click', openLeaderboard);
 
   // COME SI GIOCA
