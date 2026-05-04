@@ -402,7 +402,9 @@ function resumeAudioIfSuspended() {
 document.addEventListener('touchstart', resumeAudioIfSuspended, { passive: true, capture: true });
 document.addEventListener('click', resumeAudioIfSuspended, { passive: true, capture: true });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
+  if (document.visibilityState === 'hidden') {
+    if (running && !paused) togglePause();
+  } else {
     resize();
     resumeAudioIfSuspended();
   }
