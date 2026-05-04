@@ -1,4 +1,9 @@
-const CACHE = 'dodge-v2';
+/**
+ * PWA: precache per offline + rete prima per HTML/JS/CSS così ogni deploy
+ * si vede subito (fallback su cache se offline).
+ * Bump CACHE quando vuoi uno svuotamento duro su tutti i client.
+ */
+const CACHE = 'dodge-v4';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -15,36 +20,60 @@ const PRECACHE = [
   '/icons/icon-512.png',
 ];
 
-self.addEventListener('install', e => {
+self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', e => {
+self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-
-  // Firebase e CDN: sempre rete
-  if (
+function isFirebaseOrCdn(url) {
+  return (
     url.hostname.includes('firebase') ||
     url.hostname.includes('google') ||
-    url.hostname.includes('gstatic') ||
-    e.request.method !== 'GET'
-  ) {
+    url.hostname.includes('gstatic')
+  );
+}
+
+/** Stessa origine: pagine e bundle — sempre rete prima (poi cache). */
+function isNetworkFirstAsset(url) {
+  if (url.origin !== self.location.origin) return false;
+  const p = url.pathname;
+  if (p === '/' || p.endsWith('.html')) return true;
+  return /\.(js|css)$/i.test(p);
+}
+
+self.addEventListener('fetch', (e) => {
+  const url = new URL(e.request.url);
+  if (isFirebaseOrCdn(url) || e.request.method !== 'GET') {
     e.respondWith(fetch(e.request));
     return;
   }
 
-  // Assets locali: cache-first, poi rete
+  if (isNetworkFirstAsset(url)) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-store' })
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(e.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request).then((hit) => hit || Promise.reject(new Error('offline'))))
+    );
+    return;
+  }
+
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.match(e.request).then((cached) => cached || fetch(e.request))
   );
 });
