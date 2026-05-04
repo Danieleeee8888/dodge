@@ -39,7 +39,9 @@ import {
   sendPasswordResetEmail,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getProfile } from './profile.js';
-import { saveScore, fetchLeaderboard, getCachedLeaderboard } from './leaderboard.js';
+import {
+  saveScore, fetchLeaderboard, getCachedLeaderboard, applyOptimisticScore,
+} from './leaderboard.js';
 
 let currentUserId = null;
 let currentUsername = '···';
@@ -60,6 +62,7 @@ const tEl = document.getElementById('t');
 const lvEl = document.getElementById('lv');
 const nbEl = document.getElementById('nb');
 const fullscreenCornerBtn = document.getElementById('fullscreenCornerBtn');
+const homeCornerBtn = document.getElementById('homeCornerBtn');
 const audioCornerBtn = document.getElementById('audioCornerBtn');
 const pauseOverlay = document.getElementById('pauseOverlay');
 
@@ -278,6 +281,9 @@ function updateShellForPhase(phase) {
     if (phase === 'playing') fullscreenCornerBtn.classList.add('fullscreen-corner--hidden');
     else fullscreenCornerBtn.classList.remove('fullscreen-corner--hidden');
   }
+  if (homeCornerBtn && phase === 'playing') {
+    homeCornerBtn.classList.add('home-corner--hidden');
+  }
 }
 // ── NAVIGAZIONE HOME SCREEN ──────────────────────────────────────────────────
 
@@ -288,10 +294,14 @@ function showScreenView(name) {
   screen.classList.toggle('screen-death', name === 'death');
   screen.style.cursor = name === 'death' ? 'pointer' : 'default';
   screen.style.display = 'flex';
+  if (homeCornerBtn) {
+    homeCornerBtn.classList.toggle('home-corner--hidden', name !== 'death');
+  }
 }
 
 function hideScreen() {
   screen.style.display = 'none';
+  if (homeCornerBtn) homeCornerBtn.classList.add('home-corner--hidden');
 }
 
 function setupProfileView() {
@@ -314,12 +324,15 @@ function bindHomeNav() {
     startGame();
   });
 
-  // CLASSIFICA
-  document.getElementById('btn-leaderboard')?.addEventListener('click', e => {
+  const openLeaderboard = (e) => {
     e.stopPropagation();
-    renderRecordsInto(document.getElementById('records-block-lb'));
+    const lbEl = document.getElementById('records-block-lb');
+    renderRecordsInto(lbEl);
     showScreenView('leaderboard');
-  });
+    fetchLeaderboard(10).then(() => renderRecordsInto(lbEl)).catch(() => {});
+  };
+  document.getElementById('btn-leaderboard')?.addEventListener('click', openLeaderboard);
+  document.getElementById('btn-home-leaderboard')?.addEventListener('click', openLeaderboard);
 
   // COME SI GIOCA
   document.getElementById('btn-howto')?.addEventListener('click', e => {
@@ -327,8 +340,7 @@ function bindHomeNav() {
     showScreenView('howto');
   });
 
-  // PROFILO
-  document.getElementById('btn-profile')?.addEventListener('click', e => {
+  document.getElementById('btn-home-profile')?.addEventListener('click', e => {
     e.stopPropagation();
     setupProfileView();
     showScreenView('profile');
@@ -342,10 +354,10 @@ function bindHomeNav() {
     });
   });
 
-  // HOME dal death screen
-  document.getElementById('btn-home-from-death')?.addEventListener('click', e => {
+  document.getElementById('homeCornerBtn')?.addEventListener('click', e => {
     e.stopPropagation();
     showScreenView('home');
+    updateShellForPhase('menu');
   });
 
   // RESET PASSWORD
@@ -1344,7 +1356,10 @@ function die() {
     if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio···</p>';
     showScreenView('death');
     if (currentUserId) {
+      applyOptimisticScore(currentUserId, currentUsername, diedElapsed);
+      renderRecordsInto(recEl);
       await saveScore(currentUserId, currentUsername, diedElapsed).catch(() => {});
+      renderRecordsInto(recEl);
     }
     setupMenuUI();
   }, 600);
@@ -1420,6 +1435,7 @@ function isControlTarget(el) {
   if (!el) return false;
   if (el.id === 'audioCornerBtn' || (el.closest && el.closest('#audioCornerBtn'))) return true;
   if (el.id === 'fullscreenCornerBtn' || (el.closest && el.closest('#fullscreenCornerBtn'))) return true;
+  if (el.id === 'homeCornerBtn' || (el.closest && el.closest('#homeCornerBtn'))) return true;
   // Blocca startGame se siamo sulla home screen (non death)
   if (screen && screen.style.display !== 'none' && !screen.classList.contains('screen-death')) return true;
   // Blocca i pulsanti js-no-start anche nel death screen (HOME, RIPROVA)

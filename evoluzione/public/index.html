@@ -34,6 +34,7 @@
 <div id="pauseOverlay">PAUSA</div>
 
 <button type="button" id="fullscreenCornerBtn" class="js-no-start" aria-pressed="false" aria-label="Tutto schermo" title="Tutto schermo">⛶</button>
+<button type="button" id="homeCornerBtn" class="js-no-start home-corner--hidden" aria-label="Home" title="Home">⌂</button>
 <button type="button" id="audioCornerBtn" class="js-no-start" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</button>
 
 <div id="countdownOverlay" aria-hidden="true">
@@ -52,23 +53,29 @@
 <div id="screen" style="display:none">
 
   <!-- ── HOME ──────────────────────────────────────────────── -->
-  <div id="view-home" class="screen-view">
-    <h1 class="screen-logo"> DODGE</h1>
-    <p class="menu-player-name" id="menuPlayerName">···</p>
-    <nav class="home-nav">
+  <div id="view-home" class="screen-view screen-view--home">
+    <button type="button" id="btn-home-leaderboard" class="home-top-btn home-top-btn--records js-no-start" aria-label="Classifica globale" title="Classifica">🏅</button>
+    <button type="button" id="btn-home-profile" class="home-top-btn home-top-btn--profile js-no-start" aria-label="Profilo" title="Profilo">👤</button>
+    <header class="home-hero">
+      <h1 class="screen-logo"><span class="screen-logo__text">DODGE</span></h1>
+      <p class="menu-player-name" id="menuPlayerName">···</p>
+    </header>
+    <nav class="home-nav home-nav--modes" aria-label="Modalità di gioco">
       <button id="btn-play"        class="home-btn home-btn--primary js-no-start">GIOCA</button>
       <button id="btn-coop"        class="home-btn home-btn--muted   js-no-start" disabled>CO&#8209;OP <span class="badge-soon">presto</span></button>
-      <button id="btn-leaderboard" class="home-btn js-no-start">CLASSIFICA</button>
-      <button id="btn-howto"       class="home-btn js-no-start">COME SI GIOCA</button>
-      <button id="btn-profile"     class="home-btn home-btn--small js-no-start">PROFILO</button>
+      <button id="btn-leaderboard" class="home-btn home-btn--ghost js-no-start">CLASSIFICA</button>
     </nav>
-    <div class="menu-bonus-dots" aria-hidden="true">
+    <div class="menu-bonus-dots menu-bonus-dots--home" aria-hidden="true">
       <span class="menu-bonus-dot menu-bonus-dot--red"></span>
       <span class="menu-bonus-dot menu-bonus-dot--blue"></span>
       <span class="menu-bonus-dot menu-bonus-dot--yellow"></span>
       <span class="menu-bonus-dot menu-bonus-dot--green"></span>
       <span class="menu-bonus-dot menu-bonus-dot--purple"></span>
     </div>
+    <p class="home-hint-block">
+      <span class="home-hint-line">Muovi il dito · schiva i bianchi · due dita = pausa</span>
+      <button type="button" id="btn-howto" class="home-howto-link js-no-start">Come funzionano i bonus →</button>
+    </p>
   </div>
 
   <!-- ── CLASSIFICA ────────────────────────────────────────── -->
@@ -97,11 +104,11 @@
       <p>Schiva i <b>triangoli</b> e <b>quadrati</b> bianchi.</p>
       <p>Raccogli i bonus colorati:</p>
       <ul class="howto-list">
-        <li><span class="hd hd-r"></span>Rosso &mdash; vita extra</li>
+        <li><span class="hd hd-r"></span>Rosso &mdash; scudo a tempo (barra rossa)</li>
         <li><span class="hd hd-b"></span>Blu &mdash; rallenta i nemici</li>
         <li><span class="hd hd-y"></span>Giallo &mdash; rimpicciolisce i nemici</li>
         <li><span class="hd hd-g"></span>Verde &mdash; breve invulnerabilità</li>
-        <li><span class="hd hd-p"></span>Viola &mdash; scudo protettivo</li>
+        <li><span class="hd hd-p"></span>Viola &mdash; vita extra (satelliti)</li>
       </ul>
       <p class="howto-tip">Due dita = pausa.</p>
     </div>
@@ -114,7 +121,6 @@
     <div id="records-block"><p class="rec-saving">salvataggio···</p></div>
     <div class="death-actions">
       <p class="tap-hint">Premi ovunque per riprovare</p>
-      <button id="btn-home-from-death" class="home-btn home-btn--small js-no-start">HOME</button>
     </div>
   </div>
 
