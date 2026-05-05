@@ -67,6 +67,9 @@ const nbEl = document.getElementById('nb');
 const homeCornerBtn = document.getElementById('homeCornerBtn');
 const audioCornerBtn = document.getElementById('audioCornerBtn');
 const pauseOverlay = document.getElementById('pauseOverlay');
+const INSTALL_NUDGE_KEY = 'dodge_install_nudge_v1';
+let deferredInstallPrompt = null;
+let installNudgeEl = null;
 
 let W, H;
 
@@ -79,6 +82,115 @@ function safeLocalGet(key, def) {
 function safeLocalSet(key, val) {
   try { localStorage.setItem(key, val); } catch (e) {}
 }
+
+function isIOSLike() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  try {
+    if (navigator.maxTouchPoints > 1 && /MacIntel|Mac OS X/i.test(navigator.platform || '')) return true;
+  } catch (e) {}
+  return false;
+}
+
+function isAndroidLike() {
+  return /Android/i.test(navigator.userAgent || '');
+}
+
+function isStandaloneLike() {
+  const iosStandalone = !!(window.navigator && window.navigator.standalone);
+  const mediaStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  return iosStandalone || mediaStandalone;
+}
+
+function dismissInstallNudge(remember) {
+  if (remember) safeLocalSet(INSTALL_NUDGE_KEY, '1');
+  if (installNudgeEl && installNudgeEl.parentNode) installNudgeEl.parentNode.removeChild(installNudgeEl);
+  installNudgeEl = null;
+}
+
+async function triggerNativeInstallPrompt() {
+  if (!deferredInstallPrompt) return false;
+  try {
+    const p = deferredInstallPrompt;
+    deferredInstallPrompt = null;
+    await p.prompt();
+    await p.userChoice.catch(() => null);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function buildInstallNudgeText() {
+  const onIOS = isIOSLike();
+  const onAndroid = isAndroidLike();
+  if (onIOS) {
+    return {
+      title: 'Installa DODGE',
+      body: 'Per avere il gioco come app a schermo pieno su iPhone/iPad: tocca Condividi e poi "Aggiungi a Home".',
+      action: 'Ho capito',
+      actionIsNativePrompt: false,
+    };
+  }
+  if (onAndroid) {
+    return {
+      title: 'Installa DODGE',
+      body: 'Consigliato: installa il gioco sulla Home per avvio diretto in modalità app.',
+      action: 'Installa ora',
+      actionIsNativePrompt: true,
+    };
+  }
+  return {
+    title: 'Installa DODGE',
+    body: 'Per la migliore esperienza, installa il gioco dalla voce "Installa app" del browser.',
+    action: 'Continua',
+    actionIsNativePrompt: false,
+  };
+}
+
+function showInstallNudgeIfNeeded() {
+  if (isStandaloneLike()) return;
+  if (safeLocalGet(INSTALL_NUDGE_KEY, '0') === '1') return;
+  if (installNudgeEl) return;
+
+  const cfg = buildInstallNudgeText();
+  const wrap = document.createElement('div');
+  wrap.id = 'installNudge';
+  wrap.innerHTML = `
+    <div class="install-nudge__card" role="dialog" aria-modal="true" aria-label="Installa app">
+      <h3 class="install-nudge__title">${cfg.title}</h3>
+      <p class="install-nudge__text">${cfg.body}</p>
+      <div class="install-nudge__actions">
+        <button type="button" class="install-nudge__btn install-nudge__btn--primary">${cfg.action}</button>
+        <button type="button" class="install-nudge__btn install-nudge__btn--ghost">Più tardi</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  installNudgeEl = wrap;
+  safeLocalSet(INSTALL_NUDGE_KEY, '1');
+
+  const primary = wrap.querySelector('.install-nudge__btn--primary');
+  const later = wrap.querySelector('.install-nudge__btn--ghost');
+  if (primary) {
+    primary.addEventListener('click', async () => {
+      if (cfg.actionIsNativePrompt) await triggerNativeInstallPrompt();
+      dismissInstallNudge(false);
+    });
+  }
+  if (later) {
+    later.addEventListener('click', () => dismissInstallNudge(false));
+  }
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+window.addEventListener('appinstalled', () => {
+  safeLocalSet(INSTALL_NUDGE_KEY, '1');
+  dismissInstallNudge(false);
+});
 
 /** Fullscreen “vero” sul documento quando supportato dal browser. */
 function isDocumentFullscreenUsable() {
@@ -2265,6 +2377,7 @@ onAuthStateChanged(auth, async (user) => {
 
   if (loader) loader.style.display = 'none';
 
+  showInstallNudgeIfNeeded();
   setupFullscreenAutostart();
   syncAudioCornerBtn();
   bindAudioCornerBtn();

@@ -420,6 +420,65 @@ canvas {
 #audioCornerBtn.audio-off { color:#f87171; border-color:rgba(248,113,113,0.45); text-shadow:0 0 12px rgba(248,113,113,0.45); }
 #audioCornerBtn.audio-corner--hidden { display:none; }
 
+/* ── INSTALL NUDGE (primo avvio da browser) ─────────────────────────────── */
+#installNudge {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  background: rgba(0, 0, 0, 0.72);
+}
+#installNudge .install-nudge__card {
+  width: min(26rem, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(8, 8, 8, 0.97);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  padding: 1rem 1rem 0.92rem;
+}
+#installNudge .install-nudge__title {
+  margin: 0 0 0.55rem;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+#installNudge .install-nudge__text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.45;
+  font-size: 0.9rem;
+}
+#installNudge .install-nudge__actions {
+  display: flex;
+  gap: 0.58rem;
+  margin-top: 0.95rem;
+}
+#installNudge .install-nudge__btn {
+  flex: 1 1 auto;
+  height: 2.42rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+#installNudge .install-nudge__btn--primary {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
 /* ── PAUSE / COUNTDOWN ───────────────────────────────────────────────────── */
 #pauseOverlay {
   position:fixed; inset:0; min-height:100%; min-height:100dvh;

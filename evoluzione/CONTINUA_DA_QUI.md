@@ -69,6 +69,7 @@ evoluzione/
 - `bindHomeNav()` → da `onAuthStateChanged`
 - `isControlTarget(el)` → evita `startGame` con home visibile (non death); include `#audioCornerBtn`, `#homeCornerBtn`.
 - Avvio fullscreen: tentativo automatico all’avvio (e retry su prima interazione) per esperienza più “app-like”; pulsante fullscreen rimosso.
+- Primo avvio da browser: nudge installazione (`#installNudge`) mostrato una volta; su Android usa `beforeinstallprompt` quando disponibile, su iOS mostra istruzioni “Condividi → Aggiungi a Home”.
 - `records-block` / `records-block-lb` → classifiche
 - `leaderboard.js`: `saveScore(uid, ms)` aggiorna `users`, append `scores`, eventualmente `setDoc` su `leaderboard/{uid}`; `fetchLeaderboard` unisce `leaderboard` + `scores` e risolve i nomi.
 
