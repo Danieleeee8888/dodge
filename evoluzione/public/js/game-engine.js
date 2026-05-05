@@ -310,11 +310,14 @@ window.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 // GAME STATE
+const START_GAME_GUARD_MS = 700;
 let running = false;
 let paused = false, pausedAt = 0;
 let px = -999, py = -999;          // cursore visibile (segue tx/ty con lerp)
 let tx = -999, ty = -999;          // cursore target (dito/mouse)
 let fingerDown = false;
+/** Dopo una morte, impedisce restart immediato accidentale. */
+let startGameUnlockAt = 0;
 /** Touch: “telecomando” — tx/ty = pos giocatore all’ancora + (dito − punto tocco), non sotto il dito. */
 let touchAnchFx = 0, touchAnchFy = 0, touchAnchPx = 0, touchAnchPy = 0;
 let balls = [], parts = [], sparkles = [];
@@ -1350,6 +1353,7 @@ function syncPowerHud(now) {
 }
 
 function startGame() {
+  if (performance.now() < startGameUnlockAt) return;
   if (deathUiTimeoutId != null) {
     clearTimeout(deathUiTimeoutId);
     deathUiTimeoutId = null;
@@ -1445,6 +1449,7 @@ function die() {
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
   burst(px,py,'#fff',40);
+  startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
   if (deathUiTimeoutId != null) {
     clearTimeout(deathUiTimeoutId);
     deathUiTimeoutId = null;
