@@ -1,7 +1,6 @@
 ﻿import {
   FIXED_GAME_W,
   FIXED_GAME_H,
-  MAX_CANVAS_CSS_W,
   SLOW_DURATION_MS,
   SHIELD_DURATION_MS,
   CURSOR_LERP,
@@ -65,7 +64,6 @@ const hudEl = document.getElementById('hud');
 const tEl = document.getElementById('t');
 const lvEl = document.getElementById('lv');
 const nbEl = document.getElementById('nb');
-const fullscreenCornerBtn = document.getElementById('fullscreenCornerBtn');
 const homeCornerBtn = document.getElementById('homeCornerBtn');
 const audioCornerBtn = document.getElementById('audioCornerBtn');
 const pauseOverlay = document.getElementById('pauseOverlay');
@@ -82,41 +80,68 @@ function safeLocalSet(key, val) {
   try { localStorage.setItem(key, val); } catch (e) {}
 }
 
-/** iOS / iPadOS Safari (UA “Mac” su iPad con touch). */
-function isIOSLike() {
-  const ua = navigator.userAgent || '';
-  if (/iPhone|iPad|iPod/i.test(ua)) return true;
-  try {
-    if (navigator.maxTouchPoints > 1 && /MacIntel|Mac OS X/i.test(navigator.platform || '')) return true;
-  } catch (e) {}
-  return false;
-}
-
-/**
- * Fullscreen “vero” sul documento: su Safari iPhone non è disponibile come su desktop;
- * nascondiamo il pulsante per non promettere un comportamento impossibile.
- */
+/** Fullscreen “vero” sul documento quando supportato dal browser. */
 function isDocumentFullscreenUsable() {
   const root = document.documentElement;
   if (!root) return false;
   const canCall = !!(root.requestFullscreen || root.webkitRequestFullscreen);
   if (!canCall) return false;
-  if (isIOSLike()) return false;
   const d = document;
   if (d.fullscreenEnabled === false || d.webkitFullscreenEnabled === false) return false;
   return true;
 }
 
-function applyFullscreenCornerSupport() {
-  if (!fullscreenCornerBtn) return;
-  if (isDocumentFullscreenUsable()) return;
-  fullscreenCornerBtn.classList.add('fullscreen-corner--unsupported');
-  fullscreenCornerBtn.setAttribute('aria-hidden', 'true');
+function isPageFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
 
-function syncDodgeShellFullscreenClass() {
-  if (!dodgeShell) return;
-  dodgeShell.classList.toggle('dodge-shell--fullscreen', isPageFullscreen());
+async function requestAppFullscreen() {
+  if (isPageFullscreen()) return true;
+  if (!isDocumentFullscreenUsable()) return false;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return false;
+  try {
+    const p = req.call(el);
+    if (p && typeof p.then === 'function') await p;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function setupFullscreenAutostart() {
+  let satisfied = false;
+  let attempts = 0;
+  const maxAttempts = 6;
+
+  const tryEnter = async () => {
+    if (satisfied || attempts >= maxAttempts) return;
+    attempts++;
+    const ok = await requestAppFullscreen();
+    if (ok || isPageFullscreen()) {
+      satisfied = true;
+      return;
+    }
+    // Alcuni browser richiedono gesture utente o ritardi brevi.
+    if (attempts < maxAttempts) setTimeout(tryEnter, 450);
+  };
+
+  const onFullscreenChange = () => {
+    if (isPageFullscreen()) {
+      satisfied = true;
+    } else if (!satisfied) {
+      void tryEnter();
+    }
+    resize();
+  };
+
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+  document.addEventListener('click', () => { void tryEnter(); }, { passive: true, capture: true });
+  document.addEventListener('touchstart', () => { void tryEnter(); }, { passive: true, capture: true });
+  document.addEventListener('keydown', () => { void tryEnter(); }, { passive: true, capture: true });
+  void tryEnter();
 }
 
 /**
@@ -134,7 +159,6 @@ function getViewportForCanvasScale() {
 
 function resize() {
   if (!canvas) return;
-  syncDodgeShellFullscreenClass();
   const { winW, winH, vx, vy } = getViewportForCanvasScale();
   W = FIXED_GAME_W;
   H = FIXED_GAME_H;
@@ -149,7 +173,6 @@ function resize() {
   canvas.style.top = vy + (winH - dispH) * 0.5 + 'px';
   document.documentElement.style.setProperty('--ui-scale', String(scale));
 }
-document.documentElement.style.setProperty('--dodge-shell-max-px', `${MAX_CANVAS_CSS_W}px`);
 resize();
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => { setTimeout(resize, 120); });
@@ -262,10 +285,6 @@ function updateShellForPhase(phase) {
   if (audioCornerBtn) {
     if (phase === 'playing') audioCornerBtn.classList.add('audio-corner--hidden');
     else audioCornerBtn.classList.remove('audio-corner--hidden');
-  }
-  if (fullscreenCornerBtn) {
-    if (phase === 'playing') fullscreenCornerBtn.classList.add('fullscreen-corner--hidden');
-    else fullscreenCornerBtn.classList.remove('fullscreen-corner--hidden');
   }
   if (homeCornerBtn && phase === 'playing') {
     homeCornerBtn.classList.add('home-corner--hidden');
@@ -1213,55 +1232,6 @@ function syncPowerHud(now) {
   }
 }
 
-function isPageFullscreen() {
-  return !!(document.fullscreenElement || document.webkitFullscreenElement);
-}
-
-function togglePageFullscreen() {
-  try {
-    if (isPageFullscreen()) {
-      const ex = document.exitFullscreen || document.webkitExitFullscreen;
-      if (ex) {
-        const p = ex.call(document);
-        if (p && typeof p.catch === 'function') p.catch(function () {});
-      }
-    } else {
-      const el = document.documentElement;
-      const req = el.requestFullscreen || el.webkitRequestFullscreen;
-      if (req) {
-        const p = req.call(el);
-        if (p && typeof p.catch === 'function') p.catch(function () {});
-      }
-    }
-  } catch (e) {}
-}
-
-function syncFullscreenCornerBtn() {
-  if (!fullscreenCornerBtn) return;
-  const on = isPageFullscreen();
-  fullscreenCornerBtn.classList.toggle('fs-active', on);
-  fullscreenCornerBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-  fullscreenCornerBtn.setAttribute('aria-label', on ? 'Esci da tutto schermo' : 'Tutto schermo');
-  fullscreenCornerBtn.title = on ? 'Esci da tutto schermo' : 'Tutto schermo';
-  fullscreenCornerBtn.textContent = on ? '\u2715' : '\u26F6';
-}
-
-function bindFullscreenCornerBtn() {
-  if (!fullscreenCornerBtn || fullscreenCornerBtn.dataset.bound === '1') return;
-  fullscreenCornerBtn.dataset.bound = '1';
-  fullscreenCornerBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    togglePageFullscreen();
-  });
-  const onFsLayout = () => {
-    syncDodgeShellFullscreenClass();
-    syncFullscreenCornerBtn();
-    resize();
-  };
-  document.addEventListener('fullscreenchange', onFsLayout);
-  document.addEventListener('webkitfullscreenchange', onFsLayout);
-}
-
 function startGame() {
   if (deathUiTimeoutId != null) {
     clearTimeout(deathUiTimeoutId);
@@ -1481,7 +1451,6 @@ function applyTouchRelativeTarget(fx, fy) {
 function isControlTarget(el) {
   if (!el) return false;
   if (el.id === 'audioCornerBtn' || (el.closest && el.closest('#audioCornerBtn'))) return true;
-  if (el.id === 'fullscreenCornerBtn' || (el.closest && el.closest('#fullscreenCornerBtn'))) return true;
   if (el.id === 'homeCornerBtn' || (el.closest && el.closest('#homeCornerBtn'))) return true;
   // Blocca startGame se siamo sulla home screen (non death)
   if (screen && screen.style.display !== 'none' && !screen.classList.contains('screen-death')) return true;
@@ -2296,11 +2265,9 @@ onAuthStateChanged(auth, async (user) => {
 
   if (loader) loader.style.display = 'none';
 
+  setupFullscreenAutostart();
   syncAudioCornerBtn();
   bindAudioCornerBtn();
-  applyFullscreenCornerSupport();
-  syncFullscreenCornerBtn();
-  bindFullscreenCornerBtn();
   bindHomeNav();
   setupMenuUI();
   updateShellForPhase('menu');

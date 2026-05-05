@@ -389,8 +389,8 @@ canvas {
 #hud .hud-time  { white-space:nowrap; }
 #hud .hud-nb    { white-space:nowrap; opacity:0.92; }
 
-/* ── CORNER BUTTONS (tutto schermo · home morte · audio) ───────────────── */
-#audioCornerBtn, #fullscreenCornerBtn, #homeCornerBtn {
+/* ── CORNER BUTTONS (home morte · audio) ────────────────────────────────── */
+#audioCornerBtn, #homeCornerBtn {
   position:fixed;
   bottom:max(14px, env(safe-area-inset-bottom));
   z-index:25; pointer-events:auto; touch-action:manipulation;
@@ -404,7 +404,6 @@ canvas {
   -webkit-tap-highlight-color:transparent;
   box-shadow:0 4px 18px rgba(0,0,0,0.35);
 }
-#fullscreenCornerBtn { left:max(12px, env(safe-area-inset-left)); font-size:1.05rem; }
 #homeCornerBtn {
   left:50%; transform:translateX(-50%);
   font-size:1.18rem; color:#fde68a;
@@ -419,9 +418,7 @@ canvas {
 #audioCornerBtn    { right:max(12px, env(safe-area-inset-right)); font-size:1.15rem; }
 #audioCornerBtn.audio-on  { color:#4ade80; border-color:rgba(74,222,128,0.45); text-shadow:0 0 12px rgba(74,222,128,0.5); }
 #audioCornerBtn.audio-off { color:#f87171; border-color:rgba(248,113,113,0.45); text-shadow:0 0 12px rgba(248,113,113,0.45); }
-#audioCornerBtn.audio-corner--hidden, #fullscreenCornerBtn.fullscreen-corner--hidden { display:none; }
-#fullscreenCornerBtn.fullscreen-corner--unsupported { display:none !important; }
-#fullscreenCornerBtn.fs-active { color:#93c5fd; border-color:rgba(147,197,253,0.45); text-shadow:0 0 10px rgba(147,197,253,0.4); }
+#audioCornerBtn.audio-corner--hidden { display:none; }
 
 /* ── PAUSE / COUNTDOWN ───────────────────────────────────────────────────── */
 #pauseOverlay {
