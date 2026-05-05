@@ -732,9 +732,20 @@ canvas {
   align-items:center;
   gap:0.65rem;
   width:min(22rem, calc(100vw - 2rem));
-  padding:0 max(1rem, env(safe-area-inset-left)) 0 max(1rem, env(safe-area-inset-right));
+  padding:0.35rem max(1rem, env(safe-area-inset-left)) 0.35rem max(1rem, env(safe-area-inset-right));
   box-sizing:border-box;
-  pointer-events:none;
+  pointer-events:auto;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  border-radius:0.85rem;
+}
+.home-bonus-floating:active {
+  opacity:0.88;
+}
+.home-bonus-floating:focus-visible {
+  outline:2px solid rgba(147,197,253,0.65);
+  outline-offset:4px;
 }
 
 #screen .menu-tagline {
@@ -1056,30 +1067,6 @@ canvas {
   opacity:0.45;
   cursor:not-allowed;
 }
-.home-hint-block {
-  margin-top:auto;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding-bottom:calc(max(0.35rem, env(safe-area-inset-bottom)) + max(52px, calc(54px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
-  max-width:min(20rem, 100%);
-}
-.home-howto-link {
-  background:none; border:none; color:rgba(255,255,255,0.38);
-  font-family:inherit;
-  font-size:clamp(0.65rem, 2.4vmin, 0.74rem);
-  font-weight:500;
-  letter-spacing:0.18em;
-  text-transform:uppercase;
-  text-decoration:none;
-  border-bottom:1px solid rgba(255,255,255,0.18);
-  padding:0.25rem 0.15rem 0.15rem;
-  cursor:pointer;
-  touch-action:manipulation;
-  -webkit-tap-highlight-color:transparent;
-}
-.home-howto-link:active { color:rgba(255,255,255,0.65); border-bottom-color:rgba(255,255,255,0.35); }
-
 /* Logo grande (altre viste se riusato) */
 .screen-view:not(.screen-view--home) .screen-logo {
   font-size:clamp(2.2rem, 10vmin, 3.4rem); font-weight:800; letter-spacing:0.26em;

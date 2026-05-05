@@ -542,11 +542,21 @@ function bindHomeNav() {
   };
   document.getElementById('btn-home-leaderboard')?.addEventListener('click', openLeaderboard);
 
-  // COME SI GIOCA
-  document.getElementById('btn-howto')?.addEventListener('click', e => {
+  const openHowtoFromHome = (e) => {
     e.stopPropagation();
     showScreenView('howto');
-  });
+  };
+  const howtoHomeHit = document.querySelector('.home-bonus-floating.js-open-howto');
+  if (howtoHomeHit && howtoHomeHit.dataset.howtoBound !== '1') {
+    howtoHomeHit.dataset.howtoBound = '1';
+    howtoHomeHit.addEventListener('click', openHowtoFromHome);
+    howtoHomeHit.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openHowtoFromHome(e);
+      }
+    });
+  }
 
   document.getElementById('btn-home-profile')?.addEventListener('click', async e => {
     e.stopPropagation();
