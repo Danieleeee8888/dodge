@@ -45,9 +45,9 @@ import {
 
 let currentUserId = null;
 /** Username account (fisso, registrazione). */
-let currentUsername = '···';
+let currentUsername = '???';
 /** Nome in menu / classifica (modificabile in profilo). */
-let currentDisplayName = '···';
+let currentDisplayName = '???';
 let currentUserEmail = '';
 const GUEST_MODE_KEY = 'dodge_guest_mode';
 let guestModeEnabled = false;
@@ -143,7 +143,7 @@ function buildInstallNudgeText() {
   if (onAndroid) {
     return {
       title: 'Installa DODGE',
-      body: 'Consigliato: installa il gioco sulla Home per avvio diretto in modalità app.',
+      body: 'Consigliato: installa il gioco sulla Home per avvio diretto in modalit? app.',
       action: 'Installa ora',
       actionIsNativePrompt: true,
     };
@@ -161,7 +161,7 @@ function showInstallNudgeIfNeeded() {
   if (installNudgeEl) return;
   const onIOS = isIOSLike();
   const onAndroid = isAndroidLike();
-  // Android: mostra il nudge solo quando il browser conferma installabilità.
+  // Android: mostra il nudge solo quando il browser conferma installabilit?.
   if (onAndroid && !deferredInstallPrompt) return;
   // Altri browser non-iOS: evita falsi positivi senza segnale installabile.
   if (!onIOS && !onAndroid && !deferredInstallPrompt) return;
@@ -175,7 +175,7 @@ function showInstallNudgeIfNeeded() {
       <p class="install-nudge__text">${cfg.body}</p>
       <div class="install-nudge__actions">
         <button type="button" class="install-nudge__btn install-nudge__btn--primary">${cfg.action}</button>
-        <button type="button" class="install-nudge__btn install-nudge__btn--ghost">Più tardi</button>
+        <button type="button" class="install-nudge__btn install-nudge__btn--ghost">Pi? tardi</button>
       </div>
     </div>
   `;
@@ -204,7 +204,7 @@ window.addEventListener('appinstalled', () => {
   dismissInstallNudge();
 });
 
-/** Fullscreen “vero” sul documento quando supportato dal browser. */
+/** Fullscreen ?vero? sul documento quando supportato dal browser. */
 function isDocumentFullscreenUsable() {
   const root = document.documentElement;
   if (!root) return false;
@@ -271,7 +271,7 @@ function setupFullscreenAutostart() {
 /**
  * Pixel CSS disponibili per adattare il canvas. Usa sempre le dimensioni reali del viewport
  * (visualViewport se disponibile, altrimenti innerWidth/Height) per evitare che la shell
- * con max-width limiti la larghezza del canvas in modalità non-fullscreen.
+ * con max-width limiti la larghezza del canvas in modalit? non-fullscreen.
  */
 function getViewportForCanvasScale() {
   const vv = window.visualViewport;
@@ -328,7 +328,7 @@ let tx = -999, ty = -999;          // cursore target (dito/mouse)
 let fingerDown = false;
 /** Dopo una morte, impedisce restart immediato accidentale. */
 let startGameUnlockAt = 0;
-/** Touch: “telecomando” — tx/ty = pos giocatore all’ancora + (dito - punto tocco), non sotto il dito. */
+/** Touch: ?telecomando? ? tx/ty = pos giocatore all?ancora + (dito - punto tocco), non sotto il dito. */
 let touchAnchFx = 0, touchAnchFy = 0, touchAnchPx = 0, touchAnchPy = 0;
 let balls = [], parts = [], sparkles = [];
 let startTime, elapsed;
@@ -336,11 +336,11 @@ let level, baseTriangles, baseSquares, baseSpeed;
 let shieldActive, shieldEnd, slowActive, slowEnd;
 let greenModeActive = false, greenModeEnd = 0;
 let hasExtraLife = 0;
-/** Prossimo istante in cui può comparire il pallino viola (performance.now). */
+/** Prossimo istante in cui pu? comparire il pallino viola (performance.now). */
 let nextPurpleAt = 0;
 /** Espansione gialla rapida sui bianchi tolti dal bonus giallo. */
 let yellowPopAuras = [];
-/** Nuvoletta verde al rimpicciolimento (stesso stile dell’espansione gialla). */
+/** Nuvoletta verde al rimpicciolimento (stesso stile dell?espansione gialla). */
 let greenPopAuras = [];
 /** Testi tipo arcade (salita + fade). Coordinate spazio gioco. */
 let floatingTexts = [];
@@ -351,12 +351,12 @@ let firstBlueSpawned = false;
 let firstYellowSpawned = false;
 let firstGreenSpawned = false;
 let bgPhase, flash, flashCol;
-/** Rettangolo (cella griglia 3×3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
+/** Rettangolo (cella griglia 3?3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
 let aimSectorRect = { left: 0, right: 0, top: 0, bottom: 0 };
 let aimSectorNextElapsed = 0;
 /** Avvio partita: { phase: 0..2 ? numeri 3,2,1, phaseEnd: timestamp }. */
 let introCountdown = null;
-/** Conto alla rovescia dopo “ripresa” da pausa (scena visibile dietro). */
+/** Conto alla rovescia dopo ?ripresa? da pausa (scena visibile dietro). */
 let resumeCountdown = null;
 /** Timeout UI game over: va cancellato se si riparte prima che scada. */
 let deathUiTimeoutId = null;
@@ -369,10 +369,6 @@ let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
 function renderRecordsInto(el) {
   if (!el) return;
-  if (isGuestModeActive()) {
-    el.innerHTML = '';
-    return;
-  }
   const rec = getCachedLeaderboard();
   let body = '<h2>TOP 10 GLOBALE</h2><ol>';
   if (rec.length === 0) body += '<li class="rec-empty">nessun record ancora</li>';
@@ -394,7 +390,7 @@ function syncAudioCornerBtn() {
   audioCornerBtn.classList.toggle('audio-off', !audioEnabled);
   audioCornerBtn.setAttribute('aria-pressed', audioEnabled ? 'true' : 'false');
   audioCornerBtn.setAttribute('aria-label', audioEnabled ? 'Disattiva audio' : 'Attiva audio');
-  audioCornerBtn.title = audioEnabled ? 'Audio attivo — tocca per silenziare' : 'Audio spento — tocca per attivare';
+  audioCornerBtn.title = audioEnabled ? 'Audio attivo ? tocca per silenziare' : 'Audio spento ? tocca per attivare';
 }
 function bindAudioCornerBtn() {
   if (!audioCornerBtn || audioCornerBtn.dataset.bound === '1') return;
@@ -441,25 +437,45 @@ function hideScreen() {
 }
 
 async function setupProfileView() {
-  if (!currentUserId) return;
+  const viewProfile = document.getElementById('view-profile');
   const usernameEl = document.getElementById('profile-info-username');
   const bestEl = document.getElementById('profile-info-best');
   const displayInput = document.getElementById('profile-display-name');
   const emailEl = document.getElementById('profile-info-email');
   const msgEl = document.getElementById('profile-msg');
+  const guest = isGuestModeActive();
+
+  viewProfile?.classList.toggle('view-profile--guest', guest);
+  document.querySelector('.profile-guest-stack')?.setAttribute('aria-hidden', guest ? 'false' : 'true');
+  document.querySelector('.profile-account-only')?.setAttribute('aria-hidden', guest ? 'true' : 'false');
+
+  if (guest) {
+    if (usernameEl) usernameEl.textContent = 'Ospite (offline)';
+    if (emailEl) emailEl.textContent = '';
+    if (bestEl) bestEl.textContent = 'Miglior tempo personale: ? (solo sul dispositivo in questa sessione)';
+    if (displayInput) {
+      displayInput.value = '';
+      displayInput.disabled = true;
+    }
+    if (msgEl) msgEl.textContent = '';
+    return;
+  }
+
+  if (!currentUserId) return;
+  if (displayInput) displayInput.disabled = false;
   const profile = await getProfile(currentUserId).catch(() => null);
-  if (usernameEl) usernameEl.textContent = profile?.username || currentUsername || '···';
+  if (usernameEl) usernameEl.textContent = profile?.username || currentUsername || '???';
   if (emailEl) emailEl.textContent = currentUserEmail;
   if (msgEl) msgEl.textContent = '';
   const best = profile?.bestTime || 0;
   if (bestEl) {
     bestEl.textContent = best > 0
       ? `Miglior tempo personale: ${fmt(best)}`
-      : 'Miglior tempo personale: —';
+      : 'Miglior tempo personale: ?';
   }
   if (displayInput) {
     const d = resolveDisplayName(profile);
-    displayInput.value = d === '···' ? '' : d;
+    displayInput.value = d === '???' ? '' : d;
   }
 }
 
@@ -476,7 +492,6 @@ function bindHomeNav() {
 
   const openLeaderboard = (e) => {
     e.stopPropagation();
-    if (isGuestModeActive()) return;
     const lbEl = document.getElementById('records-block-lb');
     renderRecordsInto(lbEl);
     showScreenView('leaderboard');
@@ -492,9 +507,13 @@ function bindHomeNav() {
 
   document.getElementById('btn-home-profile')?.addEventListener('click', async e => {
     e.stopPropagation();
-    if (!currentUserId) return;
     await setupProfileView();
     showScreenView('profile');
+  });
+
+  document.getElementById('btn-profile-goto-auth')?.addEventListener('click', e => {
+    e.stopPropagation();
+    window.location.href = '/auth.html';
   });
 
   const btnSaveDisplay = document.getElementById('btn-save-display');
@@ -505,7 +524,7 @@ function bindHomeNav() {
       const msgEl = document.getElementById('profile-msg');
       const input = document.getElementById('profile-display-name');
       if (!input || !currentUserId) return;
-      if (msgEl) msgEl.textContent = 'Salvataggio…';
+      if (msgEl) msgEl.textContent = 'Salvataggio?';
       try {
         await updateDisplayName(currentUserId, input.value);
         const profile = await getProfile(currentUserId);
@@ -539,7 +558,7 @@ function bindHomeNav() {
     e.stopPropagation();
     const msgEl = document.getElementById('profile-msg');
     if (!msgEl) return;
-    msgEl.textContent = 'Invio…';
+    msgEl.textContent = 'Invio?';
     try {
       await sendPasswordResetEmail(auth, currentUserEmail);
       msgEl.textContent = 'Email inviata! Controlla la casella.';
@@ -565,10 +584,9 @@ function setupMenuUI() {
   const profileBtn = document.getElementById('btn-home-profile');
   if (isGuestModeActive()) {
     if (recEl) recEl.innerHTML = '';
-    if (lbEl) lbEl.innerHTML = '';
-    if (lbBtn) lbBtn.hidden = true;
-    if (profileBtn) profileBtn.hidden = true;
-    if (screen && !document.getElementById('view-leaderboard')?.hidden) showScreenView('home');
+    if (lbBtn) lbBtn.hidden = false;
+    if (profileBtn) profileBtn.hidden = false;
+    if (lbEl) renderRecordsInto(lbEl);
   } else {
     if (lbBtn) lbBtn.hidden = false;
     if (profileBtn) profileBtn.hidden = false;
@@ -917,7 +935,7 @@ function fmt(ms) {
 }
 function rand(a,b){ return a+Math.random()*(b-a); }
 
-// MOVEMENT + SHAPE — bianchi: solo triangolo (retto) e quadrato (spirale); cerchi solo bonus.
+// MOVEMENT + SHAPE ? bianchi: solo triangolo (retto) e quadrato (spirale); cerchi solo bonus.
 function pickWhiteMovementBalanced() {
   let nS = 0, nSp = 0;
   for (let i = 0; i < balls.length; i++) {
@@ -933,7 +951,7 @@ function pickWhiteMovementBalanced() {
   return pick[Math.floor(Math.random() * pick.length)];
 }
 
-// Speed multiplier widens with level: salita più graduale (stesso intervallo livelli).
+// Speed multiplier widens with level: salita pi? graduale (stesso intervallo livelli).
 function getSpeedMul(type) {
   if (type === 'red' || type === 'blue' || type === 'yellow' || type === 'green' || type === 'purple') {
     return rand(0.95, 1.28 + level * 0.065);
@@ -955,7 +973,7 @@ function paddedGridCellBounds(col, row) {
   };
 }
 
-/** Imposta aimSectorRect sulla cella 3×3 che contiene il cursore (fallback centro schermo). */
+/** Imposta aimSectorRect sulla cella 3?3 che contiene il cursore (fallback centro schermo). */
 function syncAimSectorToPlayer() {
   let cx = px, cy = py;
   if (cx < -200 || cy < -200) {
@@ -1120,7 +1138,7 @@ function applyGreenModeToWhites(enabled) {
   for (let i = 0; i < balls.length; i++) applyGreenModeToWhite(balls[i], enabled);
 }
 
-/** Lampeggio dopo il 3° contatto bordo, fino al 4° (poi il bonus sparisce). */
+/** Lampeggio dopo il 3? contatto bordo, fino al 4? (poi il bonus sparisce). */
 function bonusPickupBlinkMul(now, b) {
   if (!b || !isBonusCircle(b)) return 1;
   const c = b.bonusBounceCount || 0;
@@ -1200,14 +1218,14 @@ function constructWhiteBallOnce(opts) {
     b.cvx = vx; b.cvy = vy;
     const spiralRMin = Math.max(46, Math.min(W, H) * 0.078);
     b.orbR = rand(spiralRMin, Math.max(spiralRMin + 24, 130));
-    /* Tetto tangenziale più basso ai primi livelli (feedback: quadrati troppo veloci da subito); torna ~al vecchio 4.0 verso level 10. */
+    /* Tetto tangenziale pi? basso ai primi livelli (feedback: quadrati troppo veloci da subito); torna ~al vecchio 4.0 verso level 10. */
     const spiralTanMax = Math.min(4.0, 3.32 + level * 0.068);
     const tangentialSpeed = rand(1.2, spiralTanMax) * (1 + level * 0.04);
     b.omega = (tangentialSpeed / b.orbR) * (Math.random() < 0.5 ? -1 : 1);
-    /* Come al pickup blu su spiral già in campo: senza questo, a fine slow omega viene divisa e risulta troppo alta ("scatto"). */
+    /* Come al pickup blu su spiral gi? in campo: senza questo, a fine slow omega viene divisa e risulta troppo alta ("scatto"). */
     if (slowActive) b.omega *= SLOW_OMEGA_FACTOR;
     b.phase = Math.random() * Math.PI * 2;
-    // Il centro non può stare sul bordo con R grande: altrimenti il punto visibile nasce già nel campo.
+    // Il centro non pu? stare sul bordo con R grande: altrimenti il punto visibile nasce gi? nel campo.
     b.cx = x - Math.cos(b.phase) * b.orbR;
     b.cy = y - Math.sin(b.phase) * b.orbR;
     b.x = x;
@@ -1306,7 +1324,7 @@ function burstPufWhitesBlue() {
   }
 }
 
-/** Particelle verdi su ogni bianco: modalità verde on / off. */
+/** Particelle verdi su ogni bianco: modalit? verde on / off. */
 function burstPufWhitesGreen() {
   for (let i = 0; i < balls.length; i++) {
     const wb = balls[i];
@@ -1502,16 +1520,16 @@ function die() {
       const user = auth.currentUser;
       if (!user || !user.emailVerified) {
         // Email non verificata: mostra avviso, non tentare il salvataggio
-        if (recEl) recEl.innerHTML = '<p class="rec-saving">verifica l\'email per salvare i record — controlla anche lo spam</p>';
+        if (recEl) recEl.innerHTML = '<p class="rec-saving">verifica l\'email per salvare i record ? controlla anche lo spam</p>';
       } else {
-        if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio···</p>';
+        if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio???</p>';
         applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed);
         renderRecordsInto(recEl);
         const result = await saveScore(currentUserId, diedElapsed);
         if (!result || !result.ok) {
           const msg = result?.reason === 'permission'
             ? 'verifica l\'email per salvare i record'
-            : 'errore di rete — punteggio non salvato';
+            : 'errore di rete ? punteggio non salvato';
           if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
         } else {
           if (result.improved && result.inTop10) {
@@ -1558,7 +1576,7 @@ function togglePause() {
   applyIntroCdVisual(3, 'r');
 }
 
-// INPUT — coordinate schermo ? area di gioco fissa (stesso bounding del canvas scalato)
+// INPUT ? coordinate schermo ? area di gioco fissa (stesso bounding del canvas scalato)
 function clientToGame(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
   const rw = Math.max(1e-6, r.width);
@@ -1581,7 +1599,7 @@ function clampPlayerTarget(cx, cy) {
     Math.min(H - m, Math.max(m, cy)),
   ];
 }
-/** Spawn: centro orizzontale, circa un terzo dall’alto (zona alta del campo). */
+/** Spawn: centro orizzontale, circa un terzo dall?alto (zona alta del campo). */
 function getPlayerSpawnXY() {
   return clampPlayerTarget(W * 0.5, H / 3);
 }
@@ -1591,8 +1609,8 @@ function applyTouchRelativeTarget(fx, fy) {
   const [cx, cy] = clampPlayerTarget(nx, ny);
   tx = cx;
   ty = cy;
-  /* Se il bordo ha “tagliato” il movimento, l’ancora deve seguire il dito: altrimenti il delta
-   * accumula slop oltre il limite e al ritorno dal bordo c’è ritardo. */
+  /* Se il bordo ha ?tagliato? il movimento, l?ancora deve seguire il dito: altrimenti il delta
+   * accumula slop oltre il limite e al ritorno dal bordo c?? ritardo. */
   const slip = 1e-4;
   if (Math.abs(nx - cx) > slip || Math.abs(ny - cy) > slip) {
     touchAnchFx = fx;
@@ -1715,7 +1733,7 @@ function drawShape(b, x, y, r, alpha) {
   ctx.globalAlpha = 1;
 }
 
-/** Raggio “morso” del giocatore attorno a (px,py), come il vecchio hitR = b.r + 20 */
+/** Raggio ?morso? del giocatore attorno a (px,py), come il vecchio hitR = b.r + 20 */
 const PLAYER_HIT_R = 20;
 
 function circleHitsPlayer(b, px, py) {
@@ -1880,7 +1898,7 @@ function loop(now){
 
   elapsed = now - startTime;
 
-  // cursor lerp — traslazione anziché teletrasporto
+  // cursor lerp ? traslazione anzich? teletrasporto
   if (tx > -200) {
     const k = Math.min(1, CURSOR_LERP * dt);
     px += (tx - px) * k;
@@ -1907,7 +1925,7 @@ function loop(now){
     }
   }
 
-  // spawn bonus — tempi in `constants.js` (primo spawn / intervalli successivi)
+  // spawn bonus ? tempi in `constants.js` (primo spawn / intervalli successivi)
   if (!firstRedSpawned && elapsed >= RED_BONUS_FIRST_SPAWN_MS) {
     firstRedSpawned = true;
     lastRed = now;
@@ -2056,7 +2074,7 @@ function loop(now){
           removeThirdOfWhites(true);
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
-          // Non usare `i`: removeThirdOfWhites ha già mutato `balls`, l’indice del giallo è cambiato.
+          // Non usare `i`: removeThirdOfWhites ha gi? mutato `balls`, l?indice del giallo ? cambiato.
           const yi = balls.indexOf(b);
           if (yi !== -1) balls.splice(yi, 1);
           continue;
@@ -2064,7 +2082,7 @@ function loop(now){
         if (b.type === 'purple') {
           hasExtraLife = Math.min(3, hasExtraLife + 1);
           if (audioEnabled) playSoundBonus('purple');
-          spawnFloatingText(b.x, b.y, 'VITA IN PIÙ', '#e9d5ff');
+          spawnFloatingText(b.x, b.y, 'VITA IN PI?', '#e9d5ff');
           burst(b.x, b.y, '#e9d5ff', 24);
           burst(b.x, b.y, '#a855f7', 20);
           flash = 0.38; flashCol = 'rgba(168,85,247,0.22)';
@@ -2426,6 +2444,7 @@ onAuthStateChanged(auth, async (user) => {
       currentUserEmail = '';
       currentUsername = 'ospite';
       currentDisplayName = 'OSPITE OFFLINE';
+      await fetchLeaderboard(10).catch(() => {});
     }
   }
 
@@ -2437,7 +2456,7 @@ onAuthStateChanged(auth, async (user) => {
     currentUserId = user.uid;
     currentUserEmail = user.email || '';
     const profile = await getProfile(user.uid).catch(() => null);
-    currentUsername = profile?.username || user.email || '···';
+    currentUsername = profile?.username || user.email || '???';
     currentDisplayName = resolveDisplayName(profile);
     await fetchLeaderboard(10).catch(() => {});
   }

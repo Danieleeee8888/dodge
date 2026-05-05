@@ -101,6 +101,11 @@
     <h2 class="view-title">PROFILO</h2>
     <p class="profile-info profile-info--dim"><span class="profile-label">Username</span> <span id="profile-info-username" class="profile-mono"></span></p>
     <p id="profile-info-best" class="profile-info"></p>
+    <div class="profile-guest-stack">
+      <p class="profile-info profile-info--dim">Stai giocando senza account. La classifica globale è visibile da tutti; per salvare i tempi online e comparire tra i giocatori serve accedere.</p>
+      <button type="button" id="btn-profile-goto-auth" class="home-btn js-no-start">Accedi o registrati</button>
+    </div>
+    <div class="profile-account-only">
     <label for="profile-display-name" class="profile-label-row">Nome visualizzato</label>
     <div class="profile-display-row">
       <input type="text" id="profile-display-name" class="profile-display-input js-no-start" maxlength="24" autocomplete="nickname" enterkeyhint="done" />
@@ -108,8 +113,9 @@
     </div>
     <p class="profile-hint profile-info--dim">Compare in classifica; l’username account resta quello scelto alla registrazione.</p>
     <p id="profile-info-email" class="profile-info profile-info--dim"></p>
-    <button id="btn-reset-pw" class="home-btn js-no-start">RESET PASSWORD</button>
-    <button id="btn-logout"   class="home-btn home-btn--danger js-no-start">ESCI</button>
+    <button type="button" id="btn-reset-pw" class="home-btn js-no-start">RESET PASSWORD</button>
+    <button type="button" id="btn-logout" class="home-btn home-btn--danger js-no-start">ESCI</button>
+    </div>
     <p id="profile-msg" class="profile-msg"></p>
   </div>
 

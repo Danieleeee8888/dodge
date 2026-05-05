@@ -1080,6 +1080,16 @@ canvas {
   font-size:0.72rem; letter-spacing:0.1em; color:rgba(255,255,255,0.55);
   text-align:center; min-height:1.2em;
 }
+.profile-guest-stack {
+  display:none; flex-direction:column; align-items:center; gap:0.65rem;
+  width:min(20rem, calc(100% - 2rem)); margin:0.75rem auto 0; text-align:center;
+}
+.view-profile--guest .profile-guest-stack {
+  display:flex;
+}
+.view-profile--guest .profile-account-only {
+  display:none !important;
+}
 
 /* Come si gioca */
 .howto-body {
