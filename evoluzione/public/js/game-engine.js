@@ -149,6 +149,12 @@ function buildInstallNudgeText() {
 function showInstallNudgeIfNeeded() {
   if (isStandaloneLike()) return;
   if (installNudgeEl) return;
+  const onIOS = isIOSLike();
+  const onAndroid = isAndroidLike();
+  // Android: mostra il nudge solo quando il browser conferma installabilità.
+  if (onAndroid && !deferredInstallPrompt) return;
+  // Altri browser non-iOS: evita falsi positivi senza segnale installabile.
+  if (!onIOS && !onAndroid && !deferredInstallPrompt) return;
 
   const cfg = buildInstallNudgeText();
   const wrap = document.createElement('div');
@@ -182,6 +188,7 @@ function showInstallNudgeIfNeeded() {
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredInstallPrompt = e;
+  showInstallNudgeIfNeeded();
 });
 window.addEventListener('appinstalled', () => {
   dismissInstallNudge();
