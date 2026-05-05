@@ -116,34 +116,16 @@ function syncDodgeShellFullscreenClass() {
 }
 
 /**
- * Pixel CSS disponibili per adattare il canvas (contain). Su telefono la #dodgeShell a volte
- * riporta un’altezza inferiore al visualViewport → scala limitata dall’altezza e bande nere ai lati
- * (“campo più stretto dello schermo”). Alziamo solo l’altezza effettiva con visualViewport;
- * la larghezza resta quella della shell.
+ * Pixel CSS disponibili per adattare il canvas. Usa sempre le dimensioni reali del viewport
+ * (visualViewport se disponibile, altrimenti innerWidth/Height) per evitare che la shell
+ * con max-width limiti la larghezza del canvas in modalità non-fullscreen.
  */
 function getViewportForCanvasScale() {
-  const shell = dodgeShell;
   const vv = window.visualViewport;
-  let winW = window.innerWidth;
-  let winH = window.innerHeight;
-  let vx = 0;
-  let vy = 0;
-  if (shell && shell.isConnected) {
-    const br = shell.getBoundingClientRect();
-    winW = Math.max(1, br.width);
-    winH = Math.max(1, br.height);
-    vx = 0;
-    vy = 0;
-    if (vv && vv.height > 0 && vv.height > winH) {
-      winH = vv.height;
-    }
-  } else if (vv && vv.width > 0 && vv.height > 0) {
-    winW = vv.width;
-    winH = vv.height;
-    vx = vv.offsetLeft || 0;
-    vy = vv.offsetTop || 0;
+  if (vv && vv.width > 0 && vv.height > 0) {
+    return { winW: vv.width, winH: vv.height, vx: vv.offsetLeft || 0, vy: vv.offsetTop || 0 };
   }
-  return { winW, winH, vx, vy };
+  return { winW: window.innerWidth, winH: window.innerHeight, vx: 0, vy: 0 };
 }
 
 function resize() {

@@ -361,18 +361,12 @@ input:focus {
 #dodgeShell.dodge-shell {
   position:relative;
   width:100%;
-  max-width:min(100%, var(--dodge-shell-max-px, 430px));
   margin:0 auto;
   min-height:100%; min-height:100svh; min-height:100dvh;
   height:100svh; height:100dvh;
   max-height:100svh; max-height:100dvh;
   transform:translateZ(0);
   box-sizing:border-box;
-}
-#dodgeShell.dodge-shell.dodge-shell--fullscreen {
-  max-width:none; width:100%;
-  min-height:100%; min-height:100svh; min-height:100dvh;
-  height:100svh; height:100dvh; max-height:none;
 }
 canvas {
   display:block; position:fixed;
@@ -809,6 +803,15 @@ canvas {
 .home-btn--mode-off {
   opacity:0.45;
   cursor:not-allowed;
+}
+.home-bonus-section {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:0.55rem;
+  margin-top:auto;
+  margin-bottom:auto;
+  padding:0 max(1rem, env(safe-area-inset-left));
 }
 .home-hint-block {
   margin-top:auto;
