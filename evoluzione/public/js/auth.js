@@ -17,9 +17,14 @@ import { usernameExists, claimUsername, getProfile } from './profile.js';
 const GUEST_MODE_KEY = 'dodge_guest_mode';
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
-const redirectSignInPromise = authPersistenceReady
-  .then(() => getRedirectResult(auth))
-  .catch(() => null);
+const redirectSignInPromise = authPersistenceReady.then(async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    return { user: result?.user || null, error: null };
+  } catch (error) {
+    return { user: null, error };
+  }
+});
 
 // ── viste ──────────────────────────────────────────────────────────────────
 const $v = {
@@ -77,6 +82,8 @@ function errText(err) {
     'auth/popup-blocked':           'Popup bloccato dal browser. Riprova o abilita i popup.',
     'auth/cancelled-popup-request': 'Accesso Google annullato.',
     'auth/account-exists-with-different-credential': 'Questa email è già associata a un altro metodo di accesso.',
+    'auth/operation-not-allowed': 'Accesso Google non abilitato nel progetto Firebase.',
+    'auth/unauthorized-domain': 'Dominio non autorizzato per Google Sign-In.',
     'USERNAME_TAKEN':               'Username già in uso. Scegline un altro.',
     'GOOGLE_SESSION_NOT_READY':    'Accesso Google riuscito ma sessione non pronta. Riprova tra un secondo.',
   };
@@ -315,6 +322,11 @@ document.getElementById('btn-resend').addEventListener('click', async () => {
 onAuthStateChanged(auth, async (user) => {
   await authPersistenceReady;
   const redirectResult = await redirectSignInPromise;
+  if (redirectResult?.error) {
+    setMsg('login', errText(redirectResult.error));
+    showView('login');
+    return;
+  }
   if (redirectResult?.user) {
     try {
       await completeGoogleSignIn(redirectResult.user);
