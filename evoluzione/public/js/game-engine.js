@@ -281,7 +281,21 @@ function getViewportForCanvasScale() {
   return { winW: window.innerWidth, winH: window.innerHeight, vx: 0, vy: 0 };
 }
 
+/** Offset tra layout viewport e visual viewport (gesture Android, barre dinamiche). */
+function syncVisualViewportInsetCssVars() {
+  const vv = window.visualViewport;
+  let gapBottom = 0;
+  let gapTop = 0;
+  if (vv && vv.width > 0 && vv.height > 0) {
+    gapBottom = Math.max(0, window.innerHeight - vv.offsetTop - vv.height);
+    gapTop = Math.max(0, vv.offsetTop);
+  }
+  document.documentElement.style.setProperty('--vv-layout-gap-bottom', `${gapBottom}px`);
+  document.documentElement.style.setProperty('--vv-layout-gap-top', `${gapTop}px`);
+}
+
 function resize() {
+  syncVisualViewportInsetCssVars();
   if (!canvas) return;
   const { winW, winH, vx, vy } = getViewportForCanvasScale();
   W = FIXED_GAME_W;

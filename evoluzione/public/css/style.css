@@ -6,6 +6,11 @@ html {
   height: 100%;
 }
 
+:root {
+  --vv-layout-gap-bottom: 0px;
+  --vv-layout-gap-top: 0px;
+}
+
 html, body {
   min-height: 100%;
   min-height: 100dvh;
@@ -442,25 +447,61 @@ canvas {
 #hud .hud-time  { white-space:nowrap; }
 #hud .hud-nb    { white-space:nowrap; opacity:0.92; }
 
-/* ── CORNER BUTTONS (home morte · audio) ────────────────────────────────── */
-#audioCornerBtn, #homeCornerBtn {
+/* ── CORNER CHROME: audio alto dx · home morte centro basso ─────────────── */
+#audioCornerBtn {
   position:fixed;
-  bottom:max(14px, env(safe-area-inset-bottom));
-  z-index:25; pointer-events:auto; touch-action:manipulation;
+  top:calc(max(12px, env(safe-area-inset-top)) + var(--vv-layout-gap-top, 0px));
+  right:max(14px, env(safe-area-inset-right));
+  bottom:auto;
+  left:auto;
+  z-index:26;
+  pointer-events:auto;
+  touch-action:manipulation;
+  width:max(52px, calc(54px * var(--ui-scale)));
+  height:max(52px, calc(54px * var(--ui-scale)));
+  padding:0;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,0.28);
+  background:rgba(0,0,0,0.42);
+  color:#fff;
+  font-family:inherit;
+  font-size:1.12rem;
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 4px 18px rgba(0,0,0,0.4);
+}
+#audioCornerBtn.audio-on  { color:#4ade80; border-color:rgba(74,222,128,0.5); text-shadow:0 0 12px rgba(74,222,128,0.5); }
+#audioCornerBtn.audio-off { color:#f87171; border-color:rgba(248,113,113,0.5); text-shadow:0 0 12px rgba(248,113,113,0.45); }
+#audioCornerBtn.audio-corner--hidden { display:none !important; }
+
+#homeCornerBtn {
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(max(14px, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
+  z-index:25;
+  pointer-events:auto;
+  touch-action:manipulation;
   width:max(44px, calc(48px * var(--ui-scale)));
   height:max(44px, calc(48px * var(--ui-scale)));
-  padding:0; border-radius:50%;
-  border:1px solid rgba(255,255,255,0.28);
-  background:rgba(0,0,0,0.35); color:#fff;
-  font-family:inherit; font-size:1.15rem; line-height:1;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  padding:0;
+  border-radius:50%;
+  border:1px solid rgba(253,224,71,0.42);
+  background:rgba(0,0,0,0.35);
+  color:#fde68a;
+  font-family:inherit;
+  font-size:1.18rem;
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   -webkit-tap-highlight-color:transparent;
   box-shadow:0 4px 18px rgba(0,0,0,0.35);
-}
-#homeCornerBtn {
-  left:50%; transform:translateX(-50%);
-  font-size:1.18rem; color:#fde68a;
-  border-color:rgba(253,224,71,0.42);
   text-shadow:0 0 12px rgba(253,224,71,0.45);
 }
 #homeCornerBtn:active {
@@ -468,10 +509,6 @@ canvas {
   border-color:rgba(253,224,71,0.55);
 }
 #homeCornerBtn.home-corner--hidden { display:none !important; }
-#audioCornerBtn    { right:max(12px, env(safe-area-inset-right)); font-size:1.15rem; }
-#audioCornerBtn.audio-on  { color:#4ade80; border-color:rgba(74,222,128,0.45); text-shadow:0 0 12px rgba(74,222,128,0.5); }
-#audioCornerBtn.audio-off { color:#f87171; border-color:rgba(248,113,113,0.45); text-shadow:0 0 12px rgba(248,113,113,0.45); }
-#audioCornerBtn.audio-corner--hidden { display:none; }
 
 /* ── INSTALL NUDGE (primo avvio da browser) ─────────────────────────────── */
 #installNudge {
@@ -611,7 +648,7 @@ canvas {
   --menu-stack-h:5.85rem;
   justify-content:flex-start;
   padding-top:max(0.5rem, env(safe-area-inset-top, 0px));
-  padding-bottom:max(4.75rem, calc(env(safe-area-inset-bottom, 0px) + 3.25rem));
+  padding-bottom:calc(max(4.75rem, env(safe-area-inset-bottom, 0px) + 3.25rem) + var(--vv-layout-gap-bottom, 0px));
   padding-left:0; padding-right:0; box-sizing:border-box;
 }
 #screen:not(.screen-death) .menu-mid-layer { flex:1; min-height:0; width:100%; position:relative; }
@@ -708,6 +745,10 @@ canvas {
   max-width:min(22.5rem, calc(100% - 1.5rem)); padding:0 12px; box-sizing:border-box;
 }
 #screen.screen-death { background:#000; justify-content:center; align-items:center; }
+/* Spazio per ⌂ fissa in basso + gesture Android (visual viewport) */
+#view-death.screen-view {
+  padding-bottom:calc(max(1.35rem, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px) + 3.85rem);
+}
 #screen .death-sub {
   color:rgba(255,255,255,0.5); font-size:0.78rem; letter-spacing:0.16em;
   margin:-0.35rem 0 1.1rem; text-align:center; width:100%; max-width:100%;
@@ -797,14 +838,14 @@ canvas {
   justify-content:flex-start;
   gap:0;
   padding-top:max(3.65rem, calc(env(safe-area-inset-top, 0px) + 3rem));
-  padding-bottom:max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem));
+  padding-bottom:calc(max(5.5rem, env(safe-area-inset-bottom, 0px) + 4.5rem) + var(--vv-layout-gap-bottom, 0px));
   padding-left:max(1.1rem, env(safe-area-inset-left));
   padding-right:max(1.1rem, env(safe-area-inset-right));
   min-height:100dvh;
 }
 .home-top-btn {
   position:fixed;
-  top:max(12px, env(safe-area-inset-top));
+  top:calc(max(12px, env(safe-area-inset-top)) + var(--vv-layout-gap-top, 0px));
   z-index:26;
   width:max(52px, calc(54px * var(--ui-scale)));
   height:max(52px, calc(54px * var(--ui-scale)));
@@ -825,11 +866,52 @@ canvas {
 }
 .home-top-btn--records {
   left:max(14px, env(safe-area-inset-left));
+  color:#fde68a;
+  border-color:rgba(253,224,71,0.55);
+  background:rgba(253,224,71,0.08);
+  box-shadow:0 2px 14px rgba(0,0,0,0.4), 0 0 18px rgba(253,224,71,0.22);
 }
-.home-top-btn--profile {
-  right:max(14px, env(safe-area-inset-right));
+.home-top-btn--records:active {
+  background:rgba(253,224,71,0.18);
+  border-color:rgba(253,224,71,0.85);
+  color:#fffbeb;
 }
 .home-top-icon {
+  width:1.42rem;
+  height:1.42rem;
+  display:block;
+  opacity:0.95;
+}
+
+/* Profilo: angolo basso dx (visibile solo con #view-home) */
+.home-dock-btn {
+  position:fixed;
+  bottom:calc(max(14px, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
+  right:max(14px, env(safe-area-inset-right));
+  z-index:26;
+  width:max(52px, calc(54px * var(--ui-scale)));
+  height:max(52px, calc(54px * var(--ui-scale)));
+  padding:0;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,0.22);
+  background:rgba(0,0,0,0.42);
+  color:rgba(255,255,255,0.88);
+  font-family:inherit;
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  box-shadow:0 2px 14px rgba(0,0,0,0.4);
+  touch-action:manipulation;
+}
+.home-dock-btn:active {
+  background:rgba(255,255,255,0.08);
+  border-color:rgba(255,255,255,0.38);
+  color:#fff;
+}
+.home-dock-icon {
   width:1.42rem;
   height:1.42rem;
   display:block;
@@ -946,7 +1028,7 @@ canvas {
   display:flex;
   flex-direction:column;
   align-items:center;
-  padding-bottom:max(0.35rem, env(safe-area-inset-bottom));
+  padding-bottom:calc(max(0.35rem, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
   max-width:min(20rem, 100%);
 }
 .home-howto-link {
@@ -1018,13 +1100,13 @@ canvas {
 /* Indietro rotondo (classifica / profilo / come si gioca) */
 .screen-view--sub {
   padding-top:max(4.65rem, calc(env(safe-area-inset-top, 0px) + 3.4rem));
-  padding-bottom:max(1.4rem, env(safe-area-inset-bottom));
+  padding-bottom:calc(max(1.4rem, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
   justify-content:flex-start;
   gap:0.75rem;
 }
 .subview-round-back {
   position:fixed;
-  top:max(12px, env(safe-area-inset-top));
+  top:calc(max(12px, env(safe-area-inset-top)) + var(--vv-layout-gap-top, 0px));
   left:max(14px, env(safe-area-inset-left));
   z-index:26;
   width:max(52px, calc(54px * var(--ui-scale)));
