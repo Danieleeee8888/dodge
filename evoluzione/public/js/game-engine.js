@@ -307,6 +307,18 @@ function syncVisualViewportInsetCssVars() {
   document.documentElement.style.setProperty('--vv-layout-gap-top', `${gapTop}px`);
 }
 
+/** Dopo login / PWA: alcuni browser aggiornano visualViewport in ritardo; forza pi? passate di resize. */
+function scheduleViewportSync() {
+  resize();
+  requestAnimationFrame(() => resize());
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => resize());
+  });
+  setTimeout(() => resize(), 48);
+  setTimeout(() => resize(), 160);
+  setTimeout(() => resize(), 420);
+}
+
 function resize() {
   syncVisualViewportInsetCssVars();
   if (!canvas) return;
@@ -323,10 +335,14 @@ function resize() {
   canvas.style.left = vx + (winW - dispW) * 0.5 + 'px';
   canvas.style.top = vy + (winH - dispH) * 0.5 + 'px';
   document.documentElement.style.setProperty('--ui-scale', String(scale));
+  /** Cerchi bonus sul canvas: raggio HAZARD_R ? diametro in px CSS come sul canvas scalato. */
+  document.documentElement.style.setProperty('--bonus-dot-size', `${2 * HAZARD_R * scale}px`);
+  document.documentElement.style.setProperty('--bonus-dot-gap', `${Math.round(Math.max(10, 18 * scale))}px`);
 }
 resize();
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => { setTimeout(resize, 120); });
+window.addEventListener('pageshow', () => scheduleViewportSync());
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', resize);
   window.visualViewport.addEventListener('scroll', resize);
@@ -2492,6 +2508,8 @@ onAuthStateChanged(auth, async (user) => {
     loader.style.display = 'none';
     loader.removeAttribute('aria-busy');
   }
+
+  scheduleViewportSync();
 
   showInstallNudgeIfNeeded();
   setupFullscreenAutostart();

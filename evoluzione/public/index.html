@@ -19,8 +19,12 @@
 <body>
 
 <div id="authLoading" class="loading-screen" aria-busy="true" aria-live="polite">
-  <div class="loading-screen__dots" aria-hidden="true">
-    <span></span><span></span><span></span><span></span><span></span>
+  <div class="menu-bonus-dots menu-bonus-dots--mid-screen" aria-hidden="true">
+    <span class="menu-bonus-dot menu-bonus-dot--red"></span>
+    <span class="menu-bonus-dot menu-bonus-dot--blue"></span>
+    <span class="menu-bonus-dot menu-bonus-dot--yellow"></span>
+    <span class="menu-bonus-dot menu-bonus-dot--green"></span>
+    <span class="menu-bonus-dot menu-bonus-dot--purple"></span>
   </div>
 </div>
 
@@ -67,7 +71,6 @@
     </button>
     <header class="home-hero">
       <h1 class="screen-logo"><span class="screen-logo__text">DODGE</span></h1>
-      <div class="home-title-dots" aria-hidden="true"><span></span><span></span><span></span></div>
       <p class="menu-player-name" id="menuPlayerName">···</p>
     </header>
     <nav class="home-nav home-nav--modes home-nav--row" aria-label="Modalità di gioco">
@@ -75,8 +78,8 @@
       <button id="btn-coop"   class="home-btn home-btn--mode home-btn--mode-off js-no-start" type="button" disabled>CO&#8209;OP<span class="badge-soon" aria-hidden="true">presto</span></button>
       <button id="btn-1v1"    class="home-btn home-btn--mode home-btn--mode-off js-no-start" type="button" disabled>1&#8209;VS&#8209;1<span class="badge-soon" aria-hidden="true">presto</span></button>
     </nav>
-    <div class="home-bonus-section" aria-hidden="true">
-      <div class="menu-bonus-dots">
+    <div class="home-bonus-floating">
+      <div class="menu-bonus-dots" aria-hidden="true">
         <span class="menu-bonus-dot menu-bonus-dot--red"></span>
         <span class="menu-bonus-dot menu-bonus-dot--blue"></span>
         <span class="menu-bonus-dot menu-bonus-dot--yellow"></span>
