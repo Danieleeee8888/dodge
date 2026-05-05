@@ -53,7 +53,7 @@ evoluzione/
 - `auth.html`: registrazione, verifica email, login, reset password.
 - `auth.html`: registrazione, verifica email, login email/password, accesso Google, reset password.
 - `index.html` + `game-engine.js`: gioco con auth guard e home screen.
-- **Home:** **DODGE** + nome in fascia alta (logo abbassato verso i pallini); pallini + tagline compatti (tap → **`view-howto`**); due **`home-modes-spacer`** (`flex:1`) centrano la riga modalità tra fine tagline e area pulsanti tondi; ordine pulsanti **CO‑OP | GIOCA | 1‑VS‑1** (GIOCA centro, più alto). **Basso:** audio | classifica | profilo.
+- **Home:** **DODGE** + nome in fascia alta (logo abbassato verso i pallini); pallini + tagline solo sulla zona **`home-howto-hitbox`** (tap → **`view-howto`**, non tutta la fascia); due **`home-modes-spacer`** (`flex:1`) centrano la riga modalità tra fine tagline e area pulsanti tondi; ordine pulsanti **CO‑OP | GIOCA | 1‑VS‑1** (GIOCA centro, più alto). **Basso:** audio | classifica | profilo.
 - **Caricamento auth:** `#authLoading` con la **stessa riga pallini** classi `menu-bonus-dot` e posizione centrale come la home.
 - **Classifica da home** (`view-leaderboard`): solo **⌂** viola **centrato** in basso; **nessun** audio. **Profilo:** idem. **Come si gioca** (`view-howto`): solo **⌂** viola centrato (come classifica); **nessun** audio.
 - **Death screen:** solo **⌂** viola centrato in basso (**nessun** audio), **stesse dimensioni** degli altri ⌂ (52–54px scala UI); tap ovunque per riprovare.

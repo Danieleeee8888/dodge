@@ -547,7 +547,7 @@ function bindHomeNav() {
     e.stopPropagation();
     showScreenView('howto');
   };
-  const howtoHomeHit = document.querySelector('.home-bonus-floating.js-open-howto');
+  const howtoHomeHit = document.querySelector('.home-howto-hitbox.js-open-howto');
   if (howtoHomeHit && howtoHomeHit.dataset.howtoBound !== '1') {
     howtoHomeHit.dataset.howtoBound = '1';
     howtoHomeHit.addEventListener('click', openHowtoFromHome);

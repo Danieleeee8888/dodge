@@ -723,25 +723,37 @@ canvas {
 
 .home-bonus-floating {
   position:relative;
-  left:auto;
-  top:auto;
-  transform:none;
-  z-index:21;
   flex:0 0 auto;
   display:flex;
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:0.65rem;
-  width:min(22rem, calc(100vw - 2rem));
+  width:100%;
   min-height:0;
-  padding:0.35rem max(1rem, env(safe-area-inset-left)) 0.35rem max(1rem, env(safe-area-inset-right));
   box-sizing:border-box;
-  pointer-events:auto;
+}
+
+/** Solo pallini + tagline aprono le istruzioni (no fascia larga trasparente). */
+.home-howto-hitbox {
+  display:inline-flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:0.65rem;
+  max-width:min(22rem, calc(100vw - 2rem));
+  padding:0.35rem 0.5rem;
+  box-sizing:border-box;
   cursor:pointer;
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
   border-radius:0.85rem;
+}
+.home-howto-hitbox:active {
+  opacity:0.88;
+}
+.home-howto-hitbox:focus-visible {
+  outline:2px solid rgba(147,197,253,0.65);
+  outline-offset:4px;
 }
 
 .home-modes-spacer {
@@ -750,14 +762,6 @@ canvas {
   width:100%;
   pointer-events:none;
 }
-.home-bonus-floating:active {
-  opacity:0.88;
-}
-.home-bonus-floating:focus-visible {
-  outline:2px solid rgba(147,197,253,0.65);
-  outline-offset:4px;
-}
-
 #screen .menu-tagline {
   margin:0; padding:0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
   color:rgba(255,255,255,0.88); font-size:clamp(0.78rem, 2.8vmin, 0.9rem);
