@@ -21,19 +21,6 @@ const redirectSignInPromise = authPersistenceReady
   .then(() => getRedirectResult(auth))
   .catch(() => null);
 
-const debugLogEl = document.getElementById('auth-debug-log');
-function debugAuth(label, info = {}) {
-  try {
-    const stamp = new Date().toLocaleTimeString();
-    const txt = `[${stamp}] ${label} ${JSON.stringify(info)}`;
-    if (debugLogEl) {
-      debugLogEl.textContent = `${txt}\n${debugLogEl.textContent || ''}`.slice(0, 1200);
-      debugLogEl.style.display = 'block';
-    }
-    console.log('[auth-debug]', label, info);
-  } catch {}
-}
-
 // ── viste ──────────────────────────────────────────────────────────────────
 const $v = {
   login:    document.getElementById('view-login'),
@@ -147,23 +134,14 @@ async function ensureGoogleProfile(user) {
 }
 
 async function completeGoogleSignIn(user) {
-  debugAuth('completeGoogleSignIn:start', {
-    uid: user?.uid,
-    email: user?.email,
-    verified: user?.emailVerified,
-    providers: (user?.providerData || []).map((p) => p?.providerId),
-  });
   try {
     await ensureGoogleProfile(user);
-    debugAuth('completeGoogleSignIn:profile-ok');
   } catch (err) {
     // Non bloccare l'accesso al gioco se il bootstrap profilo fallisce:
     // il profilo può essere completato in un secondo momento.
     console.warn('google-profile-bootstrap:', err);
-    debugAuth('completeGoogleSignIn:profile-warn', { code: err?.code, msg: err?.message });
   }
   sessionStorage.removeItem(GUEST_MODE_KEY);
-  debugAuth('completeGoogleSignIn:redirect /index.html');
   window.location.href = '/index.html';
 }
 
@@ -238,16 +216,13 @@ document.getElementById('btn-google-login')?.addEventListener('click', async () 
     await authPersistenceReady;
     if (shouldUseRedirectForGoogle()) {
       sessionStorage.removeItem(GUEST_MODE_KEY);
-      debugAuth('google-login:redirect-flow');
       await signInWithRedirect(auth, googleProvider);
       return;
     }
-    debugAuth('google-login:popup-flow');
     const { user } = await signInWithPopup(auth, googleProvider);
     await completeGoogleSignIn(user);
   } catch (err) {
     console.error('google-login:', err);
-    debugAuth('google-login:error', { code: err?.code, msg: err?.message });
     setMsg('login', errText(err));
   } finally {
     setLoading('btn-google-login', false);
@@ -327,24 +302,11 @@ document.getElementById('btn-resend').addEventListener('click', async () => {
 // ── STATO AUTH: se già loggato e verificato → vai al gioco ────────────────
 onAuthStateChanged(auth, async (user) => {
   await authPersistenceReady;
-  debugAuth('auth.html:onAuthStateChanged', {
-    hasUser: !!user,
-    uid: user?.uid,
-    email: user?.email,
-    verified: user?.emailVerified,
-    providers: (user?.providerData || []).map((p) => p?.providerId),
-  });
   const redirectResult = await redirectSignInPromise;
-  if (redirectResult?.user) {
-    debugAuth('auth.html:redirectResult', {
-      uid: redirectResult.user.uid,
-      email: redirectResult.user.email,
-    });
-    try {
+  if (redirectResult?.user) {    try {
       await completeGoogleSignIn(redirectResult.user);
       return;
     } catch (err) {
-      debugAuth('auth.html:redirectResult:error', { code: err?.code, msg: err?.message });
       setMsg('login', errText(err));
       showView('login');
       return;
@@ -357,14 +319,12 @@ onAuthStateChanged(auth, async (user) => {
       try {
         await completeGoogleSignIn(user);
       } catch (err) {
-        debugAuth('auth.html:complete-google:error', { code: err?.code, msg: err?.message });
         setMsg('login', errText(err));
         showView('login');
       }
       return;
     }
     sessionStorage.removeItem(GUEST_MODE_KEY);
-    debugAuth('auth.html:password-user-ok -> /index.html');
     window.location.href = '/index.html';
   } else {
     document.getElementById('verify-email-placeholder').textContent = user.email || '';

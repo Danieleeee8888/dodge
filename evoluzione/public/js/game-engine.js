@@ -1,4 +1,4 @@
-ï»¿import {
+import {
   FIXED_GAME_W,
   FIXED_GAME_H,
   SLOW_DURATION_MS,
@@ -45,9 +45,9 @@ import {
 
 let currentUserId = null;
 /** Username account (fisso, registrazione). */
-let currentUsername = 'Â·Â·Â·';
+let currentUsername = '···';
 /** Nome in menu / classifica (modificabile in profilo). */
-let currentDisplayName = 'Â·Â·Â·';
+let currentDisplayName = '···';
 let currentUserEmail = '';
 const GUEST_MODE_KEY = 'dodge_guest_mode';
 let guestModeEnabled = false;
@@ -143,7 +143,7 @@ function buildInstallNudgeText() {
   if (onAndroid) {
     return {
       title: 'Installa DODGE',
-      body: 'Consigliato: installa il gioco sulla Home per avvio diretto in modalitÃ  app.',
+      body: 'Consigliato: installa il gioco sulla Home per avvio diretto in modalità app.',
       action: 'Installa ora',
       actionIsNativePrompt: true,
     };
@@ -161,7 +161,7 @@ function showInstallNudgeIfNeeded() {
   if (installNudgeEl) return;
   const onIOS = isIOSLike();
   const onAndroid = isAndroidLike();
-  // Android: mostra il nudge solo quando il browser conferma installabilitÃ .
+  // Android: mostra il nudge solo quando il browser conferma installabilità.
   if (onAndroid && !deferredInstallPrompt) return;
   // Altri browser non-iOS: evita falsi positivi senza segnale installabile.
   if (!onIOS && !onAndroid && !deferredInstallPrompt) return;
@@ -175,7 +175,7 @@ function showInstallNudgeIfNeeded() {
       <p class="install-nudge__text">${cfg.body}</p>
       <div class="install-nudge__actions">
         <button type="button" class="install-nudge__btn install-nudge__btn--primary">${cfg.action}</button>
-        <button type="button" class="install-nudge__btn install-nudge__btn--ghost">PiÃ¹ tardi</button>
+        <button type="button" class="install-nudge__btn install-nudge__btn--ghost">Più tardi</button>
       </div>
     </div>
   `;
@@ -204,7 +204,7 @@ window.addEventListener('appinstalled', () => {
   dismissInstallNudge();
 });
 
-/** Fullscreen â€œveroâ€ sul documento quando supportato dal browser. */
+/** Fullscreen “vero” sul documento quando supportato dal browser. */
 function isDocumentFullscreenUsable() {
   const root = document.documentElement;
   if (!root) return false;
@@ -271,7 +271,7 @@ function setupFullscreenAutostart() {
 /**
  * Pixel CSS disponibili per adattare il canvas. Usa sempre le dimensioni reali del viewport
  * (visualViewport se disponibile, altrimenti innerWidth/Height) per evitare che la shell
- * con max-width limiti la larghezza del canvas in modalitÃ  non-fullscreen.
+ * con max-width limiti la larghezza del canvas in modalità non-fullscreen.
  */
 function getViewportForCanvasScale() {
   const vv = window.visualViewport;
@@ -328,7 +328,7 @@ let tx = -999, ty = -999;          // cursore target (dito/mouse)
 let fingerDown = false;
 /** Dopo una morte, impedisce restart immediato accidentale. */
 let startGameUnlockAt = 0;
-/** Touch: â€œtelecomandoâ€ â€” tx/ty = pos giocatore allâ€™ancora + (dito âˆ’ punto tocco), non sotto il dito. */
+/** Touch: “telecomando” — tx/ty = pos giocatore all’ancora + (dito - punto tocco), non sotto il dito. */
 let touchAnchFx = 0, touchAnchFy = 0, touchAnchPx = 0, touchAnchPy = 0;
 let balls = [], parts = [], sparkles = [];
 let startTime, elapsed;
@@ -336,11 +336,11 @@ let level, baseTriangles, baseSquares, baseSpeed;
 let shieldActive, shieldEnd, slowActive, slowEnd;
 let greenModeActive = false, greenModeEnd = 0;
 let hasExtraLife = 0;
-/** Prossimo istante in cui puÃ² comparire il pallino viola (performance.now). */
+/** Prossimo istante in cui può comparire il pallino viola (performance.now). */
 let nextPurpleAt = 0;
 /** Espansione gialla rapida sui bianchi tolti dal bonus giallo. */
 let yellowPopAuras = [];
-/** Nuvoletta verde al rimpicciolimento (stesso stile dellâ€™espansione gialla). */
+/** Nuvoletta verde al rimpicciolimento (stesso stile dell’espansione gialla). */
 let greenPopAuras = [];
 /** Testi tipo arcade (salita + fade). Coordinate spazio gioco. */
 let floatingTexts = [];
@@ -351,12 +351,12 @@ let firstBlueSpawned = false;
 let firstYellowSpawned = false;
 let firstGreenSpawned = false;
 let bgPhase, flash, flashCol;
-/** Rettangolo (cella griglia 3Ã—3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
+/** Rettangolo (cella griglia 3×3) che i bianchi devono attraversare; aggiornato a intervalli in base al player. */
 let aimSectorRect = { left: 0, right: 0, top: 0, bottom: 0 };
 let aimSectorNextElapsed = 0;
-/** Avvio partita: { phase: 0..2 â†’ numeri 3,2,1, phaseEnd: timestamp }. */
+/** Avvio partita: { phase: 0..2 ? numeri 3,2,1, phaseEnd: timestamp }. */
 let introCountdown = null;
-/** Conto alla rovescia dopo â€œripresaâ€ da pausa (scena visibile dietro). */
+/** Conto alla rovescia dopo “ripresa” da pausa (scena visibile dietro). */
 let resumeCountdown = null;
 /** Timeout UI game over: va cancellato se si riparte prima che scada. */
 let deathUiTimeoutId = null;
@@ -394,7 +394,7 @@ function syncAudioCornerBtn() {
   audioCornerBtn.classList.toggle('audio-off', !audioEnabled);
   audioCornerBtn.setAttribute('aria-pressed', audioEnabled ? 'true' : 'false');
   audioCornerBtn.setAttribute('aria-label', audioEnabled ? 'Disattiva audio' : 'Attiva audio');
-  audioCornerBtn.title = audioEnabled ? 'Audio attivo â€” tocca per silenziare' : 'Audio spento â€” tocca per attivare';
+  audioCornerBtn.title = audioEnabled ? 'Audio attivo — tocca per silenziare' : 'Audio spento — tocca per attivare';
 }
 function bindAudioCornerBtn() {
   if (!audioCornerBtn || audioCornerBtn.dataset.bound === '1') return;
@@ -421,7 +421,7 @@ function updateShellForPhase(phase) {
     homeCornerBtn.classList.add('home-corner--hidden');
   }
 }
-// â”€â”€ NAVIGAZIONE HOME SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- NAVIGAZIONE HOME SCREEN --------------------------------------------------
 
 function showScreenView(name) {
   document.querySelectorAll('#screen .screen-view').forEach(v => { v.hidden = true; });
@@ -448,18 +448,18 @@ async function setupProfileView() {
   const emailEl = document.getElementById('profile-info-email');
   const msgEl = document.getElementById('profile-msg');
   const profile = await getProfile(currentUserId).catch(() => null);
-  if (usernameEl) usernameEl.textContent = profile?.username || currentUsername || 'Â·Â·Â·';
+  if (usernameEl) usernameEl.textContent = profile?.username || currentUsername || '···';
   if (emailEl) emailEl.textContent = currentUserEmail;
   if (msgEl) msgEl.textContent = '';
   const best = profile?.bestTime || 0;
   if (bestEl) {
     bestEl.textContent = best > 0
       ? `Miglior tempo personale: ${fmt(best)}`
-      : 'Miglior tempo personale: â€”';
+      : 'Miglior tempo personale: —';
   }
   if (displayInput) {
     const d = resolveDisplayName(profile);
-    displayInput.value = d === 'Â·Â·Â·' ? '' : d;
+    displayInput.value = d === '···' ? '' : d;
   }
 }
 
@@ -505,7 +505,7 @@ function bindHomeNav() {
       const msgEl = document.getElementById('profile-msg');
       const input = document.getElementById('profile-display-name');
       if (!input || !currentUserId) return;
-      if (msgEl) msgEl.textContent = 'Salvataggioâ€¦';
+      if (msgEl) msgEl.textContent = 'Salvataggio…';
       try {
         await updateDisplayName(currentUserId, input.value);
         const profile = await getProfile(currentUserId);
@@ -520,7 +520,7 @@ function bindHomeNav() {
     });
   }
 
-  // â† HOME (tutti i pulsanti back)
+  // ? HOME (tutti i pulsanti back)
   document.querySelectorAll('.js-back-home').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -539,7 +539,7 @@ function bindHomeNav() {
     e.stopPropagation();
     const msgEl = document.getElementById('profile-msg');
     if (!msgEl) return;
-    msgEl.textContent = 'Invioâ€¦';
+    msgEl.textContent = 'Invio…';
     try {
       await sendPasswordResetEmail(auth, currentUserEmail);
       msgEl.textContent = 'Email inviata! Controlla la casella.';
@@ -917,7 +917,7 @@ function fmt(ms) {
 }
 function rand(a,b){ return a+Math.random()*(b-a); }
 
-// MOVEMENT + SHAPE â€” bianchi: solo triangolo (retto) e quadrato (spirale); cerchi solo bonus.
+// MOVEMENT + SHAPE — bianchi: solo triangolo (retto) e quadrato (spirale); cerchi solo bonus.
 function pickWhiteMovementBalanced() {
   let nS = 0, nSp = 0;
   for (let i = 0; i < balls.length; i++) {
@@ -933,7 +933,7 @@ function pickWhiteMovementBalanced() {
   return pick[Math.floor(Math.random() * pick.length)];
 }
 
-// Speed multiplier widens with level: salita piÃ¹ graduale (stesso intervallo livelli).
+// Speed multiplier widens with level: salita più graduale (stesso intervallo livelli).
 function getSpeedMul(type) {
   if (type === 'red' || type === 'blue' || type === 'yellow' || type === 'green' || type === 'purple') {
     return rand(0.95, 1.28 + level * 0.065);
@@ -955,7 +955,7 @@ function paddedGridCellBounds(col, row) {
   };
 }
 
-/** Imposta aimSectorRect sulla cella 3Ã—3 che contiene il cursore (fallback centro schermo). */
+/** Imposta aimSectorRect sulla cella 3×3 che contiene il cursore (fallback centro schermo). */
 function syncAimSectorToPlayer() {
   let cx = px, cy = py;
   if (cx < -200 || cy < -200) {
@@ -1076,7 +1076,7 @@ function restoreWhiteSpeedsAfterSlow() {
 
 /**
  * Toglie un terzo dei bianchi in campo, arrotondato per ECCESSO: ceil(n/3) da togliere.
- * Esempio: 14 bianchi â†’ toglie 5 â†’ restano 9. Al level-up (+1 tri +1 quad in quota) il target sale di 2 (es. 9â†’11).
+ * Esempio: 14 bianchi ? toglie 5 ? restano 9. Al level-up (+1 tri +1 quad in quota) il target sale di 2 (es. 9?11).
  * Abbassa le quote target (tri / spirali) come i tipi effettivamente rimossi.
  */
 function removeThirdOfWhites(withYellowFx) {
@@ -1120,7 +1120,7 @@ function applyGreenModeToWhites(enabled) {
   for (let i = 0; i < balls.length; i++) applyGreenModeToWhite(balls[i], enabled);
 }
 
-/** Lampeggio dopo il 3Â° contatto bordo, fino al 4Â° (poi il bonus sparisce). */
+/** Lampeggio dopo il 3° contatto bordo, fino al 4° (poi il bonus sparisce). */
 function bonusPickupBlinkMul(now, b) {
   if (!b || !isBonusCircle(b)) return 1;
   const c = b.bonusBounceCount || 0;
@@ -1200,14 +1200,14 @@ function constructWhiteBallOnce(opts) {
     b.cvx = vx; b.cvy = vy;
     const spiralRMin = Math.max(46, Math.min(W, H) * 0.078);
     b.orbR = rand(spiralRMin, Math.max(spiralRMin + 24, 130));
-    /* Tetto tangenziale piÃ¹ basso ai primi livelli (feedback: quadrati troppo veloci da subito); torna ~al vecchio 4.0 verso level 10. */
+    /* Tetto tangenziale più basso ai primi livelli (feedback: quadrati troppo veloci da subito); torna ~al vecchio 4.0 verso level 10. */
     const spiralTanMax = Math.min(4.0, 3.32 + level * 0.068);
     const tangentialSpeed = rand(1.2, spiralTanMax) * (1 + level * 0.04);
     b.omega = (tangentialSpeed / b.orbR) * (Math.random() < 0.5 ? -1 : 1);
-    /* Come al pickup blu su spiral giÃ  in campo: senza questo, a fine slow omega viene divisa e risulta troppo alta ("scatto"). */
+    /* Come al pickup blu su spiral già in campo: senza questo, a fine slow omega viene divisa e risulta troppo alta ("scatto"). */
     if (slowActive) b.omega *= SLOW_OMEGA_FACTOR;
     b.phase = Math.random() * Math.PI * 2;
-    // Il centro non puÃ² stare sul bordo con R grande: altrimenti il punto visibile nasce giÃ  nel campo.
+    // Il centro non può stare sul bordo con R grande: altrimenti il punto visibile nasce già nel campo.
     b.cx = x - Math.cos(b.phase) * b.orbR;
     b.cy = y - Math.sin(b.phase) * b.orbR;
     b.x = x;
@@ -1306,7 +1306,7 @@ function burstPufWhitesBlue() {
   }
 }
 
-/** Particelle verdi su ogni bianco: modalitÃ  verde on / off. */
+/** Particelle verdi su ogni bianco: modalità verde on / off. */
 function burstPufWhitesGreen() {
   for (let i = 0; i < balls.length; i++) {
     const wb = balls[i];
@@ -1502,16 +1502,16 @@ function die() {
       const user = auth.currentUser;
       if (!user || !user.emailVerified) {
         // Email non verificata: mostra avviso, non tentare il salvataggio
-        if (recEl) recEl.innerHTML = '<p class="rec-saving">verifica l\'email per salvare i record â€” controlla anche lo spam</p>';
+        if (recEl) recEl.innerHTML = '<p class="rec-saving">verifica l\'email per salvare i record — controlla anche lo spam</p>';
       } else {
-        if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggioÂ·Â·Â·</p>';
+        if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio···</p>';
         applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed);
         renderRecordsInto(recEl);
         const result = await saveScore(currentUserId, diedElapsed);
         if (!result || !result.ok) {
           const msg = result?.reason === 'permission'
             ? 'verifica l\'email per salvare i record'
-            : 'errore di rete â€” punteggio non salvato';
+            : 'errore di rete — punteggio non salvato';
           if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
         } else {
           if (result.improved && result.inTop10) {
@@ -1558,7 +1558,7 @@ function togglePause() {
   applyIntroCdVisual(3, 'r');
 }
 
-// INPUT â€” coordinate schermo â†’ area di gioco fissa (stesso bounding del canvas scalato)
+// INPUT — coordinate schermo ? area di gioco fissa (stesso bounding del canvas scalato)
 function clientToGame(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
   const rw = Math.max(1e-6, r.width);
@@ -1581,7 +1581,7 @@ function clampPlayerTarget(cx, cy) {
     Math.min(H - m, Math.max(m, cy)),
   ];
 }
-/** Spawn: centro orizzontale, circa un terzo dallâ€™alto (zona alta del campo). */
+/** Spawn: centro orizzontale, circa un terzo dall’alto (zona alta del campo). */
 function getPlayerSpawnXY() {
   return clampPlayerTarget(W * 0.5, H / 3);
 }
@@ -1591,8 +1591,8 @@ function applyTouchRelativeTarget(fx, fy) {
   const [cx, cy] = clampPlayerTarget(nx, ny);
   tx = cx;
   ty = cy;
-  /* Se il bordo ha â€œtagliatoâ€ il movimento, lâ€™ancora deve seguire il dito: altrimenti il delta
-   * accumula slop oltre il limite e al ritorno dal bordo câ€™Ã¨ ritardo. */
+  /* Se il bordo ha “tagliato” il movimento, l’ancora deve seguire il dito: altrimenti il delta
+   * accumula slop oltre il limite e al ritorno dal bordo c’è ritardo. */
   const slip = 1e-4;
   if (Math.abs(nx - cx) > slip || Math.abs(ny - cy) > slip) {
     touchAnchFx = fx;
@@ -1715,7 +1715,7 @@ function drawShape(b, x, y, r, alpha) {
   ctx.globalAlpha = 1;
 }
 
-/** Raggio â€œmorsoâ€ del giocatore attorno a (px,py), come il vecchio hitR = b.r + 20 */
+/** Raggio “morso” del giocatore attorno a (px,py), come il vecchio hitR = b.r + 20 */
 const PLAYER_HIT_R = 20;
 
 function circleHitsPlayer(b, px, py) {
@@ -1880,7 +1880,7 @@ function loop(now){
 
   elapsed = now - startTime;
 
-  // cursor lerp â€” traslazione anzichÃ© teletrasporto
+  // cursor lerp — traslazione anziché teletrasporto
   if (tx > -200) {
     const k = Math.min(1, CURSOR_LERP * dt);
     px += (tx - px) * k;
@@ -1907,7 +1907,7 @@ function loop(now){
     }
   }
 
-  // spawn bonus â€” tempi in `constants.js` (primo spawn / intervalli successivi)
+  // spawn bonus — tempi in `constants.js` (primo spawn / intervalli successivi)
   if (!firstRedSpawned && elapsed >= RED_BONUS_FIRST_SPAWN_MS) {
     firstRedSpawned = true;
     lastRed = now;
@@ -2052,11 +2052,11 @@ function loop(now){
         }
         if(b.type==='yellow'){
           if (audioEnabled) playSoundBonus('yellow');
-          spawnFloatingText(b.x, b.y, 'âˆ’ UN TERZO', '#f5e6a0');
+          spawnFloatingText(b.x, b.y, '- UN TERZO', '#f5e6a0');
           removeThirdOfWhites(true);
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
-          // Non usare `i`: removeThirdOfWhites ha giÃ  mutato `balls`, lâ€™indice del giallo Ã¨ cambiato.
+          // Non usare `i`: removeThirdOfWhites ha già mutato `balls`, l’indice del giallo è cambiato.
           const yi = balls.indexOf(b);
           if (yi !== -1) balls.splice(yi, 1);
           continue;
@@ -2064,7 +2064,7 @@ function loop(now){
         if (b.type === 'purple') {
           hasExtraLife = Math.min(3, hasExtraLife + 1);
           if (audioEnabled) playSoundBonus('purple');
-          spawnFloatingText(b.x, b.y, 'VITA IN PIÃ™', '#e9d5ff');
+          spawnFloatingText(b.x, b.y, 'VITA IN PIÙ', '#e9d5ff');
           burst(b.x, b.y, '#e9d5ff', 24);
           burst(b.x, b.y, '#a855f7', 20);
           flash = 0.38; flashCol = 'rgba(168,85,247,0.22)';
@@ -2402,99 +2402,27 @@ function drawBg(now, lv){
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 }
 
-function debugIndex(label, info = {}) {
-  try {
-    const stamp = new Date().toLocaleTimeString();
-    const txt = `[${stamp}] ${label} ${JSON.stringify(info)}`;
-    const el = document.getElementById('indexDebugLog');
-    if (el) {
-      el.textContent = `${txt}\n${el.textContent || ''}`.slice(0, 1500);
-      el.style.display = 'block';
-    }
-    console.log('[index-debug]', label, info);
-  } catch {}
-}
-
-function showAuthGate(reason, extra = {}) {
-  const loader = document.getElementById('authLoading');
-  if (loader) loader.style.display = 'none';
-  let gate = document.getElementById('authGate');
-  if (!gate) {
-    gate = document.createElement('div');
-    gate.id = 'authGate';
-    gate.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;font-family:system-ui,sans-serif;text-align:center;';
-    gate.innerHTML = `
-      <h2 style="margin:0;font-size:18px;letter-spacing:0.16em;">SESSIONE NON RILEVATA</h2>
-      <p id="authGateReason" style="margin:0;max-width:480px;font-size:14px;opacity:0.85;line-height:1.5;"></p>
-      <pre id="authGateDetails" style="margin:0;max-width:90vw;font-size:11px;color:#9cf;white-space:pre-wrap;text-align:left;background:rgba(255,255,255,0.06);padding:10px 12px;border-radius:8px;"></pre>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-        <button id="authGateRetry" style="padding:10px 18px;border-radius:24px;border:1px solid rgba(255,255,255,0.4);background:#fff;color:#000;font-weight:600;cursor:pointer;">RIPROVA</button>
-        <button id="authGateLogin" style="padding:10px 18px;border-radius:24px;border:1px solid rgba(255,255,255,0.4);background:transparent;color:#fff;font-weight:600;cursor:pointer;">VAI AL LOGIN</button>
-      </div>`;
-    document.body.appendChild(gate);
-    gate.querySelector('#authGateRetry').addEventListener('click', () => window.location.reload());
-    gate.querySelector('#authGateLogin').addEventListener('click', () => { window.location.href = '/auth.html'; });
-  }
-  gate.querySelector('#authGateReason').textContent = reason;
-  gate.querySelector('#authGateDetails').textContent = JSON.stringify(extra, null, 2);
-  gate.style.display = 'flex';
-}
-
 onAuthStateChanged(auth, async (user) => {
   await authPersistenceReady;
   const loader = document.getElementById('authLoading');
   guestModeEnabled = sessionStorage.getItem(GUEST_MODE_KEY) === '1';
-  debugIndex('index.html:onAuthStateChanged', {
-    hasUser: !!user,
-    uid: user?.uid,
-    email: user?.email,
-    verified: user?.emailVerified,
-    providers: (user?.providerData || []).map((p) => p?.providerId),
-    guestMode: guestModeEnabled,
-  });
   if (!user) {
-    if (!guestModeEnabled) {
-      showAuthGate('Nessun utente autenticato: la sessione non Ã¨ arrivata su questa pagina.', {
-        guestMode: guestModeEnabled,
-        currentUser: auth.currentUser ? {
-          uid: auth.currentUser.uid,
-          email: auth.currentUser.email,
-        } : null,
-      });
-      return;
-    }
+    if (!guestModeEnabled) { window.location.href = '/auth.html'; return; }
     currentUserId = null;
     currentUserEmail = '';
     currentUsername = 'ospite';
     currentDisplayName = 'OSPITE OFFLINE';
   } else {
-    try {
-      await reload(user);
-    } catch (err) {
-      debugIndex('index.html:reload-error', { code: err?.code, msg: err?.message });
-    }
-    if (!user.emailVerified && hasPasswordProvider(user)) {
-      showAuthGate('Email non verificata: torna al login per completare la verifica.', {
-        uid: user.uid,
-        email: user.email,
-        verified: user.emailVerified,
-        providers: (user.providerData || []).map((p) => p?.providerId),
-      });
-      return;
-    }
+    await reload(user).catch(() => {});
+    if (!user.emailVerified && hasPasswordProvider(user)) { window.location.href = '/auth.html'; return; }
     sessionStorage.removeItem(GUEST_MODE_KEY);
     guestModeEnabled = false;
     currentUserId = user.uid;
     currentUserEmail = user.email || '';
-    const profile = await getProfile(user.uid).catch((err) => {
-      debugIndex('index.html:getProfile-error', { code: err?.code, msg: err?.message });
-      return null;
-    });
-    currentUsername = profile?.username || user.email || 'Â·Â·Â·';
+    const profile = await getProfile(user.uid).catch(() => null);
+    currentUsername = profile?.username || user.email || '···';
     currentDisplayName = resolveDisplayName(profile);
-    await fetchLeaderboard(10).catch((err) => {
-      debugIndex('index.html:fetchLeaderboard-error', { code: err?.code, msg: err?.message });
-    });
+    await fetchLeaderboard(10).catch(() => {});
   }
 
   if (loader) loader.style.display = 'none';
