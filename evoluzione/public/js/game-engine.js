@@ -365,7 +365,7 @@ function renderRecordsInto(el) {
       const cls = `rec-row${clsTop ? ' ' + clsTop : ''}`;
       const isMe = row.uid === currentUserId ? ' rec-row--me' : '';
       const tag = (row.displayName || row.username || '???').slice(0, 12);
-      body += `<li class="${cls}${isMe}"><span class="rec-row-main">${i + 1}. <span class="rec-tag">${tag}</span> ${fmt(row.ms)}</span></li>`;
+      body += `<li class="${cls}${isMe}"><span class="rec-row-left"><span class="rec-rank">${i + 1}.</span><span class="rec-tag">${tag}</span></span><span class="rec-time">${fmt(row.ms)}</span></li>`;
     });
   }
   body += '</ol>';
@@ -875,8 +875,11 @@ function resumeMusicAfterPause() {
 // ===================== END AUDIO =====================
 
 function fmt(ms) {
-  const s = Math.floor(ms/1000);
-  return Math.floor(s/60)+':'+(s%60+'').padStart(2,'0');
+  const totalMs = Math.max(0, Math.floor(Number(ms) || 0));
+  const minutes = Math.floor(totalMs / 60000);
+  const seconds = Math.floor((totalMs % 60000) / 1000);
+  const millis = totalMs % 1000;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(millis).padStart(3, '0')}`;
 }
 function rand(a,b){ return a+Math.random()*(b-a); }
 
@@ -1773,7 +1776,7 @@ function loop(now){
       }
     }
     drawBg(now, level);
-    tEl.textContent = '0:00';
+    tEl.textContent = fmt(0);
     lvEl.textContent = '1';
     nbEl.textContent = '0';
     return;

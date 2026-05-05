@@ -55,7 +55,8 @@ evoluzione/
 - **Home:** titolo **DODGE**, tre puntini animati sotto il titolo, nome utente; **in alto** icone tonde monocromatiche (medaglia classifica, profilo); **al centro** tre pillole **GIOCA** / **CO‑OP** (presto) / **1‑VS‑1** (presto); classifica solo dall’icona in alto a sinistra; in basso link minimale “Come funzionano i bonus”.
 - **Classifica / Profilo / Come si gioca:** pulsante **indietro** tondo fisso in alto a sinistra (`subview-round-back`), stile coerente con gli angoli home.
 - **Death screen:** classifica (aggiornamento ottimistico + sync Firestore), **HOME** come pulsante tondo centrale in basso (⌂) con audio a destra, tap ovunque per riprovare.
-- **Classifica:** `applyOptimisticScore` + `renderRecordsInto` subito dopo la morte; `saveScore` legge il **nome visualizzato** da `users/{uid}` (non dalla sessione) e scrive `displayName` su `scores` / `leaderboard`; merge con storico `scores` + refresh in background.
+- **Classifica:** `applyOptimisticScore` + `renderRecordsInto` subito dopo la morte; `saveScore` legge il **nome visualizzato** da `users/{uid}` (non dalla sessione) e scrive `displayName` su `scores` / `leaderboard`; merge con storico `scores` + refresh in background. Layout righe: posizione + nome a sinistra, tempo a destra allineato.
+- **Formato tempo UI:** ovunque nel gioco/classifica/profilo il timer è in `mm:ss:000` (millisecondi a 3 cifre, minuti senza limite ore).
 - **Profilo:** username account (fisso), **nome visualizzato** (modificabile, max 24 caratteri, compare in classifica), miglior tempo personale (`bestTime`).
 - PWA: manifest, service worker, icone.
 - Target: **mobile** (PC browser secondario).

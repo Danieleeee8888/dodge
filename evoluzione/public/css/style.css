@@ -665,13 +665,13 @@ canvas {
 /* ── RECORDS / LEADERBOARD ───────────────────────────────────────────────── */
 #records-block {
   margin:0.85rem 0 0.45rem; cursor:default;
-  padding:0.9rem 1rem;
+  padding:0.95rem 1.05rem;
   border:2px solid rgba(140,170,255,0.35); border-radius:0.65rem;
   background:rgba(6,8,18,0.92);
   box-shadow:0 0 0 1px rgba(255,255,255,0.07) inset, 0 10px 36px rgba(0,0,0,0.5), 0 0 40px rgba(80,120,255,0.14);
   color:rgba(230,235,255,0.92); font-size:0.78rem; letter-spacing:0.08em;
   text-align:center;
-  width:min(20rem, calc(100% - 2rem));
+  width:min(24rem, calc(100% - 1.1rem));
   max-width:calc(100% - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right)));
   box-sizing:border-box; pointer-events:auto;
 }
@@ -696,8 +696,24 @@ canvas {
   background:rgba(255,255,255,0.03); box-shadow:none; text-shadow:none;
 }
 #records-block li.rec-row { display:flex; align-items:center; justify-content:space-between; gap:10px; text-align:left; }
-#records-block li.rec-row .rec-row-main { flex:1; min-width:0; text-align:center; }
-#records-block .rec-tag { display:inline-block; min-width:5ch; margin-right:0.45em; letter-spacing:0.12em; font-weight:700; }
+#records-block li.rec-row .rec-row-left { flex:1; min-width:0; display:flex; align-items:center; gap:0.42rem; }
+#records-block .rec-rank { width:2.15ch; flex:0 0 2.15ch; text-align:right; color:rgba(255,255,255,0.72); }
+#records-block .rec-tag {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  letter-spacing:0.12em;
+  font-weight:700;
+}
+#records-block .rec-time {
+  flex:0 0 auto;
+  min-width:10ch;
+  text-align:right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing:0.05em;
+}
 
 /* Il mio punteggio: bordo evidenziato */
 #records-block li.rec-row--me {
@@ -1036,13 +1052,13 @@ canvas {
 /* Classifica standalone */
 #records-block-lb {
   margin:0; cursor:default;
-  padding:0.9rem 1rem;
+  padding:0.95rem 1.05rem;
   border:2px solid rgba(140,170,255,0.35); border-radius:0.65rem;
   background:rgba(6,8,18,0.92);
   box-shadow:0 0 0 1px rgba(255,255,255,0.07) inset, 0 10px 36px rgba(0,0,0,0.5), 0 0 40px rgba(80,120,255,0.14);
   color:rgba(230,235,255,0.92); font-size:0.78rem; letter-spacing:0.08em;
   text-align:center;
-  width:min(20rem, calc(100% - 2rem));
+  width:min(24rem, calc(100% - 1.1rem));
   max-width:calc(100% - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right)));
   box-sizing:border-box;
 }
@@ -1052,6 +1068,22 @@ canvas {
 #records-block-lb li.rec-r1 { color:#fff0a0; background:rgba(220,180,30,0.14); box-shadow:0 0 20px rgba(230,200,40,0.28); }
 #records-block-lb li.rec-empty { color:rgba(255,255,255,0.35); font-weight:500; font-size:0.78rem; background:rgba(255,255,255,0.03); }
 #records-block-lb li.rec-row { display:flex; align-items:center; justify-content:space-between; gap:10px; text-align:left; }
-#records-block-lb li.rec-row .rec-row-main { flex:1; min-width:0; text-align:center; }
-#records-block-lb .rec-tag { display:inline-block; min-width:5ch; margin-right:0.45em; letter-spacing:0.12em; font-weight:700; }
+#records-block-lb li.rec-row .rec-row-left { flex:1; min-width:0; display:flex; align-items:center; gap:0.42rem; }
+#records-block-lb .rec-rank { width:2.15ch; flex:0 0 2.15ch; text-align:right; color:rgba(255,255,255,0.72); }
+#records-block-lb .rec-tag {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  letter-spacing:0.12em;
+  font-weight:700;
+}
+#records-block-lb .rec-time {
+  flex:0 0 auto;
+  min-width:10ch;
+  text-align:right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing:0.05em;
+}
 #records-block-lb li.rec-row--me { border-color:rgba(147,197,253,0.45); background:rgba(147,197,253,0.08); }
