@@ -1332,15 +1332,41 @@ function die() {
     // Aggiorna testo tempo nel view-death pre-costruito
     const deathTimeEl = document.getElementById('death-time');
     if (deathTimeEl) deathTimeEl.textContent = `sopravvissuto ${fmt(diedElapsed)}`;
-    // Reset classifica (salvataggio in corso)
     const recEl = document.getElementById('records-block');
-    if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio···</p>';
     showScreenView('death');
+
     if (currentUserId) {
-      applyOptimisticScore(currentUserId, currentUsername, diedElapsed);
-      renderRecordsInto(recEl);
-      await saveScore(currentUserId, currentUsername, diedElapsed).catch(() => {});
-      renderRecordsInto(recEl);
+      const user = auth.currentUser;
+      if (!user || !user.emailVerified) {
+        // Email non verificata: mostra avviso, non tentare il salvataggio
+        if (recEl) recEl.innerHTML = '<p class="rec-saving">verifica l\'email per salvare i record — controlla anche lo spam</p>';
+      } else {
+        if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio···</p>';
+        applyOptimisticScore(currentUserId, currentUsername, diedElapsed);
+        renderRecordsInto(recEl);
+        const result = await saveScore(currentUserId, currentUsername, diedElapsed);
+        if (!result || !result.ok) {
+          const msg = result?.reason === 'permission'
+            ? 'verifica l\'email per salvare i record'
+            : 'errore di rete — punteggio non salvato';
+          if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
+        } else {
+          if (result.improved && result.inTop10) {
+            const badge = document.createElement('p');
+            badge.className = 'rec-saving rec-saving--highlight';
+            badge.textContent = 'nuovo record in classifica!';
+            if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
+          } else if (result.improved) {
+            const badge = document.createElement('p');
+            badge.className = 'rec-saving';
+            badge.textContent = 'record personale!';
+            if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
+          }
+          renderRecordsInto(recEl);
+        }
+      }
+    } else {
+      if (recEl) recEl.innerHTML = '';
     }
     setupMenuUI();
   }, 600);

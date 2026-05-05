@@ -100,6 +100,7 @@ document.getElementById('form-register').addEventListener('submit', async (e) =>
     await sendEmailVerification(user);
     document.getElementById('verify-email-placeholder').textContent = email;
     showView('verify');
+    setMsg('verify', 'Email inviata! Se non la trovi entro qualche minuto, controlla la cartella Spam.', 'success');
   } catch (err) {
     console.error('register:', err);
     setMsg('register', errText(err));
@@ -142,7 +143,7 @@ document.getElementById('form-reset').addEventListener('submit', async (e) => {
   setLoading('btn-reset', true);
   try {
     await sendPasswordResetEmail(auth, email);
-    setMsg('reset', 'Email inviata! Controlla la casella di posta.', 'success');
+    setMsg('reset', 'Email inviata! Controlla la casella e anche la cartella Spam.', 'success');
   } catch (err) {
     setMsg('reset', errText(err));
   } finally {
@@ -160,7 +161,7 @@ document.getElementById('btn-verified').addEventListener('click', async () => {
     if (user.emailVerified) {
       window.location.href = '/index.html';
     } else {
-      setMsg('verify', 'Email non ancora verificata. Controlla la casella.');
+      setMsg('verify', 'Email non ancora verificata. Cerca nella casella e nella cartella Spam, poi clicca il link.');
     }
   } catch {
     setMsg('verify', 'Errore di rete. Riprova.');
@@ -176,7 +177,7 @@ document.getElementById('btn-resend').addEventListener('click', async () => {
   setLoading('btn-resend', true);
   try {
     await sendEmailVerification(user);
-    setMsg('verify', 'Email reinviata!', 'success');
+    setMsg('verify', 'Email reinviata! Se non arriva entro qualche minuto, controlla la cartella Spam.', 'success');
   } catch {
     setMsg('verify', 'Non è stato possibile reinviare. Riprova più tardi.');
   } finally {

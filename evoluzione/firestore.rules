@@ -31,7 +31,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Punteggi: leggibili da tutti, scrivibili solo da utenti verificati,
+    // Punteggi storici: leggibili da tutti, scrivibili solo da utenti verificati,
     // mai modificabili o cancellabili (anti-cheat)
     match /scores/{scoreId} {
       allow read: if true;
@@ -42,6 +42,24 @@ service cloud.firestore {
                     && request.resource.data.ms > 0
                     && request.resource.data.ms <= 7200000;
       allow update, delete: if false;
+    }
+
+    // Classifica globale: un documento per utente (uid = chiave), solo il best time.
+    // Aggiornabile solo se il nuovo ms è strettamente maggiore del precedente (anti-cheat).
+    match /leaderboard/{uid} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && request.auth.uid == uid
+                    && request.resource.data.uid == uid
+                    && request.resource.data.ms is int
+                    && request.resource.data.ms > 0
+                    && request.resource.data.ms <= 7200000;
+      allow update: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && request.auth.uid == uid
+                    && request.resource.data.ms > resource.data.ms;
+      allow delete: if false;
     }
 
     // Tutto il resto: negato
