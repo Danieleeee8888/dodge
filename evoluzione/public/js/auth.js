@@ -147,8 +147,7 @@ async function completeGoogleSignIn(user) {
 }
 
 function shouldUseRedirectForGoogle() {
-  const ua = navigator.userAgent || '';
-  return /Android|iPhone|iPad|iPod/i.test(ua);
+  return true;
 }
 
 async function waitForStableAuthUser(timeoutMs = 1800) {
@@ -223,17 +222,17 @@ document.getElementById('btn-google-login')?.addEventListener('click', async () 
   setLoading('btn-google-login', true);
   try {
     await authPersistenceReady;
-    if (shouldUseRedirectForGoogle()) {
-      sessionStorage.removeItem(GUEST_MODE_KEY);
-      await signInWithRedirect(auth, googleProvider);
+    if (!shouldUseRedirectForGoogle()) {
+      const { user } = await signInWithPopup(auth, googleProvider);
+      const stableUser = (await waitForStableAuthUser()) || user;
+      if (!stableUser) {
+        throw new Error('GOOGLE_SESSION_NOT_READY');
+      }
+      await completeGoogleSignIn(stableUser);
       return;
     }
-    const { user } = await signInWithPopup(auth, googleProvider);
-    const stableUser = (await waitForStableAuthUser()) || user;
-    if (!stableUser) {
-      throw new Error('GOOGLE_SESSION_NOT_READY');
-    }
-    await completeGoogleSignIn(stableUser);
+    sessionStorage.removeItem(GUEST_MODE_KEY);
+    await signInWithRedirect(auth, googleProvider);
   } catch (err) {
     console.error('google-login:', err);
     setMsg('login', errText(err));
