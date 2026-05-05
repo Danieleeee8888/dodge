@@ -55,7 +55,8 @@ evoluzione/
 - **Home:** titolo **DODGE**, tre puntini animati sotto il titolo, nome utente; **in alto** icone tonde monocromatiche (medaglia classifica, profilo); **al centro** tre pillole **GIOCA** / **CO‑OP** (presto) / **1‑VS‑1** (presto); classifica solo dall’icona in alto a sinistra; in basso link minimale “Come funzionano i bonus”.
 - **Classifica / Profilo / Come si gioca:** pulsante **indietro** tondo fisso in alto a sinistra (`subview-round-back`), stile coerente con gli angoli home.
 - **Death screen:** classifica (aggiornamento ottimistico + sync Firestore), **HOME** come pulsante tondo centrale in basso (⌂) tra tutto schermo e audio, tap ovunque per riprovare.
-- **Classifica:** `applyOptimisticScore` + `renderRecordsInto` subito dopo la morte; `saveScore` aggiorna profilo utente e `fetchLeaderboard` in parallelo; ri-aprendo la classifica si fa refresh in background.
+- **Classifica:** `applyOptimisticScore` + `renderRecordsInto` subito dopo la morte; `saveScore` legge il **nome visualizzato** da `users/{uid}` (non dalla sessione) e scrive `displayName` su `scores` / `leaderboard`; merge con storico `scores` + refresh in background.
+- **Profilo:** username account (fisso), **nome visualizzato** (modificabile, max 24 caratteri, compare in classifica), miglior tempo personale (`bestTime`).
 - PWA: manifest, service worker, icone.
 - Target: **mobile** (PC browser secondario).
 
@@ -68,7 +69,7 @@ evoluzione/
 - `bindHomeNav()` → da `onAuthStateChanged`
 - `isControlTarget(el)` → evita `startGame` con home visibile (non death); include `#fullscreenCornerBtn`, `#audioCornerBtn`, `#homeCornerBtn`.
 - `records-block` / `records-block-lb` → classifiche
-- `leaderboard.js`: `applyOptimisticScore`, `saveScore` con `Promise.all` (profilo + fetch classifica).
+- `leaderboard.js`: `saveScore(uid, ms)` aggiorna `users`, append `scores`, eventualmente `setDoc` su `leaderboard/{uid}`; `fetchLeaderboard` unisce `leaderboard` + `scores` e risolve i nomi.
 
 ---
 
@@ -95,7 +96,8 @@ evoluzione/
 
 ## Decisioni di design
 
-- Username unico, 3–20 caratteri, `[a-zA-Z0-9_]`
+- Username unico, 3–20 caratteri, `[a-zA-Z0-9_]` (fisso dopo registrazione)
+- **Nome visualizzato** (`displayName` su `users`): stesso valore dello username alla registrazione, poi editabile in profilo; in classifica e negli score salvati si usa quello (privacy).
 - 1vs1: stesso campo; bonus al primo contatto
 - Bonus (testo help allineato al gioco): **rosso** = scudo a tempo; **viola** = vita extra (satelliti); blu/giallo/verde come in `COME SI GIOCA`.
 - Bonus giallo/verde/blu: effetti globali per entrambi (dove applicabile in futuro 1vs1)

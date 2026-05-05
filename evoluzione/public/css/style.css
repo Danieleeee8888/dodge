@@ -929,6 +929,28 @@ canvas {
 /* Profilo */
 .profile-info { font-size:0.88rem; letter-spacing:0.06em; color:#fff; text-align:center; }
 .profile-info--dim { color:rgba(255,255,255,0.45); font-size:0.75rem; }
+.profile-label { letter-spacing:0.14em; text-transform:uppercase; font-size:0.62rem; margin-right:0.35rem; }
+.profile-mono { font-weight:700; letter-spacing:0.08em; color:rgba(255,255,255,0.92); }
+.profile-label-row {
+  display:block; width:min(20rem, calc(100% - 2rem)); margin:0.85rem auto 0.35rem;
+  font-size:0.62rem; letter-spacing:0.18em; text-transform:uppercase; color:rgba(255,255,255,0.5);
+}
+.profile-display-row {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:0.5rem;
+  width:min(20rem, calc(100% - 2rem)); margin:0 auto;
+}
+.profile-display-input {
+  flex:1; min-width:10rem; max-width:100%;
+  padding:0.55rem 0.65rem; border-radius:0.45rem;
+  border:1px solid rgba(140,170,255,0.35); background:rgba(0,0,0,0.35);
+  color:#fff; font-size:0.85rem; letter-spacing:0.06em;
+}
+.profile-display-input:focus { outline:none; border-color:rgba(147,197,253,0.55); box-shadow:0 0 0 2px rgba(147,197,253,0.15); }
+.home-btn--compact { padding:0.45rem 0.85rem; font-size:0.68rem; min-height:auto; }
+.profile-hint {
+  width:min(20rem, calc(100% - 2rem)); margin:0.5rem auto 0; text-align:center;
+  font-size:0.68rem; line-height:1.45; letter-spacing:0.04em;
+}
 .profile-msg {
   font-size:0.72rem; letter-spacing:0.1em; color:rgba(255,255,255,0.55);
   text-align:center; min-height:1.2em;

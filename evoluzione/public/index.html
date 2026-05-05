@@ -99,7 +99,14 @@
       <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
     </button>
     <h2 class="view-title">PROFILO</h2>
-    <p id="profile-info-name"  class="profile-info"></p>
+    <p class="profile-info profile-info--dim"><span class="profile-label">Username</span> <span id="profile-info-username" class="profile-mono"></span></p>
+    <p id="profile-info-best" class="profile-info"></p>
+    <label for="profile-display-name" class="profile-label-row">Nome visualizzato</label>
+    <div class="profile-display-row">
+      <input type="text" id="profile-display-name" class="profile-display-input js-no-start" maxlength="24" autocomplete="nickname" enterkeyhint="done" />
+      <button type="button" id="btn-save-display" class="home-btn home-btn--compact js-no-start">SALVA</button>
+    </div>
+    <p class="profile-hint profile-info--dim">Compare in classifica; l’username account resta quello scelto alla registrazione.</p>
     <p id="profile-info-email" class="profile-info profile-info--dim"></p>
     <button id="btn-reset-pw" class="home-btn js-no-start">RESET PASSWORD</button>
     <button id="btn-logout"   class="home-btn home-btn--danger js-no-start">ESCI</button>

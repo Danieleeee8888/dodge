@@ -24,6 +24,7 @@ export async function claimUsername(username, uid, email) {
     tx.set(userRef, {
       username,
       usernameLower: username.toLowerCase(),
+      displayName: username,
       email,
       createdAt: now,
       lastSeen: now,
@@ -31,6 +32,44 @@ export async function claimUsername(username, uid, email) {
       bestTime: 0,
     });
   });
+}
+
+/** Nome mostrato in classifica / menu; se manca (utenti vecchi) = username. */
+export function resolveDisplayName(data) {
+  if (!data) return '···';
+  const d = String(data.displayName || data.username || '').trim();
+  return d || '···';
+}
+
+export function normalizeDisplayNameInput(raw) {
+  return String(raw || '')
+    .replace(/[\r\n]+/g, ' ')
+    .trim()
+    .replace(/\s{2,}/g, ' ')
+    .slice(0, 24);
+}
+
+export function validateDisplayNameInput(raw) {
+  const s = normalizeDisplayNameInput(raw);
+  if (s.length < 1) return { ok: false, error: 'Inserisci un nome (max 24 caratteri).' };
+  if (s.length > 24) return { ok: false, error: 'Massimo 24 caratteri.' };
+  return { ok: true, value: s };
+}
+
+export async function updateDisplayName(uid, displayName) {
+  const v = validateDisplayNameInput(displayName);
+  if (!v.ok) {
+    const err = new Error(v.error);
+    err.code = 'INVALID_DISPLAY_NAME';
+    throw err;
+  }
+  const name = v.value;
+  await updateDoc(doc(db, 'users', uid), { displayName: name });
+  const lbRef = doc(db, 'leaderboard', uid);
+  const lbSnap = await getDoc(lbRef);
+  if (lbSnap.exists()) {
+    await updateDoc(lbRef, { displayName: name, updatedAt: serverTimestamp() });
+  }
 }
 
 export async function getProfile(uid) {

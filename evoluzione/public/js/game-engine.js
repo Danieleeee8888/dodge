@@ -38,13 +38,17 @@ import {
   signOut,
   sendPasswordResetEmail,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getProfile } from './profile.js';
+import { getProfile, resolveDisplayName, updateDisplayName } from './profile.js';
 import {
   saveScore, fetchLeaderboard, getCachedLeaderboard, applyOptimisticScore,
+  invalidateLeaderboardUsernameMap,
 } from './leaderboard.js';
 
 let currentUserId = null;
+/** Username account (fisso, registrazione). */
 let currentUsername = '···';
+/** Nome in menu / classifica (modificabile in profilo). */
+let currentDisplayName = '···';
 let currentUserEmail = '';
 
 const canvas = document.getElementById('c');
@@ -223,7 +227,7 @@ function renderRecordsInto(el) {
       const clsTop = i === 0 ? 'rec-r1' : '';
       const cls = `rec-row${clsTop ? ' ' + clsTop : ''}`;
       const isMe = row.uid === currentUserId ? ' rec-row--me' : '';
-      const tag = (row.username || '???').slice(0, 12);
+      const tag = (row.displayName || row.username || '???').slice(0, 12);
       body += `<li class="${cls}${isMe}"><span class="rec-row-main">${i + 1}. <span class="rec-tag">${tag}</span> ${fmt(row.ms)}</span></li>`;
     });
   }
@@ -286,13 +290,26 @@ function hideScreen() {
   if (homeCornerBtn) homeCornerBtn.classList.add('home-corner--hidden');
 }
 
-function setupProfileView() {
-  const nameEl  = document.getElementById('profile-info-name');
+async function setupProfileView() {
+  const usernameEl = document.getElementById('profile-info-username');
+  const bestEl = document.getElementById('profile-info-best');
+  const displayInput = document.getElementById('profile-display-name');
   const emailEl = document.getElementById('profile-info-email');
-  const msgEl   = document.getElementById('profile-msg');
-  if (nameEl)  nameEl.textContent  = currentUsername;
+  const msgEl = document.getElementById('profile-msg');
+  const profile = await getProfile(currentUserId).catch(() => null);
+  if (usernameEl) usernameEl.textContent = profile?.username || currentUsername || '···';
   if (emailEl) emailEl.textContent = currentUserEmail;
-  if (msgEl)   msgEl.textContent   = '';
+  if (msgEl) msgEl.textContent = '';
+  const best = profile?.bestTime || 0;
+  if (bestEl) {
+    bestEl.textContent = best > 0
+      ? `Miglior tempo personale: ${fmt(best)}`
+      : 'Miglior tempo personale: —';
+  }
+  if (displayInput) {
+    const d = resolveDisplayName(profile);
+    displayInput.value = d === '···' ? '' : d;
+  }
 }
 
 let _navBound = false;
@@ -321,11 +338,34 @@ function bindHomeNav() {
     showScreenView('howto');
   });
 
-  document.getElementById('btn-home-profile')?.addEventListener('click', e => {
+  document.getElementById('btn-home-profile')?.addEventListener('click', async e => {
     e.stopPropagation();
-    setupProfileView();
+    await setupProfileView();
     showScreenView('profile');
   });
+
+  const btnSaveDisplay = document.getElementById('btn-save-display');
+  if (btnSaveDisplay && btnSaveDisplay.dataset.bound !== '1') {
+    btnSaveDisplay.dataset.bound = '1';
+    btnSaveDisplay.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const msgEl = document.getElementById('profile-msg');
+      const input = document.getElementById('profile-display-name');
+      if (!input || !currentUserId) return;
+      if (msgEl) msgEl.textContent = 'Salvataggio…';
+      try {
+        await updateDisplayName(currentUserId, input.value);
+        const profile = await getProfile(currentUserId);
+        currentDisplayName = resolveDisplayName(profile);
+        invalidateLeaderboardUsernameMap();
+        await fetchLeaderboard(10).catch(() => {});
+        setupMenuUI();
+        if (msgEl) msgEl.textContent = 'Nome visualizzato aggiornato.';
+      } catch (err) {
+        if (msgEl) msgEl.textContent = err?.message || 'Errore. Riprova.';
+      }
+    });
+  }
 
   // ← HOME (tutti i pulsanti back)
   document.querySelectorAll('.js-back-home').forEach(btn => {
@@ -365,7 +405,7 @@ function bindHomeNav() {
 
 function setupMenuUI() {
   const nameEl = document.getElementById('menuPlayerName');
-  if (nameEl) nameEl.textContent = currentUsername;
+  if (nameEl) nameEl.textContent = currentDisplayName;
   renderRecordsInto(document.getElementById('records-block'));
   renderRecordsInto(document.getElementById('records-block-lb'));
 }
@@ -1342,9 +1382,9 @@ function die() {
         if (recEl) recEl.innerHTML = '<p class="rec-saving">verifica l\'email per salvare i record — controlla anche lo spam</p>';
       } else {
         if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio···</p>';
-        applyOptimisticScore(currentUserId, currentUsername, diedElapsed);
+        applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed);
         renderRecordsInto(recEl);
-        const result = await saveScore(currentUserId, currentUsername, diedElapsed);
+        const result = await saveScore(currentUserId, diedElapsed);
         if (!result || !result.ok) {
           const msg = result?.reason === 'permission'
             ? 'verifica l\'email per salvare i record'
@@ -2250,6 +2290,7 @@ onAuthStateChanged(auth, async (user) => {
   currentUserEmail = user.email || '';
   const profile = await getProfile(user.uid).catch(() => null);
   currentUsername = profile?.username || user.email || '···';
+  currentDisplayName = resolveDisplayName(profile);
 
   await fetchLeaderboard(10).catch(() => {});
 

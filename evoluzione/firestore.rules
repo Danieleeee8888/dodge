@@ -2,6 +2,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function validDisplayNameOpt() {
+      return !('displayName' in request.resource.data)
+             || (request.resource.data.displayName is string
+                 && request.resource.data.displayName.size() >= 1
+                 && request.resource.data.displayName.size() <= 24);
+    }
+
+    function validDisplayNameReq() {
+      return request.resource.data.displayName is string
+             && request.resource.data.displayName.size() >= 1
+             && request.resource.data.displayName.size() <= 24;
+    }
+
     // Profilo utente: solo il proprietario può leggere e modificare
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
@@ -10,12 +23,15 @@ service cloud.firestore {
                     && request.resource.data.username is string
                     && request.resource.data.email is string
                     && request.resource.data.gamesPlayed == 0
-                    && request.resource.data.bestTime == 0;
+                    && request.resource.data.bestTime == 0
+                    && validDisplayNameReq()
+                    && request.resource.data.displayName == request.resource.data.username;
       allow update: if request.auth != null
                     && request.auth.uid == uid
                     && !('username' in request.resource.data.diff(resource.data).affectedKeys())
                     && !('email' in request.resource.data.diff(resource.data).affectedKeys())
-                    && !('createdAt' in request.resource.data.diff(resource.data).affectedKeys());
+                    && !('createdAt' in request.resource.data.diff(resource.data).affectedKeys())
+                    && validDisplayNameOpt();
       allow delete: if false;
     }
 
@@ -38,6 +54,7 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.auth.token.email_verified == true
                     && request.resource.data.uid == request.auth.uid
+                    && validDisplayNameReq()
                     && request.resource.data.ms is int
                     && request.resource.data.ms > 0
                     && request.resource.data.ms <= 7200000;
@@ -52,13 +69,28 @@ service cloud.firestore {
                     && request.auth.token.email_verified == true
                     && request.auth.uid == uid
                     && request.resource.data.uid == uid
+                    && validDisplayNameReq()
                     && request.resource.data.ms is int
                     && request.resource.data.ms > 0
                     && request.resource.data.ms <= 7200000;
       allow update: if request.auth != null
                     && request.auth.token.email_verified == true
                     && request.auth.uid == uid
-                    && request.resource.data.ms > resource.data.ms;
+                    && (
+                      (
+                        request.resource.data.ms > resource.data.ms
+                        && request.resource.data.uid == uid
+                        && validDisplayNameReq()
+                      )
+                      || (
+                        request.resource.data.ms == resource.data.ms
+                        && request.resource.data.uid == resource.data.uid
+                        && request.resource.data.uid == uid
+                        && validDisplayNameReq()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['displayName', 'updatedAt'])
+                      )
+                    );
       allow delete: if false;
     }
 
