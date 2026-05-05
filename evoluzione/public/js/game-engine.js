@@ -30,7 +30,7 @@
   GREEN_MODE_DURATION_MS,
   INTRO_CD_MS,
 } from './constants.js';
-import { auth } from './firebase-init.js';
+import { auth, authPersistenceReady } from './firebase-init.js';
 import {
   onAuthStateChanged,
   reload,
@@ -2402,26 +2402,99 @@ function drawBg(now, lv){
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 }
 
+function debugIndex(label, info = {}) {
+  try {
+    const stamp = new Date().toLocaleTimeString();
+    const txt = `[${stamp}] ${label} ${JSON.stringify(info)}`;
+    const el = document.getElementById('indexDebugLog');
+    if (el) {
+      el.textContent = `${txt}\n${el.textContent || ''}`.slice(0, 1500);
+      el.style.display = 'block';
+    }
+    console.log('[index-debug]', label, info);
+  } catch {}
+}
+
+function showAuthGate(reason, extra = {}) {
+  const loader = document.getElementById('authLoading');
+  if (loader) loader.style.display = 'none';
+  let gate = document.getElementById('authGate');
+  if (!gate) {
+    gate = document.createElement('div');
+    gate.id = 'authGate';
+    gate.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;font-family:system-ui,sans-serif;text-align:center;';
+    gate.innerHTML = `
+      <h2 style="margin:0;font-size:18px;letter-spacing:0.16em;">SESSIONE NON RILEVATA</h2>
+      <p id="authGateReason" style="margin:0;max-width:480px;font-size:14px;opacity:0.85;line-height:1.5;"></p>
+      <pre id="authGateDetails" style="margin:0;max-width:90vw;font-size:11px;color:#9cf;white-space:pre-wrap;text-align:left;background:rgba(255,255,255,0.06);padding:10px 12px;border-radius:8px;"></pre>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+        <button id="authGateRetry" style="padding:10px 18px;border-radius:24px;border:1px solid rgba(255,255,255,0.4);background:#fff;color:#000;font-weight:600;cursor:pointer;">RIPROVA</button>
+        <button id="authGateLogin" style="padding:10px 18px;border-radius:24px;border:1px solid rgba(255,255,255,0.4);background:transparent;color:#fff;font-weight:600;cursor:pointer;">VAI AL LOGIN</button>
+      </div>`;
+    document.body.appendChild(gate);
+    gate.querySelector('#authGateRetry').addEventListener('click', () => window.location.reload());
+    gate.querySelector('#authGateLogin').addEventListener('click', () => { window.location.href = '/auth.html'; });
+  }
+  gate.querySelector('#authGateReason').textContent = reason;
+  gate.querySelector('#authGateDetails').textContent = JSON.stringify(extra, null, 2);
+  gate.style.display = 'flex';
+}
+
 onAuthStateChanged(auth, async (user) => {
+  await authPersistenceReady;
   const loader = document.getElementById('authLoading');
   guestModeEnabled = sessionStorage.getItem(GUEST_MODE_KEY) === '1';
+  debugIndex('index.html:onAuthStateChanged', {
+    hasUser: !!user,
+    uid: user?.uid,
+    email: user?.email,
+    verified: user?.emailVerified,
+    providers: (user?.providerData || []).map((p) => p?.providerId),
+    guestMode: guestModeEnabled,
+  });
   if (!user) {
-    if (!guestModeEnabled) { window.location.href = '/auth.html'; return; }
+    if (!guestModeEnabled) {
+      showAuthGate('Nessun utente autenticato: la sessione non è arrivata su questa pagina.', {
+        guestMode: guestModeEnabled,
+        currentUser: auth.currentUser ? {
+          uid: auth.currentUser.uid,
+          email: auth.currentUser.email,
+        } : null,
+      });
+      return;
+    }
     currentUserId = null;
     currentUserEmail = '';
     currentUsername = 'ospite';
     currentDisplayName = 'OSPITE OFFLINE';
   } else {
-    await reload(user).catch(() => {});
-    if (!user.emailVerified && hasPasswordProvider(user)) { window.location.href = '/auth.html'; return; }
+    try {
+      await reload(user);
+    } catch (err) {
+      debugIndex('index.html:reload-error', { code: err?.code, msg: err?.message });
+    }
+    if (!user.emailVerified && hasPasswordProvider(user)) {
+      showAuthGate('Email non verificata: torna al login per completare la verifica.', {
+        uid: user.uid,
+        email: user.email,
+        verified: user.emailVerified,
+        providers: (user.providerData || []).map((p) => p?.providerId),
+      });
+      return;
+    }
     sessionStorage.removeItem(GUEST_MODE_KEY);
     guestModeEnabled = false;
     currentUserId = user.uid;
     currentUserEmail = user.email || '';
-    const profile = await getProfile(user.uid).catch(() => null);
+    const profile = await getProfile(user.uid).catch((err) => {
+      debugIndex('index.html:getProfile-error', { code: err?.code, msg: err?.message });
+      return null;
+    });
     currentUsername = profile?.username || user.email || '···';
     currentDisplayName = resolveDisplayName(profile);
-    await fetchLeaderboard(10).catch(() => {});
+    await fetchLeaderboard(10).catch((err) => {
+      debugIndex('index.html:fetchLeaderboard-error', { code: err?.code, msg: err?.message });
+    });
   }
 
   if (loader) loader.style.display = 'none';
