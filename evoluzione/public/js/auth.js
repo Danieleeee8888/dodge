@@ -78,6 +78,7 @@ function errText(err) {
     'auth/cancelled-popup-request': 'Accesso Google annullato.',
     'auth/account-exists-with-different-credential': 'Questa email è già associata a un altro metodo di accesso.',
     'USERNAME_TAKEN':               'Username già in uso. Scegline un altro.',
+    'GOOGLE_SESSION_NOT_READY':    'Accesso Google riuscito ma sessione non pronta. Riprova tra un secondo.',
   };
   return map[err.code] || map[err.message] || 'Errore imprevisto. Riprova.';
 }
@@ -150,6 +151,14 @@ function shouldUseRedirectForGoogle() {
   return /Android|iPhone|iPad|iPod/i.test(ua);
 }
 
+async function waitForStableAuthUser(timeoutMs = 1800) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (auth.currentUser) return auth.currentUser;
+    await new Promise((r) => setTimeout(r, 80));
+  }
+  return auth.currentUser;
+}
 // ── REGISTRAZIONE ──────────────────────────────────────────────────────────
 document.getElementById('form-register').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -220,7 +229,11 @@ document.getElementById('btn-google-login')?.addEventListener('click', async () 
       return;
     }
     const { user } = await signInWithPopup(auth, googleProvider);
-    await completeGoogleSignIn(user);
+    const stableUser = (await waitForStableAuthUser()) || user;
+    if (!stableUser) {
+      throw new Error('GOOGLE_SESSION_NOT_READY');
+    }
+    await completeGoogleSignIn(stableUser);
   } catch (err) {
     console.error('google-login:', err);
     setMsg('login', errText(err));
@@ -303,7 +316,8 @@ document.getElementById('btn-resend').addEventListener('click', async () => {
 onAuthStateChanged(auth, async (user) => {
   await authPersistenceReady;
   const redirectResult = await redirectSignInPromise;
-  if (redirectResult?.user) {    try {
+  if (redirectResult?.user) {
+    try {
       await completeGoogleSignIn(redirectResult.user);
       return;
     } catch (err) {

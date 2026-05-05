@@ -2402,17 +2402,34 @@ function drawBg(now, lv){
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 }
 
+async function waitForAuthWarmup(timeoutMs = 1800) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (auth.currentUser) return auth.currentUser;
+    await new Promise((r) => setTimeout(r, 80));
+  }
+  return auth.currentUser;
+}
 onAuthStateChanged(auth, async (user) => {
   await authPersistenceReady;
   const loader = document.getElementById('authLoading');
   guestModeEnabled = sessionStorage.getItem(GUEST_MODE_KEY) === '1';
   if (!user) {
-    if (!guestModeEnabled) { window.location.href = '/auth.html'; return; }
-    currentUserId = null;
-    currentUserEmail = '';
-    currentUsername = 'ospite';
-    currentDisplayName = 'OSPITE OFFLINE';
-  } else {
+    const warmedUser = await waitForAuthWarmup();
+    if (warmedUser) {
+      user = warmedUser;
+    } else if (!guestModeEnabled) {
+      window.location.href = '/auth.html';
+      return;
+    } else {
+      currentUserId = null;
+      currentUserEmail = '';
+      currentUsername = 'ospite';
+      currentDisplayName = 'OSPITE OFFLINE';
+    }
+  }
+
+  if (user) {
     await reload(user).catch(() => {});
     if (!user.emailVerified && hasPasswordProvider(user)) { window.location.href = '/auth.html'; return; }
     sessionStorage.removeItem(GUEST_MODE_KEY);
