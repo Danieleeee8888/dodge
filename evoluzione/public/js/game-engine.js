@@ -86,6 +86,7 @@ function syncAudioChromeVisibility() {
   const hide = shellPhase === 'playing'
     || uiChromeScreen === 'leaderboard'
     || uiChromeScreen === 'profile'
+    || uiChromeScreen === 'howto'
     || uiChromeScreen === 'death';
   audioCornerBtn.classList.toggle('audio-corner--hidden', hide);
 }

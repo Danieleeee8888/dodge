@@ -73,11 +73,6 @@
       <h1 class="screen-logo"><span class="screen-logo__text">DODGE</span></h1>
       <p class="menu-player-name" id="menuPlayerName">···</p>
     </header>
-    <nav class="home-nav home-nav--modes home-nav--row" aria-label="Modalità di gioco">
-      <button id="btn-play"   class="home-btn home-btn--mode home-btn--mode-on js-no-start" type="button">GIOCA</button>
-      <button id="btn-coop"   class="home-btn home-btn--mode home-btn--mode-off js-no-start" type="button" disabled>CO&#8209;OP<span class="badge-soon" aria-hidden="true">presto</span></button>
-      <button id="btn-1v1"    class="home-btn home-btn--mode home-btn--mode-off js-no-start" type="button" disabled>1&#8209;VS&#8209;1<span class="badge-soon" aria-hidden="true">presto</span></button>
-    </nav>
     <div class="home-bonus-floating js-open-howto js-no-start" role="button" tabindex="0" aria-label="Apri istruzioni e bonus">
       <div class="menu-bonus-dots" aria-hidden="true">
         <span class="menu-bonus-dot menu-bonus-dot--red"></span>
@@ -88,6 +83,11 @@
       </div>
       <p class="menu-tagline">Prendi i bonus per resistere...</p>
     </div>
+    <nav class="home-nav home-nav--modes home-nav--row" aria-label="Modalità di gioco">
+      <button id="btn-play"   class="home-btn home-btn--mode home-btn--mode-on js-no-start" type="button">GIOCA</button>
+      <button id="btn-coop"   class="home-btn home-btn--mode home-btn--mode-off js-no-start" type="button" disabled>CO&#8209;OP<span class="badge-soon" aria-hidden="true">presto</span></button>
+      <button id="btn-1v1"    class="home-btn home-btn--mode home-btn--mode-off js-no-start" type="button" disabled>1&#8209;VS&#8209;1<span class="badge-soon" aria-hidden="true">presto</span></button>
+    </nav>
   </div>
 
   <!-- ── CLASSIFICA ────────────────────────────────────────── -->
@@ -122,9 +122,7 @@
 
   <!-- ── COME SI GIOCA ─────────────────────────────────────── -->
   <div id="view-howto" class="screen-view screen-view--sub" hidden>
-    <button type="button" class="subview-round-back subview-bar-back--right js-back-home js-no-start" aria-label="Torna alla home" title="Indietro">
-      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg>
-    </button>
+    <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
     <h2 class="view-title">COME SI GIOCA</h2>
     <div class="howto-body">
       <p>Muovi il dito per spostare il cursore bianco.</p>

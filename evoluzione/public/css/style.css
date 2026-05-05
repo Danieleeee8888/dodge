@@ -722,16 +722,19 @@ canvas {
 .menu-bonus-dot--purple { background:#a855f7; border-color:rgba(255,255,255,0.28); }
 
 .home-bonus-floating {
-  position:fixed;
-  left:50%;
-  top:47%;
-  transform:translate(-50%, -50%);
+  position:relative;
+  left:auto;
+  top:auto;
+  transform:none;
   z-index:21;
+  flex:1 1 auto;
   display:flex;
   flex-direction:column;
   align-items:center;
+  justify-content:center;
   gap:0.65rem;
   width:min(22rem, calc(100vw - 2rem));
+  min-height:0;
   padding:0.35rem max(1rem, env(safe-area-inset-left)) 0.35rem max(1rem, env(safe-area-inset-right));
   box-sizing:border-box;
   pointer-events:auto;
@@ -866,11 +869,11 @@ canvas {
 }
 .screen-view[hidden] { display:none !important; }
 
-/* ── HOME layout (minimal, arioso) ─────────────────────────────────────── */
+/* ── HOME layout: Q1 titolo · fascia centrale pallini · Q3 modalità · basso pulsanti tondi ── */
 .screen-view--home {
   justify-content:flex-start;
   gap:0;
-  padding-top:calc(max(1.35rem, env(safe-area-inset-top, 0px) + 0.85rem) + 1.5cm);
+  padding-top:max(0.65rem, env(safe-area-inset-top, 0px));
   padding-bottom:calc(max(5.75rem, env(safe-area-inset-bottom, 0px) + 4.75rem) + max(52px, calc(54px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
   padding-left:max(1.1rem, env(safe-area-inset-left));
   padding-right:max(1.1rem, env(safe-area-inset-right));
@@ -963,12 +966,16 @@ canvas {
   opacity:0.92;
 }
 .home-hero {
-  display:flex; flex-direction:column; align-items:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
   gap:0;
-  margin-top:calc(clamp(1.75rem, 7vmin, 3rem) + 0.5cm);
-  margin-bottom:clamp(1.35rem, 5vmin, 2rem);
   width:100%;
   flex:0 0 auto;
+  min-height:min(26vh, 11.5rem);
+  max-height:28vh;
+  margin:0;
 }
 .screen-view--home h1.screen-logo {
   padding:0;
@@ -1003,16 +1010,19 @@ canvas {
   flex-direction:row;
   flex-wrap:nowrap;
   justify-content:center;
-  align-items:stretch;
+  align-items:center;
   width:min(22rem, calc(100% - 1.35rem));
-  margin:0 auto clamp(0.85rem, 3vmin, 1.35rem);
+  margin:0 auto;
   gap:0.42rem;
+  flex:0 0 auto;
+  min-height:min(24vh, 10rem);
+  align-self:center;
 }
-/* GIOCA più grande al centro (ref. layout “foto 2”) */
+/* GIOCA più alto, centrato in altezza rispetto a CO-OP / 1v1 */
 .home-nav--modes.home-nav--row #btn-play.home-btn--mode-on {
   flex:1.55 1 38%;
   min-width:6.5rem;
-  padding:0.88rem 0.52rem 0.82rem;
+  padding:1.05rem 0.52rem 1rem;
   font-size:clamp(0.78rem, 3.05vmin, 0.92rem);
   letter-spacing:0.14em;
   border-width:1.5px;
@@ -1117,7 +1127,7 @@ canvas {
   font-weight:700; text-align:center; margin-bottom:0.4rem;
 }
 
-/* Barra bassa: howto = audio sx + ‹ dx · classifica/profilo = solo ⌂ viola centrato */
+/* Barra bassa viste sub: istruzioni = solo ⌂ viola centrato (no audio); classifica/profilo idem */
 .screen-view--sub {
   padding-top:max(1rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
   padding-bottom:calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
@@ -1158,9 +1168,10 @@ canvas {
   right:auto;
   transform:translateX(-50%);
 }
-/* Classifica da home + profilo: ⌂ centrato viola */
+/* Classifica, profilo, istruzioni: ⌂ centrato viola */
 #view-leaderboard .subview-round-back,
-#view-profile .subview-round-back {
+#view-profile .subview-round-back,
+#view-howto .subview-round-back {
   font-size:1.22rem;
   line-height:1;
   font-family:inherit;
@@ -1171,7 +1182,8 @@ canvas {
   text-shadow:0 0 12px rgba(192,132,252,0.45);
 }
 #view-leaderboard .subview-round-back:active,
-#view-profile .subview-round-back:active {
+#view-profile .subview-round-back:active,
+#view-howto .subview-round-back:active {
   background:rgba(124,58,237,0.16);
   border-color:rgba(192,132,252,0.88);
   color:#faf5ff;
