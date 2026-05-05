@@ -2,15 +2,22 @@ import { auth } from './firebase-init.js';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendEmailVerification,
   sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   reload,
+  GoogleAuthProvider,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { usernameExists, claimUsername } from './profile.js';
+import { usernameExists, claimUsername, getProfile } from './profile.js';
 
 const GUEST_MODE_KEY = 'dodge_guest_mode';
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+const redirectSignInPromise = getRedirectResult(auth).catch(() => null);
 
 // ── viste ──────────────────────────────────────────────────────────────────
 const $v = {
@@ -64,6 +71,10 @@ function errText(err) {
     'auth/network-request-failed':  'Errore di rete. Controlla la connessione.',
     'auth/weak-password':           'Password troppo debole (minimo 8 caratteri).',
     'auth/user-disabled':           'Account disabilitato.',
+    'auth/popup-closed-by-user':    'Accesso Google annullato.',
+    'auth/popup-blocked':           'Popup bloccato dal browser. Riprova o abilita i popup.',
+    'auth/cancelled-popup-request': 'Accesso Google annullato.',
+    'auth/account-exists-with-different-credential': 'Questa email è già associata a un altro metodo di accesso.',
     'USERNAME_TAKEN':               'Username già in uso. Scegline un altro.',
   };
   return map[err.code] || map[err.message] || 'Errore imprevisto. Riprova.';
@@ -75,6 +86,61 @@ function validateUsername(u) {
   if (u.length > 20)        return 'Username troppo lungo (max 20 caratteri).';
   if (!/^[a-zA-Z0-9_]+$/.test(u)) return 'Username: solo lettere, numeri e _.';
   return null;
+}
+
+function isGoogleUser(user) {
+  return !!user?.providerData?.some((p) => p?.providerId === 'google.com');
+}
+
+function isVerifiedOrGoogle(user) {
+  return !!(user?.emailVerified || isGoogleUser(user));
+}
+
+function normalizeGoogleUsername(raw) {
+  const cleaned = String(raw || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  let base = cleaned || 'player';
+  if (base.length < 3) base = (base + 'player').slice(0, 12);
+  return base.slice(0, 20);
+}
+
+async function ensureGoogleProfile(user) {
+  if (!user) return;
+  const profile = await getProfile(user.uid).catch(() => null);
+  if (profile) return;
+
+  const emailLocal = String(user.email || '').split('@')[0];
+  const display = user.displayName || emailLocal || 'player';
+  const base = normalizeGoogleUsername(display);
+
+  for (let i = 0; i < 40; i++) {
+    const suffix = i === 0 ? '' : `_${Math.floor(100 + Math.random() * 9000)}`;
+    const maxBaseLen = Math.max(3, 20 - suffix.length);
+    const candidate = (base.slice(0, maxBaseLen) + suffix).slice(0, 20);
+    if (await usernameExists(candidate)) continue;
+    try {
+      await claimUsername(candidate, user.uid, user.email || '');
+      return;
+    } catch (err) {
+      if (err?.code === 'USERNAME_TAKEN') continue;
+      throw err;
+    }
+  }
+  throw new Error('USERNAME_TAKEN');
+}
+
+async function completeGoogleSignIn(user) {
+  await ensureGoogleProfile(user);
+  sessionStorage.removeItem(GUEST_MODE_KEY);
+  window.location.href = '/index.html';
+}
+
+function shouldUseRedirectForGoogle() {
+  const ua = navigator.userAgent || '';
+  return /Android|iPhone|iPad|iPod/i.test(ua);
 }
 
 // ── REGISTRAZIONE ──────────────────────────────────────────────────────────
@@ -122,7 +188,7 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
   try {
     const { user } = await signInWithEmailAndPassword(auth, email, pw);
     await reload(user);
-    if (!user.emailVerified) {
+    if (!isVerifiedOrGoogle(user)) {
       document.getElementById('verify-email-placeholder').textContent = email;
       showView('verify');
       return;
@@ -134,6 +200,24 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
     setMsg('login', errText(err));
   } finally {
     setLoading('btn-login', false);
+  }
+});
+
+document.getElementById('btn-google-login')?.addEventListener('click', async () => {
+  setLoading('btn-google-login', true);
+  try {
+    if (shouldUseRedirectForGoogle()) {
+      sessionStorage.removeItem(GUEST_MODE_KEY);
+      await signInWithRedirect(auth, googleProvider);
+      return;
+    }
+    const { user } = await signInWithPopup(auth, googleProvider);
+    await completeGoogleSignIn(user);
+  } catch (err) {
+    console.error('google-login:', err);
+    setMsg('login', errText(err));
+  } finally {
+    setLoading('btn-google-login', false);
   }
 });
 
@@ -209,9 +293,31 @@ document.getElementById('btn-resend').addEventListener('click', async () => {
 
 // ── STATO AUTH: se già loggato e verificato → vai al gioco ────────────────
 onAuthStateChanged(auth, async (user) => {
+  const redirectResult = await redirectSignInPromise;
+  if (redirectResult?.user) {
+    try {
+      await completeGoogleSignIn(redirectResult.user);
+      return;
+    } catch (err) {
+      setMsg('login', errText(err));
+      await signOut(auth).catch(() => {});
+      showView('login');
+      return;
+    }
+  }
   if (!user) { showView('login'); return; }
   await reload(user).catch(() => {});
-  if (user.emailVerified) {
+  if (isVerifiedOrGoogle(user)) {
+    if (isGoogleUser(user)) {
+      try {
+        await completeGoogleSignIn(user);
+      } catch (err) {
+        setMsg('login', errText(err));
+        await signOut(auth).catch(() => {});
+        showView('login');
+      }
+      return;
+    }
     sessionStorage.removeItem(GUEST_MODE_KEY);
     window.location.href = '/index.html';
   } else {

@@ -56,6 +56,10 @@ function isGuestModeActive() {
   return guestModeEnabled || !currentUserId;
 }
 
+function isGoogleUser(user) {
+  return !!user?.providerData?.some((p) => p?.providerId === 'google.com');
+}
+
 const canvas = document.getElementById('c');
 const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
 const dodgeShell = document.getElementById('dodgeShell');
@@ -2409,7 +2413,7 @@ onAuthStateChanged(auth, async (user) => {
     currentDisplayName = 'OSPITE OFFLINE';
   } else {
     await reload(user).catch(() => {});
-    if (!user.emailVerified) { window.location.href = '/auth.html'; return; }
+    if (!user.emailVerified && !isGoogleUser(user)) { window.location.href = '/auth.html'; return; }
     sessionStorage.removeItem(GUEST_MODE_KEY);
     guestModeEnabled = false;
     currentUserId = user.uid;

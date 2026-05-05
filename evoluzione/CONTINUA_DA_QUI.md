@@ -51,6 +51,7 @@ evoluzione/
 ## Stato attuale
 
 - `auth.html`: registrazione, verifica email, login, reset password.
+- `auth.html`: registrazione, verifica email, login email/password, accesso Google, reset password.
 - `index.html` + `game-engine.js`: gioco con auth guard e home screen.
 - **Home:** titolo **DODGE**, tre puntini animati sotto il titolo, nome utente; **in alto** icone tonde monocromatiche (medaglia classifica, profilo); **al centro** tre pillole **GIOCA** / **CO‑OP** (presto) / **1‑VS‑1** (presto); classifica solo dall’icona in alto a sinistra; in basso link minimale “Come funzionano i bonus”.
 - **Classifica / Profilo / Come si gioca:** pulsante **indietro** tondo fisso in alto a sinistra (`subview-round-back`), stile coerente con gli angoli home.
