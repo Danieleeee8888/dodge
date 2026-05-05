@@ -53,10 +53,10 @@ evoluzione/
 - `auth.html`: registrazione, verifica email, login, reset password.
 - `auth.html`: registrazione, verifica email, login email/password, accesso Google, reset password.
 - `index.html` + `game-engine.js`: gioco con auth guard e home screen.
-- **Home:** titolo **DODGE** (pallini sotto invisibili, spazio conservato); nome utente; **barra chrome in basso**: **audio** a sinistra (verde on / rosso off), **classifica** al centro (cerchio **giallo**), **profilo** a destra (fondo **nero**, bordo e icona **blu**); pillole **GIOCA** / **CO‑OP** / **1‑VS‑1**; blocco bonus centrato (compensazione verticale).
+- **Home:** titolo **DODGE** (pallini sotto invisibili, spazio conservato); nome utente; **barra chrome in basso**: **audio** a sinistra (verde on / rosso off), **classifica** al centro (cerchio **giallo**), **profilo** a destra (fondo **nero**, bordo e icona **blu**); pillole **GIOCA** / **CO‑OP** / **1‑VS‑1**; blocco bonus centrato (compensazione verticale). Contenuto centrale abbassato di **1.5 cm** (`padding-top` extra su `.screen-view--home`).
 - **Caricamento auth:** `#authLoading` con **cinque pallini colorati** come i bonus (animazione `menuDotBreath`). La **barra / striscia di caricamento in alto del browser** (Chrome Android ecc.) **non è dell’app** e non si può disattivare da HTML/CSS; `theme-color` nero aiuta un po’ il chrome del browser.
-- **Classifica da home** (`view-leaderboard`): solo **⌂** viola in basso a sinistra (`subview-bar-back--left`); **nessun** pulsante audio. **Profilo / Come si gioca:** **audio** basso sinistra + **indietro** (‹) basso destra (`subview-bar-back--right`).
-- **Death screen:** **audio** basso sinistra + **⌂** giallo centrato in basso; tap ovunque per riprovare.
+- **Classifica da home** (`view-leaderboard`): solo **⌂** viola **centrato** in basso; **nessun** audio. **Profilo:** solo **⌂** viola centrato; **nessun** audio. **Come si gioca:** **audio** sinistra + **indietro** (‹) destra.
+- **Death screen:** solo **⌂** viola centrato in basso (**nessun** audio); tap ovunque per riprovare.
 - **Modalità guest offline:** da `auth.html` è disponibile il pulsante `Provalo offline`; entra nel gioco senza account, mostra il tempo nel game over per screenshot, **nessun salvataggio** su Firestore. **Classifica globale** dall’icona **gialla** in basso al centro sulla home; schermata **Profilo** mostra copy ospite + pulsante opzionale «Accedi o registrati» (senza «ESCI» verso login come unico gesto).
 - **Classifica:** `applyOptimisticScore` + `renderRecordsInto` subito dopo la morte; `saveScore` legge il **nome visualizzato** da `users/{uid}` (non dalla sessione) e scrive `displayName` su `scores` / `leaderboard`; merge con storico `scores` + refresh in background. Layout righe: posizione + nome a sinistra, tempo a destra allineato.
 - **Formato tempo UI:** ovunque nel gioco/classifica/profilo il timer è in `mm:ss:000` (millisecondi a 3 cifre, minuti senza limite ore).
@@ -68,7 +68,7 @@ evoluzione/
 
 ## Architettura navigazione (`game-engine.js`)
 
-- `showScreenView(name)` → `'home'|'leaderboard'|'profile'|'howto'|'death'`; imposta `uiChromeScreen` e `syncAudioChromeVisibility()` (audio nascosto solo in **playing** e sulla **leaderboard** da home). Mostra/nasconde `#homeCornerBtn` in vista **death**.
+- `showScreenView(name)` → `'home'|'leaderboard'|'profile'|'howto'|'death'`; imposta `uiChromeScreen` e `syncAudioChromeVisibility()` (audio nascosto in **playing**, **leaderboard**, **profilo**, **death**). Mostra/nasconde `#homeCornerBtn` in vista **death**.
 - `hideScreen()` → usato da `startGame` (nasconde anche il pulsante HOME angolo).
 - `bindHomeNav()` → da `onAuthStateChanged`
 - `isControlTarget(el)` → evita `startGame` con home visibile (non death); include `#audioCornerBtn`, `#homeCornerBtn`.

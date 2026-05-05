@@ -536,6 +536,19 @@ canvas {
   background:rgba(253,224,71,0.12);
   border-color:rgba(253,224,71,0.55);
 }
+/* Morte: ⌂ viola (stesso stile classifica/profilo) */
+#screen.screen-death #homeCornerBtn {
+  color:#e9d5ff;
+  border-color:rgba(168,85,247,0.62);
+  background:rgba(0,0,0,0.72);
+  box-shadow:0 4px 22px rgba(0,0,0,0.48), 0 0 18px rgba(168,85,247,0.38);
+  text-shadow:0 0 12px rgba(192,132,252,0.45);
+}
+#screen.screen-death #homeCornerBtn:active {
+  background:rgba(124,58,237,0.16);
+  border-color:rgba(192,132,252,0.88);
+  color:#faf5ff;
+}
 #homeCornerBtn.home-corner--hidden { display:none !important; }
 
 /* ── INSTALL NUDGE (primo avvio da browser) ─────────────────────────────── */
@@ -866,7 +879,7 @@ canvas {
 .screen-view--home {
   justify-content:flex-start;
   gap:0;
-  padding-top:max(1.35rem, calc(env(safe-area-inset-top, 0px) + 0.85rem));
+  padding-top:calc(max(1.35rem, env(safe-area-inset-top, 0px) + 0.85rem) + 1.5cm);
   padding-bottom:calc(max(5.75rem, env(safe-area-inset-bottom, 0px) + 4.75rem) + max(52px, calc(54px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
   padding-left:max(1.1rem, env(safe-area-inset-left));
   padding-right:max(1.1rem, env(safe-area-inset-right));
@@ -1141,7 +1154,7 @@ canvas {
   font-weight:700; text-align:center; margin-bottom:0.4rem;
 }
 
-/* Indietro rotondo in basso (classifica: solo sx viola · profilo/howto: sx audio + dx indietro) */
+/* Barra bassa: howto = audio sx + ‹ dx · classifica/profilo = solo ⌂ viola centrato */
 .screen-view--sub {
   padding-top:max(1rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
   padding-bottom:calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
@@ -1177,8 +1190,14 @@ canvas {
   right:max(14px, env(safe-area-inset-right));
   left:auto;
 }
-/* Classifica da home: ⌂ viola */
-#view-leaderboard .subview-round-back {
+.subview-bar-back--center {
+  left:50%;
+  right:auto;
+  transform:translateX(-50%);
+}
+/* Classifica da home + profilo: ⌂ centrato viola */
+#view-leaderboard .subview-round-back,
+#view-profile .subview-round-back {
   font-size:1.22rem;
   line-height:1;
   font-family:inherit;
@@ -1188,7 +1207,8 @@ canvas {
   box-shadow:0 2px 14px rgba(0,0,0,0.45), 0 0 18px rgba(168,85,247,0.38);
   text-shadow:0 0 12px rgba(192,132,252,0.45);
 }
-#view-leaderboard .subview-round-back:active {
+#view-leaderboard .subview-round-back:active,
+#view-profile .subview-round-back:active {
   background:rgba(124,58,237,0.16);
   border-color:rgba(192,132,252,0.88);
   color:#faf5ff;

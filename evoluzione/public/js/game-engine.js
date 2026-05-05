@@ -83,7 +83,10 @@ let uiChromeScreen = 'home';
 
 function syncAudioChromeVisibility() {
   if (!audioCornerBtn) return;
-  const hide = shellPhase === 'playing' || uiChromeScreen === 'leaderboard';
+  const hide = shellPhase === 'playing'
+    || uiChromeScreen === 'leaderboard'
+    || uiChromeScreen === 'profile'
+    || uiChromeScreen === 'death';
   audioCornerBtn.classList.toggle('audio-corner--hidden', hide);
 }
 const pauseOverlay = document.getElementById('pauseOverlay');
