@@ -9,6 +9,7 @@ html {
 :root {
   --vv-layout-gap-bottom: 0px;
   --vv-layout-gap-top: 0px;
+  --chrome-bar-bottom: calc(max(14px, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
 }
 
 html, body {
@@ -474,13 +475,13 @@ canvas {
 #hud .hud-time  { white-space:nowrap; }
 #hud .hud-nb    { white-space:nowrap; opacity:0.92; }
 
-/* ── CORNER CHROME: audio alto dx · home morte centro basso ─────────────── */
+/* ── BARRA CHROME IN BASSO: audio sx · classifica centro · profilo dx ────── */
 #audioCornerBtn {
   position:fixed;
-  top:calc(max(12px, env(safe-area-inset-top)) + var(--vv-layout-gap-top, 0px));
-  right:max(14px, env(safe-area-inset-right));
-  bottom:auto;
-  left:auto;
+  bottom:var(--chrome-bar-bottom);
+  left:max(14px, env(safe-area-inset-left));
+  top:auto;
+  right:auto;
   z-index:26;
   pointer-events:auto;
   touch-action:manipulation;
@@ -509,8 +510,8 @@ canvas {
   position:fixed;
   left:50%;
   transform:translateX(-50%);
-  bottom:calc(max(14px, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
-  z-index:25;
+  bottom:var(--chrome-bar-bottom);
+  z-index:26;
   pointer-events:auto;
   touch-action:manipulation;
   width:max(44px, calc(48px * var(--ui-scale)));
@@ -775,7 +776,7 @@ canvas {
 #screen.screen-death { background:#000; justify-content:center; align-items:center; }
 /* Spazio per ⌂ fissa in basso + gesture Android (visual viewport) */
 #view-death.screen-view {
-  padding-bottom:calc(max(1.35rem, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px) + 3.85rem);
+  padding-bottom:calc(max(1.35rem, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px) + max(56px, calc(58px * var(--ui-scale))) + 2.35rem);
 }
 #screen .death-sub {
   color:rgba(255,255,255,0.5); font-size:0.78rem; letter-spacing:0.16em;
@@ -865,15 +866,17 @@ canvas {
 .screen-view--home {
   justify-content:flex-start;
   gap:0;
-  padding-top:max(3.65rem, calc(env(safe-area-inset-top, 0px) + 3rem));
-  padding-bottom:calc(max(5.5rem, env(safe-area-inset-bottom, 0px) + 4.5rem) + var(--vv-layout-gap-bottom, 0px));
+  padding-top:max(1.35rem, calc(env(safe-area-inset-top, 0px) + 0.85rem));
+  padding-bottom:calc(max(5.75rem, env(safe-area-inset-bottom, 0px) + 4.75rem) + max(52px, calc(54px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
   padding-left:max(1.1rem, env(safe-area-inset-left));
   padding-right:max(1.1rem, env(safe-area-inset-right));
   min-height:100dvh;
 }
-.home-top-btn {
+.home-bar-btn {
   position:fixed;
-  top:calc(max(12px, env(safe-area-inset-top)) + var(--vv-layout-gap-top, 0px));
+  bottom:var(--chrome-bar-bottom);
+  left:50%;
+  transform:translateX(-50%);
   z-index:26;
   width:max(52px, calc(54px * var(--ui-scale)));
   height:max(52px, calc(54px * var(--ui-scale)));
@@ -887,34 +890,33 @@ canvas {
   box-shadow:0 2px 14px rgba(0,0,0,0.4);
   touch-action:manipulation;
 }
-.home-top-btn:active {
+.home-bar-btn:active {
   background:rgba(255,255,255,0.08);
   border-color:rgba(255,255,255,0.38);
   color:#fff;
 }
-.home-top-btn--records {
-  left:max(14px, env(safe-area-inset-left));
+.home-bar-btn--records {
   color:#fde68a;
   border-color:rgba(253,224,71,0.55);
   background:rgba(253,224,71,0.08);
   box-shadow:0 2px 14px rgba(0,0,0,0.4), 0 0 18px rgba(253,224,71,0.22);
 }
-.home-top-btn--records:active {
+.home-bar-btn--records:active {
   background:rgba(253,224,71,0.18);
   border-color:rgba(253,224,71,0.85);
   color:#fffbeb;
 }
-.home-top-icon {
+.home-bar-icon {
   width:1.42rem;
   height:1.42rem;
   display:block;
   opacity:0.95;
 }
 
-/* Profilo: angolo basso dx (visibile solo con #view-home) */
+/* Profilo: barra in basso a destra (#view-home) — centro nero, contorno e icona blu */
 .home-dock-btn {
   position:fixed;
-  bottom:calc(max(14px, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
+  bottom:var(--chrome-bar-bottom);
   right:max(14px, env(safe-area-inset-right));
   z-index:26;
   width:max(52px, calc(54px * var(--ui-scale)));
@@ -938,6 +940,17 @@ canvas {
   background:rgba(255,255,255,0.08);
   border-color:rgba(255,255,255,0.38);
   color:#fff;
+}
+#btn-home-profile.home-dock-btn {
+  background:#000;
+  border-color:rgba(96,165,250,0.82);
+  color:#60a5fa;
+  box-shadow:0 2px 14px rgba(0,0,0,0.55), 0 0 14px rgba(59,130,246,0.22);
+}
+#btn-home-profile.home-dock-btn:active {
+  background:#070707;
+  border-color:rgba(147,197,253,0.95);
+  color:#93c5fd;
 }
 .home-dock-icon {
   width:1.42rem;
@@ -1059,7 +1072,7 @@ canvas {
   display:flex;
   flex-direction:column;
   align-items:center;
-  padding-bottom:calc(max(0.35rem, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
+  padding-bottom:calc(max(0.35rem, env(safe-area-inset-bottom)) + max(52px, calc(54px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
   max-width:min(20rem, 100%);
 }
 .home-howto-link {
@@ -1128,17 +1141,17 @@ canvas {
   font-weight:700; text-align:center; margin-bottom:0.4rem;
 }
 
-/* Indietro rotondo (classifica / profilo / come si gioca) */
+/* Indietro rotondo in basso (classifica: solo sx viola · profilo/howto: sx audio + dx indietro) */
 .screen-view--sub {
-  padding-top:max(4.65rem, calc(env(safe-area-inset-top, 0px) + 3.4rem));
-  padding-bottom:calc(max(1.4rem, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px));
+  padding-top:max(1rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
+  padding-bottom:calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
   justify-content:flex-start;
   gap:0.75rem;
 }
 .subview-round-back {
   position:fixed;
-  top:calc(max(12px, env(safe-area-inset-top)) + var(--vv-layout-gap-top, 0px));
-  left:max(14px, env(safe-area-inset-left));
+  bottom:var(--chrome-bar-bottom);
+  top:auto;
   z-index:26;
   width:max(52px, calc(54px * var(--ui-scale)));
   height:max(52px, calc(54px * var(--ui-scale)));
@@ -1155,6 +1168,30 @@ canvas {
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
   box-shadow:0 2px 14px rgba(0,0,0,0.4);
+}
+.subview-bar-back--left {
+  left:max(14px, env(safe-area-inset-left));
+  right:auto;
+}
+.subview-bar-back--right {
+  right:max(14px, env(safe-area-inset-right));
+  left:auto;
+}
+/* Classifica da home: ⌂ viola */
+#view-leaderboard .subview-round-back {
+  font-size:1.22rem;
+  line-height:1;
+  font-family:inherit;
+  color:#e9d5ff;
+  border-color:rgba(168,85,247,0.62);
+  background:rgba(0,0,0,0.72);
+  box-shadow:0 2px 14px rgba(0,0,0,0.45), 0 0 18px rgba(168,85,247,0.38);
+  text-shadow:0 0 12px rgba(192,132,252,0.45);
+}
+#view-leaderboard .subview-round-back:active {
+  background:rgba(124,58,237,0.16);
+  border-color:rgba(192,132,252,0.88);
+  color:#faf5ff;
 }
 .subview-round-back:active {
   background:rgba(255,255,255,0.08);

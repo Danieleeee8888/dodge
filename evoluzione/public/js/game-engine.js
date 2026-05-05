@@ -76,6 +76,16 @@ const lvEl = document.getElementById('lv');
 const nbEl = document.getElementById('nb');
 const homeCornerBtn = document.getElementById('homeCornerBtn');
 const audioCornerBtn = document.getElementById('audioCornerBtn');
+/** Fasi shell per HUD/chrome (`playing` nasconde audio ecc.). */
+let shellPhase = 'menu';
+/** Vista `#screen` attiva: su classifica da home l?audio resta nascosto. */
+let uiChromeScreen = 'home';
+
+function syncAudioChromeVisibility() {
+  if (!audioCornerBtn) return;
+  const hide = shellPhase === 'playing' || uiChromeScreen === 'leaderboard';
+  audioCornerBtn.classList.toggle('audio-corner--hidden', hide);
+}
 const pauseOverlay = document.getElementById('pauseOverlay');
 let deferredInstallPrompt = null;
 let installNudgeEl = null;
@@ -419,14 +429,12 @@ function bindAudioCornerBtn() {
 }
 /** menu: solo titolo; play: HUD gioco senza audio/tutto-schermo; gameover: statistiche + controlli angolo. */
 function updateShellForPhase(phase) {
+  shellPhase = phase;
   if (hudEl) {
     if (phase === 'menu') hudEl.classList.add('hud--hidden');
     else hudEl.classList.remove('hud--hidden');
   }
-  if (audioCornerBtn) {
-    if (phase === 'playing') audioCornerBtn.classList.add('audio-corner--hidden');
-    else audioCornerBtn.classList.remove('audio-corner--hidden');
-  }
+  syncAudioChromeVisibility();
   if (homeCornerBtn && phase === 'playing') {
     homeCornerBtn.classList.add('home-corner--hidden');
   }
@@ -437,6 +445,8 @@ function showScreenView(name) {
   document.querySelectorAll('#screen .screen-view').forEach(v => { v.hidden = true; });
   const view = document.getElementById('view-' + name);
   if (view) view.hidden = false;
+  uiChromeScreen = name;
+  syncAudioChromeVisibility();
   screen.classList.toggle('screen-death', name === 'death');
   screen.style.cursor = name === 'death' ? 'pointer' : 'default';
   screen.style.display = 'flex';
