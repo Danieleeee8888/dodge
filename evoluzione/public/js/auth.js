@@ -323,8 +323,8 @@ onAuthStateChanged(auth, async (user) => {
   await authPersistenceReady;
   const redirectResult = await redirectSignInPromise;
   if (redirectResult?.error) {
-    setMsg('login', errText(redirectResult.error));
     showView('login');
+    setMsg('login', errText(redirectResult.error));
     return;
   }
   if (redirectResult?.user) {
@@ -332,8 +332,8 @@ onAuthStateChanged(auth, async (user) => {
       await completeGoogleSignIn(redirectResult.user);
       return;
     } catch (err) {
-      setMsg('login', errText(err));
       showView('login');
+      setMsg('login', errText(err));
       return;
     }
   }
