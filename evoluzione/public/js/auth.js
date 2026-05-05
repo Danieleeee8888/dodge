@@ -88,12 +88,12 @@ function validateUsername(u) {
   return null;
 }
 
-function isGoogleUser(user) {
-  return !!user?.providerData?.some((p) => p?.providerId === 'google.com');
+function hasPasswordProvider(user) {
+  return !!user?.providerData?.some((p) => p?.providerId === 'password');
 }
 
 function isVerifiedOrGoogle(user) {
-  return !!(user?.emailVerified || isGoogleUser(user));
+  return !!(user?.emailVerified || !hasPasswordProvider(user));
 }
 
 function normalizeGoogleUsername(raw) {
@@ -113,8 +113,7 @@ async function ensureGoogleProfile(user) {
   if (profile) return;
 
   const emailLocal = String(user.email || '').split('@')[0];
-  const display = user.displayName || emailLocal || 'player';
-  const base = normalizeGoogleUsername(display);
+  const base = normalizeGoogleUsername(emailLocal || user.displayName || 'player');
 
   for (let i = 0; i < 40; i++) {
     const suffix = i === 0 ? '' : `_${Math.floor(100 + Math.random() * 9000)}`;
@@ -313,7 +312,7 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) { showView('login'); return; }
   await reload(user).catch(() => {});
   if (isVerifiedOrGoogle(user)) {
-    if (isGoogleUser(user)) {
+    if (!hasPasswordProvider(user)) {
       try {
         await completeGoogleSignIn(user);
       } catch (err) {
