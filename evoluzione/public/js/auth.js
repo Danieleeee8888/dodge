@@ -133,7 +133,13 @@ async function ensureGoogleProfile(user) {
 }
 
 async function completeGoogleSignIn(user) {
-  await ensureGoogleProfile(user);
+  try {
+    await ensureGoogleProfile(user);
+  } catch (err) {
+    // Non bloccare l'accesso al gioco se il bootstrap profilo fallisce:
+    // il profilo può essere completato in un secondo momento.
+    console.warn('google-profile-bootstrap:', err);
+  }
   sessionStorage.removeItem(GUEST_MODE_KEY);
   window.location.href = '/index.html';
 }
@@ -300,7 +306,6 @@ onAuthStateChanged(auth, async (user) => {
       return;
     } catch (err) {
       setMsg('login', errText(err));
-      await signOut(auth).catch(() => {});
       showView('login');
       return;
     }
@@ -313,7 +318,6 @@ onAuthStateChanged(auth, async (user) => {
         await completeGoogleSignIn(user);
       } catch (err) {
         setMsg('login', errText(err));
-        await signOut(auth).catch(() => {});
         showView('login');
       }
       return;
