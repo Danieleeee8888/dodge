@@ -3,6 +3,7 @@ import {
   getAuth,
   setPersistence,
   browserLocalPersistence,
+  browserSessionPersistence,
   indexedDBLocalPersistence,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -25,6 +26,7 @@ export const auth = getAuth(app);
  * sessione Google su browser dove l'inizializzazione in `getAuth` non riesce subito. */
 export const authPersistenceReady = setPersistence(auth, indexedDBLocalPersistence)
   .catch(() => setPersistence(auth, browserLocalPersistence))
+  .catch(() => setPersistence(auth, browserSessionPersistence))
   .catch(() => null);
 
 export const db = getFirestore(app);
