@@ -67,7 +67,6 @@ const nbEl = document.getElementById('nb');
 const homeCornerBtn = document.getElementById('homeCornerBtn');
 const audioCornerBtn = document.getElementById('audioCornerBtn');
 const pauseOverlay = document.getElementById('pauseOverlay');
-const INSTALL_NUDGE_KEY = 'dodge_install_nudge_v1';
 let deferredInstallPrompt = null;
 let installNudgeEl = null;
 
@@ -102,8 +101,7 @@ function isStandaloneLike() {
   return iosStandalone || mediaStandalone;
 }
 
-function dismissInstallNudge(remember) {
-  if (remember) safeLocalSet(INSTALL_NUDGE_KEY, '1');
+function dismissInstallNudge() {
   if (installNudgeEl && installNudgeEl.parentNode) installNudgeEl.parentNode.removeChild(installNudgeEl);
   installNudgeEl = null;
 }
@@ -150,7 +148,6 @@ function buildInstallNudgeText() {
 
 function showInstallNudgeIfNeeded() {
   if (isStandaloneLike()) return;
-  if (safeLocalGet(INSTALL_NUDGE_KEY, '0') === '1') return;
   if (installNudgeEl) return;
 
   const cfg = buildInstallNudgeText();
@@ -168,18 +165,17 @@ function showInstallNudgeIfNeeded() {
   `;
   document.body.appendChild(wrap);
   installNudgeEl = wrap;
-  safeLocalSet(INSTALL_NUDGE_KEY, '1');
 
   const primary = wrap.querySelector('.install-nudge__btn--primary');
   const later = wrap.querySelector('.install-nudge__btn--ghost');
   if (primary) {
     primary.addEventListener('click', async () => {
       if (cfg.actionIsNativePrompt) await triggerNativeInstallPrompt();
-      dismissInstallNudge(false);
+      dismissInstallNudge();
     });
   }
   if (later) {
-    later.addEventListener('click', () => dismissInstallNudge(false));
+    later.addEventListener('click', () => dismissInstallNudge());
   }
 }
 
@@ -188,8 +184,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   deferredInstallPrompt = e;
 });
 window.addEventListener('appinstalled', () => {
-  safeLocalSet(INSTALL_NUDGE_KEY, '1');
-  dismissInstallNudge(false);
+  dismissInstallNudge();
 });
 
 /** Fullscreen “vero” sul documento quando supportato dal browser. */
