@@ -49,6 +49,12 @@ let currentUsername = '···';
 /** Nome in menu / classifica (modificabile in profilo). */
 let currentDisplayName = '···';
 let currentUserEmail = '';
+const GUEST_MODE_KEY = 'dodge_guest_mode';
+let guestModeEnabled = false;
+
+function isGuestModeActive() {
+  return guestModeEnabled || !currentUserId;
+}
 
 const canvas = document.getElementById('c');
 const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
@@ -359,6 +365,10 @@ let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
 function renderRecordsInto(el) {
   if (!el) return;
+  if (isGuestModeActive()) {
+    el.innerHTML = '';
+    return;
+  }
   const rec = getCachedLeaderboard();
   let body = '<h2>TOP 10 GLOBALE</h2><ol>';
   if (rec.length === 0) body += '<li class="rec-empty">nessun record ancora</li>';
@@ -427,6 +437,7 @@ function hideScreen() {
 }
 
 async function setupProfileView() {
+  if (!currentUserId) return;
   const usernameEl = document.getElementById('profile-info-username');
   const bestEl = document.getElementById('profile-info-best');
   const displayInput = document.getElementById('profile-display-name');
@@ -461,6 +472,7 @@ function bindHomeNav() {
 
   const openLeaderboard = (e) => {
     e.stopPropagation();
+    if (isGuestModeActive()) return;
     const lbEl = document.getElementById('records-block-lb');
     renderRecordsInto(lbEl);
     showScreenView('leaderboard');
@@ -476,6 +488,7 @@ function bindHomeNav() {
 
   document.getElementById('btn-home-profile')?.addEventListener('click', async e => {
     e.stopPropagation();
+    if (!currentUserId) return;
     await setupProfileView();
     showScreenView('profile');
   });
@@ -541,9 +554,23 @@ function bindHomeNav() {
 
 function setupMenuUI() {
   const nameEl = document.getElementById('menuPlayerName');
-  if (nameEl) nameEl.textContent = currentDisplayName;
-  renderRecordsInto(document.getElementById('records-block'));
-  renderRecordsInto(document.getElementById('records-block-lb'));
+  if (nameEl) nameEl.textContent = isGuestModeActive() ? 'OSPITE OFFLINE' : currentDisplayName;
+  const recEl = document.getElementById('records-block');
+  const lbEl = document.getElementById('records-block-lb');
+  const lbBtn = document.getElementById('btn-home-leaderboard');
+  const profileBtn = document.getElementById('btn-home-profile');
+  if (isGuestModeActive()) {
+    if (recEl) recEl.innerHTML = '';
+    if (lbEl) lbEl.innerHTML = '';
+    if (lbBtn) lbBtn.hidden = true;
+    if (profileBtn) profileBtn.hidden = true;
+    if (screen && !document.getElementById('view-leaderboard')?.hidden) showScreenView('home');
+  } else {
+    if (lbBtn) lbBtn.hidden = false;
+    if (profileBtn) profileBtn.hidden = false;
+    renderRecordsInto(recEl);
+    renderRecordsInto(lbEl);
+  }
 }
 
 // ===================== AUDIO ENGINE =====================
@@ -1467,7 +1494,7 @@ function die() {
     const recEl = document.getElementById('records-block');
     showScreenView('death');
 
-    if (currentUserId) {
+    if (!isGuestModeActive() && currentUserId) {
       const user = auth.currentUser;
       if (!user || !user.emailVerified) {
         // Email non verificata: mostra avviso, non tentare il salvataggio
@@ -2373,17 +2400,25 @@ function drawBg(now, lv){
 
 onAuthStateChanged(auth, async (user) => {
   const loader = document.getElementById('authLoading');
-  if (!user) { window.location.href = '/auth.html'; return; }
-  await reload(user).catch(() => {});
-  if (!user.emailVerified) { window.location.href = '/auth.html'; return; }
-
-  currentUserId = user.uid;
-  currentUserEmail = user.email || '';
-  const profile = await getProfile(user.uid).catch(() => null);
-  currentUsername = profile?.username || user.email || '···';
-  currentDisplayName = resolveDisplayName(profile);
-
-  await fetchLeaderboard(10).catch(() => {});
+  guestModeEnabled = sessionStorage.getItem(GUEST_MODE_KEY) === '1';
+  if (!user) {
+    if (!guestModeEnabled) { window.location.href = '/auth.html'; return; }
+    currentUserId = null;
+    currentUserEmail = '';
+    currentUsername = 'ospite';
+    currentDisplayName = 'OSPITE OFFLINE';
+  } else {
+    await reload(user).catch(() => {});
+    if (!user.emailVerified) { window.location.href = '/auth.html'; return; }
+    sessionStorage.removeItem(GUEST_MODE_KEY);
+    guestModeEnabled = false;
+    currentUserId = user.uid;
+    currentUserEmail = user.email || '';
+    const profile = await getProfile(user.uid).catch(() => null);
+    currentUsername = profile?.username || user.email || '···';
+    currentDisplayName = resolveDisplayName(profile);
+    await fetchLeaderboard(10).catch(() => {});
+  }
 
   if (loader) loader.style.display = 'none';
 

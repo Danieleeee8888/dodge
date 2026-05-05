@@ -10,6 +10,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { usernameExists, claimUsername } from './profile.js';
 
+const GUEST_MODE_KEY = 'dodge_guest_mode';
+
 // ── viste ──────────────────────────────────────────────────────────────────
 const $v = {
   login:    document.getElementById('view-login'),
@@ -125,6 +127,7 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
       showView('verify');
       return;
     }
+    sessionStorage.removeItem(GUEST_MODE_KEY);
     window.location.href = '/index.html';
   } catch (err) {
     console.error('login:', err);
@@ -132,6 +135,11 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
   } finally {
     setLoading('btn-login', false);
   }
+});
+
+document.getElementById('btn-offline-play')?.addEventListener('click', () => {
+  sessionStorage.setItem(GUEST_MODE_KEY, '1');
+  window.location.href = '/index.html';
 });
 
 // ── RESET PASSWORD ─────────────────────────────────────────────────────────
@@ -204,6 +212,7 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) { showView('login'); return; }
   await reload(user).catch(() => {});
   if (user.emailVerified) {
+    sessionStorage.removeItem(GUEST_MODE_KEY);
     window.location.href = '/index.html';
   } else {
     document.getElementById('verify-email-placeholder').textContent = user.email || '';
