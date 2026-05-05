@@ -2,6 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
+<style>html,body{background:#000;margin:0}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, shrink-to-fit=no, viewport-fit=cover, user-scalable=no, interactive-widget=resizes-content">
 <meta name="format-detection" content="telephone=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,9 +16,7 @@
 </head>
 <body>
 
-<div id="authLoading" class="loading-screen">
-  <div class="loading-dots"><span></span><span></span><span></span></div>
-</div>
+<div id="authLoading" class="loading-screen" aria-busy="true" aria-live="polite"></div>
 
 <div id="dodgeShell" class="dodge-shell">
 <canvas id="c"></canvas>

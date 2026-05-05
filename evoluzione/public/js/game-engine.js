@@ -2475,7 +2475,10 @@ onAuthStateChanged(auth, async (user) => {
     await fetchLeaderboard(10).catch(() => {});
   }
 
-  if (loader) loader.style.display = 'none';
+  if (loader) {
+    loader.style.display = 'none';
+    loader.removeAttribute('aria-busy');
+  }
 
   showInstallNudgeIfNeeded();
   setupFullscreenAutostart();
