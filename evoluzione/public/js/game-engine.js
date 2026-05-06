@@ -414,19 +414,49 @@ let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 function renderRecordsInto(el) {
   if (!el) return;
   const rec = getCachedLeaderboard();
-  let body = '<h2>TOP 10 GLOBALE</h2><ol>';
-  if (rec.length === 0) body += '<li class="rec-empty">nessun record ancora</li>';
-  else {
+  el.textContent = '';
+
+  const title = document.createElement('h2');
+  title.textContent = 'TOP 10 GLOBALE';
+  el.appendChild(title);
+
+  const list = document.createElement('ol');
+  if (rec.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'rec-empty';
+    empty.textContent = 'nessun record ancora';
+    list.appendChild(empty);
+  } else {
     rec.forEach((row, i) => {
-      const clsTop = i === 0 ? 'rec-r1' : '';
-      const cls = `rec-row${clsTop ? ' ' + clsTop : ''}`;
-      const isMe = row.uid === currentUserId ? ' rec-row--me' : '';
-      const tag = (row.displayName || row.username || '???').slice(0, 12);
-      body += `<li class="${cls}${isMe}"><span class="rec-row-left"><span class="rec-rank">${i + 1}.</span><span class="rec-tag">${tag}</span></span><span class="rec-time">${fmt(row.ms)}</span></li>`;
+      const item = document.createElement('li');
+      item.className = 'rec-row';
+      if (i === 0) item.classList.add('rec-r1');
+      if (row.uid === currentUserId) item.classList.add('rec-row--me');
+
+      const left = document.createElement('span');
+      left.className = 'rec-row-left';
+
+      const rank = document.createElement('span');
+      rank.className = 'rec-rank';
+      rank.textContent = `${i + 1}.`;
+
+      const tag = document.createElement('span');
+      tag.className = 'rec-tag';
+      tag.textContent = (row.displayName || row.username || '???').slice(0, 12);
+
+      const time = document.createElement('span');
+      time.className = 'rec-time';
+      time.textContent = fmt(row.ms);
+
+      left.appendChild(rank);
+      left.appendChild(tag);
+      item.appendChild(left);
+      item.appendChild(time);
+      list.appendChild(item);
     });
   }
-  body += '</ol>';
-  el.innerHTML = body;
+
+  el.appendChild(list);
 }
 function syncAudioCornerBtn() {
   if (!audioCornerBtn) return;

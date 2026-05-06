@@ -6,13 +6,15 @@ service cloud.firestore {
       return !('displayName' in request.resource.data)
              || (request.resource.data.displayName is string
                  && request.resource.data.displayName.size() >= 1
-                 && request.resource.data.displayName.size() <= 24);
+                 && request.resource.data.displayName.size() <= 24
+                 && request.resource.data.displayName.matches('^[^<>]{1,24}$'));
     }
 
     function validDisplayNameReq() {
       return request.resource.data.displayName is string
              && request.resource.data.displayName.size() >= 1
-             && request.resource.data.displayName.size() <= 24;
+             && request.resource.data.displayName.size() <= 24
+             && request.resource.data.displayName.matches('^[^<>]{1,24}$');
     }
 
     // Profilo utente: solo il proprietario può leggere e modificare

@@ -53,6 +53,7 @@ export function validateDisplayNameInput(raw) {
   const s = normalizeDisplayNameInput(raw);
   if (s.length < 1) return { ok: false, error: 'Inserisci un nome (max 24 caratteri).' };
   if (s.length > 24) return { ok: false, error: 'Massimo 24 caratteri.' };
+  if (/[<>]/.test(s)) return { ok: false, error: 'Il nome non può contenere < o >.' };
   return { ok: true, value: s };
 }
 
