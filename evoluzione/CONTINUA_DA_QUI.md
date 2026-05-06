@@ -2,8 +2,8 @@
 
 ## Dove lavorare
 
-- **Gioco originale (GitHub Pages):** `C:\Users\Daniele\Desktop\dodge\` — `index.html`, `css/`, `js/` (non mischiare con Firebase).
 - **DODGE evoluzione (PWA + Auth + Firebase):** `C:\Users\Daniele\Desktop\dodge\evoluzione\` — **tutte le modifiche alla versione online vanno qui.**
+- **Root repo:** `C:\Users\Daniele\Desktop\dodge\index.html` fa solo redirect alla webapp live (`https://dodge-84439.web.app/`).
 
 Path assoluti consigliati per strumenti che accettano path completi: prefisso `C:\Users\Daniele\Desktop\dodge\evoluzione\`.
 

@@ -3,7 +3,7 @@ python -m http.server 8080
 
 http://localhost:8080/
 
-GitHub Pages (gioco originale):
+Root redirect (verso webapp live):
 https://danieleeee8888.github.io/dodge/index.html
 
 --- DODGE evoluzione (Firebase) ---
