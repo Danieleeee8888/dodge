@@ -8,7 +8,7 @@
   <style>
     html[data-admin-gate="pending"],
     html[data-admin-gate="pending"] body.admin-body {
-      background: #fff !important;
+      background: #000 !important;
       margin: 0;
       min-height: 100%;
     }
@@ -20,7 +20,7 @@
     document.documentElement.setAttribute('data-admin-gate', 'pending');
   </script>
   <!-- Copre tutto finché il modulo non completa i check (evita flash del layout admin). -->
-  <div id="admin-auth-blocking" style="position:fixed;inset:0;z-index:2147483647;background:#fff;" aria-hidden="true"></div>
+  <div id="admin-auth-blocking" style="position:fixed;inset:0;z-index:2147483647;background:#000;" aria-hidden="true"></div>
   <div class="admin-page-shell">
   <main class="admin-scroll-outer">
     <div class="admin-scroll-inner admin-view">
@@ -87,9 +87,11 @@
     </div>
   </main>
 
-  <nav class="admin-bottom-dock" aria-label="Navigazione">
-    <button type="button" class="admin-dock-circle-home js-no-start" id="btn-admin-dock-home" title="Home" aria-label="Home gioco">⌂</button>
-    <button type="button" class="admin-dock-profile-btn js-no-start" id="btn-admin-dock-profile" aria-label="Profilo account">Profilo</button>
+  <nav class="admin-nav-chrome" aria-label="Navigazione">
+    <button type="button" class="home-bar-btn home-bar-btn--admin-blue js-no-start" id="btn-admin-dock-home" title="Home" aria-label="Home gioco">⌂</button>
+    <button type="button" class="home-dock-btn js-no-start" id="btn-admin-dock-profile" aria-label="Profilo" title="Profilo">
+      <svg class="home-dock-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"><circle cx="12" cy="9" r="3.2"/><path d="M6.5 19.5c0-3.2 2.7-5.2 5.5-5.2s5.5 2 5.5 5.2"/></svg>
+    </button>
   </nav>
   </div>
   <script type="module" src="/js/admin.js"></script>

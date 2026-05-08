@@ -109,13 +109,13 @@ html.admin-html .admin-scroll-inner select {
   touch-action: manipulation;
 }
 
-/* Clip: niente scroll qui */
+/* Clip: niente scroll qui — spazio per barra ⌂ + profilo (come home, senza dock blu) */
 .admin-scroll-outer {
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
-  bottom: calc(7.35rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(max(56px, calc(58px * var(--ui-scale))) + max(1rem, env(safe-area-inset-bottom, 0px)) + 1.05rem);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -144,77 +144,60 @@ html.admin-html .admin-scroll-inner select {
   box-sizing: border-box;
 }
 
-html.admin-html .admin-bottom-dock {
+/* Barra bassa admin: nera, ⌂ + profilo come sulla home (cerchi, centrati) */
+html.admin-html .admin-nav-chrome {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 20;
+  z-index: 25;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 0.65rem max(1rem, env(safe-area-inset-left)) calc(0.75rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
-  background: linear-gradient(to top, rgba(6, 8, 18, 0.98), rgba(6, 8, 18, 0.9));
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.55);
+  gap: max(1rem, calc(1.15rem * var(--ui-scale)));
+  padding: 0.35rem max(1rem, env(safe-area-inset-left)) calc(0.5rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
+  background: #000;
   pointer-events: auto;
 }
 
-/* ⌂ come classifica/profilo nel gioco */
-html.admin-html .admin-dock-circle-home {
-  flex-shrink: 0;
-  width: max(52px, calc(54px * var(--ui-scale)));
-  height: max(52px, calc(54px * var(--ui-scale)));
-  min-width: max(52px, calc(54px * var(--ui-scale)));
-  border-radius: 50%;
-  border: 1px solid rgba(96, 165, 250, 0.62);
-  background: rgba(0, 0, 0, 0.72);
+html.admin-html .admin-nav-chrome .home-bar-btn,
+html.admin-html .admin-nav-chrome .home-dock-btn {
+  position: static;
+  transform: none;
+  left: auto;
+  right: auto;
+}
+
+/** ⌂ admin: stesso linguaggio del ⌂ blu classifica / morte */
+html.admin-html .home-bar-btn--admin-blue {
   color: #dbeafe;
+  border-color: rgba(96, 165, 250, 0.62);
+  background: #000;
   font-size: 1.22rem;
   line-height: 1;
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45), 0 0 18px rgba(59, 130, 246, 0.38);
   text-shadow: 0 0 12px rgba(96, 165, 250, 0.45);
 }
 
-html.admin-html .admin-dock-circle-home:active {
+html.admin-html .home-bar-btn--admin-blue:active {
   background: rgba(37, 99, 235, 0.16);
   border-color: rgba(147, 197, 253, 0.88);
   color: #f0f9ff;
 }
 
-html.admin-html .admin-dock-profile-btn {
-  flex: 1;
-  max-width: 15rem;
-  min-height: 52px;
-  padding: 0.72rem 1.2rem;
-  border-radius: 0.55rem;
-  border: 1.5px solid rgba(168, 85, 247, 0.52);
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(245, 235, 255, 0.96);
-  font-family: inherit;
-  font-size: clamp(0.78rem, 3.6vmin, 0.92rem);
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+/** Profilo admin = #btn-home-profile sulla home */
+html.admin-html #btn-admin-dock-profile.home-dock-btn {
+  background: #000;
+  border-color: rgba(192, 132, 252, 0.82);
+  color: #c084fc;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.55), 0 0 14px rgba(168, 85, 247, 0.28);
 }
 
-html.admin-html .admin-dock-profile-btn:active {
-  background: rgba(168, 85, 247, 0.18);
-  border-color: rgba(196, 167, 255, 0.75);
+html.admin-html #btn-admin-dock-profile.home-dock-btn:active {
+  background: #070707;
+  border-color: rgba(216, 180, 254, 0.95);
+  color: #e9d5ff;
 }
 
 /* ── SHELL ────────────────────────────────────────────────────────────────── */
@@ -1575,10 +1558,19 @@ canvas {
 }
 
 .admin-view {
-  gap: 0.8rem;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: min(28rem, calc(100% - 0.5rem));
+  margin-left: auto;
+  margin-right: auto;
+  align-items: stretch;
+}
+.admin-view > .view-title {
+  flex-shrink: 0;
+  align-self: center;
 }
 .admin-section {
-  width: min(26rem, calc(100% - 1rem));
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
@@ -1589,8 +1581,8 @@ canvas {
   gap: 0.45rem;
 }
 .admin-kpi {
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: #000;
   border-radius: 0.45rem;
   padding: 0.55rem 0.5rem;
 }
@@ -1606,8 +1598,8 @@ canvas {
   letter-spacing: 0.05em;
 }
 .admin-panel {
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: #000;
   border-radius: 0.45rem;
   padding: 0.55rem;
 }
