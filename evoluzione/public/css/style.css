@@ -102,6 +102,8 @@ html.admin-html body.admin-body {
   height: var(--admin-vvh, 100svh);
   overflow: hidden;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 html.admin-html .admin-scroll-inner input[type="text"],
@@ -109,28 +111,23 @@ html.admin-html .admin-scroll-inner select {
   touch-action: manipulation;
 }
 
-/* Clip: niente scroll qui — spazio per barra ⌂ + profilo (come home, senza dock blu) */
+/**
+ * Area contenuti: flex che occupa lo spazio sopra la barra (min-height:0 = scroll affidabile su Chrome).
+ */
 .admin-scroll-outer {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: calc(max(56px, calc(58px * var(--ui-scale))) + max(1rem, env(safe-area-inset-bottom, 0px)) + 1.05rem);
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-/* Unico elemento scrollabile: layer GPU per Chrome Android (Pixel) */
-.admin-scroll-inner {
-  height: 100%;
-  max-height: 100%;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+  box-sizing: border-box;
+}
+
+.admin-scroll-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -139,17 +136,18 @@ html.admin-html .admin-scroll-inner select {
   padding:
     max(1rem, calc(env(safe-area-inset-top, 0px) + 0.35rem))
     max(1rem, env(safe-area-inset-right))
-    1.25rem
+    max(1.25rem, calc(env(safe-area-inset-bottom, 0px) * 0.25 + 1rem))
     max(1rem, env(safe-area-inset-left));
   box-sizing: border-box;
 }
 
-/* Barra bassa admin: nera, ⌂ + profilo come sulla home (cerchi, centrati) */
+/**
+ * Barra fissa in basso: stesso nero del body — i pulsanti sembrano sulla cornice;
+ * il contenuto scorre sopra e finisce dietro questa fascia (flex-shrink: 0).
+ */
 html.admin-html .admin-nav-chrome {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
+  flex-shrink: 0;
   z-index: 25;
   display: flex;
   flex-direction: row;
