@@ -79,6 +79,8 @@ html.admin-html {
   font-size: clamp(11px, 3.5vmin, 18px);
   -webkit-text-size-adjust: 100%;
   background: #000;
+  /** Solo pan verticale: niente pinch-zoom (causa di "scroll a due dita" su Chrome Android). */
+  touch-action: pan-y;
 }
 
 html.admin-html body.admin-body {
@@ -89,6 +91,7 @@ html.admin-html body.admin-body {
   color: #fff;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: pan-y;
 }
 
 /** Altezza minima ≈ viewport reale (la barra resta sempre attaccata al fondo schermo). */
@@ -140,9 +143,14 @@ html.admin-html .admin-nav-chrome {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: max(1rem, calc(1.15rem * var(--ui-scale)));
-  padding: 0.5rem max(1rem, env(safe-area-inset-left)) calc(0.55rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
+  /* Home a sinistra, profilo a destra (come la home: ⌂/profilo agli angoli). */
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding:
+    0.5rem
+    max(14px, env(safe-area-inset-right))
+    calc(0.55rem + env(safe-area-inset-bottom))
+    max(14px, env(safe-area-inset-left));
   background: #000;
   pointer-events: auto;
 }
