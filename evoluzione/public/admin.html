@@ -1,13 +1,14 @@
 <!DOCTYPE html>
-<html lang="it" class="page-scroll-root">
+<html lang="it" class="admin-html">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Admin - DODGE</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="page-scroll-body">
-  <main class="screen-view screen-view--sub admin-view admin-view--page" style="display:flex;">
+<body class="admin-body">
+  <div class="admin-page-shell">
+  <main class="admin-scroll-region admin-view">
     <h2 class="view-title">PANNELLO ADMIN</h2>
 
     <section id="admin-section-overview" class="admin-section">
@@ -73,9 +74,10 @@
   </main>
 
   <nav class="admin-bottom-dock" aria-label="Navigazione">
-    <button type="button" class="home-btn home-btn--dock js-no-start" id="btn-admin-dock-home" aria-label="Home gioco">⌂ Home</button>
-    <button type="button" class="home-btn home-btn--dock home-btn--dock-accent js-no-start" id="btn-admin-dock-profile" aria-label="Profilo account">Profilo</button>
+    <button type="button" class="home-btn home-btn--dock js-no-start" id="btn-admin-dock-home" aria-label="Home gioco"><span class="admin-dock-icon" aria-hidden="true">⌂</span><span class="admin-dock-label">Home</span></button>
+    <button type="button" class="home-btn home-btn--dock home-btn--dock-accent js-no-start" id="btn-admin-dock-profile" aria-label="Profilo account"><span class="admin-dock-label">Profilo</span></button>
   </nav>
+  </div>
   <script type="module" src="/js/admin.js"></script>
 </body>
 </html>

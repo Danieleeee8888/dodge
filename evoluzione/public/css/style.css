@@ -62,43 +62,114 @@ html.page-scroll-root body.page-scroll-body .screen-view {
   -webkit-overflow-scrolling: touch;
 }
 
-html.page-scroll-root body.page-scroll-body .screen-view--sub.admin-view--page {
-  padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px) + var(--vv-layout-gap-bottom, 0px));
-}
-
 html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--sub {
   padding-bottom: calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
 }
 
-.admin-bottom-dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  display: flex;
-  gap: 0.45rem;
-  justify-content: center;
-  align-items: stretch;
-  padding: 0.45rem max(0.75rem, env(safe-area-inset-left)) calc(0.45rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-right));
-  background: rgba(6, 8, 18, 0.94);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(10px);
+/* ── Pagina admin: flex-colonna + scroll solo sulla zona centrale (touch affidabile) ── */
+html.admin-html {
+  font-size: clamp(11px, 3.5vmin, 18px);
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-text-size-adjust: 100%;
 }
 
-.home-btn--dock {
+html.admin-html body.admin-body {
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  overflow: hidden;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  font-family: monospace;
+  color: #fff;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.admin-page-shell {
   flex: 1;
-  max-width: 12rem;
-  padding: 0.62rem 0.45rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+html.admin-html .admin-scroll-region input[type="text"],
+html.admin-html .admin-scroll-region select {
   touch-action: manipulation;
 }
 
-.home-btn--dock-accent {
-  border-color: rgba(168, 85, 247, 0.45);
-  color: rgba(237, 225, 255, 0.95);
+.admin-scroll-region {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  padding:
+    max(1rem, calc(env(safe-area-inset-top, 0px) + 0.35rem))
+    max(1rem, env(safe-area-inset-right))
+    0.85rem
+    max(1rem, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+
+html.admin-html .admin-bottom-dock {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 10;
+  display: flex;
+  gap: 0.65rem;
+  justify-content: center;
+  align-items: stretch;
+  padding: 0.6rem max(1rem, env(safe-area-inset-left)) calc(0.65rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
+  background: rgba(6, 8, 18, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.5);
+}
+
+html.admin-html .home-btn--dock {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  min-height: 3.25rem;
+  padding: 0.75rem 0.85rem;
+  font-size: clamp(0.8rem, 4vmin, 1rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  touch-action: manipulation;
+}
+
+html.admin-html .admin-dock-icon {
+  font-size: clamp(1.15rem, 5vmin, 1.45rem);
+  line-height: 1;
+}
+
+html.admin-html .admin-dock-label {
+  white-space: nowrap;
+}
+
+html.admin-html .home-btn--dock-accent {
+  border-color: rgba(168, 85, 247, 0.52);
+  color: rgba(240, 230, 255, 0.96);
 }
 
 /* ── SHELL ────────────────────────────────────────────────────────────────── */
