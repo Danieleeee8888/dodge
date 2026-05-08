@@ -2,13 +2,14 @@
 <html lang="it" class="admin-html">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Admin - DODGE</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="admin-body">
   <div class="admin-page-shell">
-  <main class="admin-scroll-region admin-view">
+  <main class="admin-scroll-outer">
+    <div class="admin-scroll-inner admin-view">
     <h2 class="view-title">PANNELLO ADMIN</h2>
 
     <section id="admin-section-overview" class="admin-section">
@@ -71,6 +72,7 @@
     </section>
 
     <p id="admin-msg" class="profile-msg"></p>
+    </div>
   </main>
 
   <nav class="admin-bottom-dock" aria-label="Navigazione">

@@ -2,6 +2,27 @@ import { auth, authPersistenceReady } from './firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getProfile } from './profile.js';
 
+/** Pixel / Chrome mobile: 100dvh spesso non coincide col viewport visibile (barra URL). */
+function syncAdminViewportHeight() {
+  const vv = window.visualViewport;
+  const h = vv && vv.height > 0 ? vv.height : window.innerHeight;
+  document.documentElement.style.setProperty('--admin-vvh', `${Math.max(1, Math.round(h))}px`);
+}
+
+syncAdminViewportHeight();
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', syncAdminViewportHeight);
+  window.visualViewport.addEventListener('scroll', syncAdminViewportHeight);
+}
+window.addEventListener('resize', syncAdminViewportHeight);
+window.addEventListener('orientationchange', () => {
+  setTimeout(syncAdminViewportHeight, 200);
+});
+requestAnimationFrame(() => {
+  syncAdminViewportHeight();
+  requestAnimationFrame(syncAdminViewportHeight);
+});
+
 const msgEl = document.getElementById('admin-msg');
 const state = {
   token: '',
@@ -308,6 +329,7 @@ async function bootstrap() {
       return;
     }
     state.token = await user.getIdToken();
+    syncAdminViewportHeight();
     bindEvents();
     await routeLoad();
   });
