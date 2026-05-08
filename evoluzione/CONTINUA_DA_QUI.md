@@ -17,6 +17,7 @@ Path assoluti consigliati per strumenti che accettano path completi: prefisso `C
 - **Servizi attivi:** Authentication (email+password), Firestore, Realtime Database, Hosting, **Cloud Functions v2** (`api`, region `europe-west1`)
 - **API HTTP:** rewrite Hosting `/api/**` → function `api`; es. `GET /api/player/stats` (Bearer token). Fine partita: `POST /api/game/end` (stats + storico + classifica allineata al vecchio `saveScore`).
 - **Migrazione stats storiche:** preferire `POST /api/admin/backfill-stats-from-history` (admin loggato, dopo backup Firestore); opzione legacy da console: `import('/js/stats-migration.js').then(m => m.runPhase1StatsMigration())`.
+- **Backup Firestore:** snapshot gestito es. `gs://dodge-84439-firestore-backups/firestore_backup_20260508_231902` — inventario anche in `ROLLBACK_PLAN.md` (root repo).
 
 Oggetto `firebaseConfig` dell’app web: `public/js/firebase-init.js` (unica fonte nel repo).
 
@@ -39,7 +40,12 @@ evoluzione/
 │       ├── profile.js
 │       ├── leaderboard.js
 │       ├── constants.js
+│       ├── admin.js
+│       ├── profile-public.js
 │       └── game-engine.js
+│   ├── admin.html
+│   ├── profile.html
+├── functions/           (Cloud Functions v2: `api`)
 ├── generate-icons.js    (opzionale: rigenera icone PNG)
 ├── firebase.json
 ├── firestore.rules
