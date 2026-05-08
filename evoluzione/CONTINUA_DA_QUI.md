@@ -13,8 +13,10 @@ Path assoluti consigliati per strumenti che accettano path completi: prefisso `C
 
 - **Project ID:** `dodge-84439`
 - **Hosting URL:** `https://dodge-84439.web.app`
-- **Piano:** Spark (gratis, senza carta di credito)
-- **Servizi attivi:** Authentication (email+password), Firestore, Realtime Database, Hosting
+- **Piano:** Blaze (pay-as-you-go; quote no-cost generose per traffico basso)
+- **Servizi attivi:** Authentication (email+password), Firestore, Realtime Database, Hosting, **Cloud Functions v2** (`api`, region `europe-west1`)
+- **API HTTP:** rewrite Hosting `/api/**` → function `api`; es. `GET /api/player/stats` (Bearer token). Fine partita: `POST /api/game/end` (stats + storico + classifica allineata al vecchio `saveScore`).
+- **Migrazione stats storiche:** preferire `POST /api/admin/backfill-stats-from-history` (admin loggato, dopo backup Firestore); opzione legacy da console: `import('/js/stats-migration.js').then(m => m.runPhase1StatsMigration())`.
 
 Oggetto `firebaseConfig` dell’app web: `public/js/firebase-init.js` (unica fonte nel repo).
 

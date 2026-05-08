@@ -1,4 +1,9 @@
 {
+  "functions": [
+    {
+      "source": "functions"
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -9,6 +14,20 @@
   "hosting": {
     "public": "public",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/admin/**",
+        "destination": "/admin.html"
+      },
+      {
+        "source": "/profile/**",
+        "destination": "/profile.html"
+      },
+      {
+        "source": "/api/**",
+        "function": "api"
+      }
+    ],
     "headers": [
       {
         "source": "**/*.html",

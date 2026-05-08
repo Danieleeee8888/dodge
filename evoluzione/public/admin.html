@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - DODGE</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <main class="screen-view screen-view--sub admin-view" style="display:flex;">
+    <button type="button" class="subview-round-back subview-bar-back--center js-no-start" id="btn-admin-home" aria-label="Torna alla home" title="Home">⌂</button>
+    <h2 class="view-title">PANNELLO ADMIN</h2>
+
+    <section id="admin-section-overview" class="admin-section">
+      <div class="admin-card-grid" id="admin-kpi-grid"></div>
+      <div class="admin-panel">
+        <h3 class="admin-panel-title">Distribuzione tempi (giocatori)</h3>
+        <p class="profile-info profile-info--dim admin-panel-hint">Quanti account hanno un best time ≥ soglia (da <code>player_stats</code>), non singole run.</p>
+        <div id="admin-distribution" class="admin-list"></div>
+      </div>
+      <div class="admin-panel">
+        <h3 class="admin-panel-title">Top 10 corrente</h3>
+        <div id="admin-top10" class="admin-list"></div>
+      </div>
+      <div class="admin-panel admin-actions">
+        <button id="btn-admin-open-players" class="home-btn js-no-start" type="button">Vai a /admin/players</button>
+        <button id="btn-export-players" class="home-btn js-no-start" type="button">Export CSV stats giocatori</button>
+        <div class="admin-inline">
+          <select id="export-games-days" class="profile-display-input js-no-start">
+            <option value="7">7 giorni</option>
+            <option value="30">30 giorni</option>
+            <option value="90">90 giorni</option>
+            <option value="all">all</option>
+          </select>
+          <button id="btn-export-games" class="home-btn home-btn--compact js-no-start" type="button">Export partite</button>
+        </div>
+        <button id="btn-admin-backfill-stats" class="home-btn home-btn--danger js-no-start" type="button">Migrazione stats da storico scores</button>
+        <p class="profile-info profile-info--dim">Usa una tantum dopo backup: allinea totali e ruolo admin da <code>scores</code> / profilo utente.</p>
+      </div>
+    </section>
+
+    <section id="admin-section-players" class="admin-section" hidden>
+      <div class="admin-panel admin-actions">
+        <div class="admin-inline">
+          <input id="admin-search" class="profile-display-input js-no-start" type="text" placeholder="Cerca username/email" />
+          <button id="btn-admin-search" class="home-btn home-btn--compact js-no-start" type="button">Cerca</button>
+        </div>
+        <div class="admin-inline">
+          <select id="admin-sort" class="profile-display-input js-no-start">
+            <option value="best_time">Best time</option>
+            <option value="username">Username</option>
+            <option value="email">Email</option>
+            <option value="total_games">Partite</option>
+            <option value="total_playtime">Tempo totale</option>
+            <option value="last_login">Ultimo accesso</option>
+            <option value="role">Ruolo</option>
+          </select>
+          <button id="btn-admin-refresh-players" class="home-btn home-btn--compact js-no-start" type="button">Aggiorna</button>
+        </div>
+      </div>
+      <div id="admin-players-table" class="admin-table-wrap"></div>
+      <p id="admin-players-pagination" class="profile-info profile-info--dim"></p>
+    </section>
+
+    <section id="admin-section-player-detail" class="admin-section" hidden>
+      <div id="admin-player-detail" class="admin-panel"></div>
+      <div class="admin-panel">
+        <h3 class="admin-panel-title">Ultime 20 partite</h3>
+        <div id="admin-player-recent-games" class="admin-table-wrap"></div>
+      </div>
+    </section>
+
+    <p id="admin-msg" class="profile-msg"></p>
+  </main>
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>

@@ -7,3 +7,6 @@ open-phone-preview.ps1
 
 # Claude Code: worktree/checkout locale (non parte del gioco)
 .claude/
+
+evoluzione/functions/node_modules/
+evoluzione/backups/

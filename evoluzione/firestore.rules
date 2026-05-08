@@ -1,6 +1,15 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+             && request.auth.token.email is string
+             && request.auth.token.email == 'danielet88@gmail.com';
+    }
+
+    function canReadUser(uid) {
+      return request.auth != null && (request.auth.uid == uid || isAdmin());
+    }
 
     function validDisplayNameOpt() {
       return !('displayName' in request.resource.data)
@@ -19,22 +28,67 @@ service cloud.firestore {
 
     // Profilo utente: solo il proprietario può leggere e modificare
     match /users/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if canReadUser(uid);
       allow create: if request.auth != null
                     && request.auth.uid == uid
                     && request.resource.data.username is string
                     && request.resource.data.email is string
+                    && request.resource.data.role is string
+                    && request.resource.data.role in ['user', 'admin']
+                    && (
+                      (request.resource.data.role == 'admin'
+                        && request.resource.data.email == 'danielet88@gmail.com')
+                      || request.resource.data.role == 'user'
+                    )
                     && request.resource.data.gamesPlayed == 0
                     && request.resource.data.bestTime == 0
                     && validDisplayNameReq()
                     && request.resource.data.displayName == request.resource.data.username;
       allow update: if request.auth != null
-                    && request.auth.uid == uid
+                    && (request.auth.uid == uid || isAdmin())
                     && !('username' in request.resource.data.diff(resource.data).affectedKeys())
                     && !('email' in request.resource.data.diff(resource.data).affectedKeys())
                     && !('createdAt' in request.resource.data.diff(resource.data).affectedKeys())
+                    && (
+                      !('role' in request.resource.data.diff(resource.data).affectedKeys())
+                      || (
+                        isAdmin()
+                        && request.resource.data.role in ['user', 'admin']
+                        && (
+                          (request.resource.data.role == 'admin'
+                            && request.resource.data.email == 'danielet88@gmail.com')
+                          || request.resource.data.role == 'user'
+                        )
+                      )
+                    )
                     && validDisplayNameOpt();
       allow delete: if false;
+    }
+
+    // Statistiche aggregate (1 documento per utente)
+    match /player_stats/{uid} {
+      allow read: if canReadUser(uid);
+      allow create, update: if request.auth != null
+                            && (request.auth.uid == uid || isAdmin())
+                            && request.resource.data.user_id == uid;
+      allow delete: if false;
+    }
+
+    // Storico partite recenti (best-of-N e diagnostica missioni)
+    match /recent_games/{gameId} {
+      allow read: if request.auth != null
+                  && (
+                    (
+                      resource != null
+                      && resource.data.user_id is string
+                      && (resource.data.user_id == request.auth.uid || isAdmin())
+                    )
+                    || isAdmin()
+                  );
+      allow create: if request.auth != null
+                    && request.resource.data.user_id is string
+                    && (request.resource.data.user_id == request.auth.uid || isAdmin());
+      allow update, delete: if false;
     }
 
     // Indice username → uid: pubblicamente leggibile per check unicità,
