@@ -1,3 +1,4 @@
+import { applyGameViewportChromeVars } from './viewport-ui-scale.js';
 import { auth, authPersistenceReady } from './firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getProfile } from './profile.js';
@@ -33,6 +34,7 @@ function syncAdminViewportHeight() {
   const vv = window.visualViewport;
   const h = vv && vv.height > 0 ? vv.height : window.innerHeight;
   document.documentElement.style.setProperty('--admin-vvh', `${Math.max(1, Math.round(h))}px`);
+  applyGameViewportChromeVars();
 }
 
 syncAdminViewportHeight();

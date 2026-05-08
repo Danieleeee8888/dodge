@@ -1,3 +1,4 @@
+import { applyGameViewportChromeVars } from './viewport-ui-scale.js';
 import {
   FIXED_GAME_W,
   FIXED_GAME_H,
@@ -282,32 +283,6 @@ function setupFullscreenAutostart() {
   void tryEnter();
 }
 
-/**
- * Pixel CSS disponibili per adattare il canvas. Usa sempre le dimensioni reali del viewport
- * (visualViewport se disponibile, altrimenti innerWidth/Height) per evitare che la shell
- * con max-width limiti la larghezza del canvas in modalit? non-fullscreen.
- */
-function getViewportForCanvasScale() {
-  const vv = window.visualViewport;
-  if (vv && vv.width > 0 && vv.height > 0) {
-    return { winW: vv.width, winH: vv.height, vx: vv.offsetLeft || 0, vy: vv.offsetTop || 0 };
-  }
-  return { winW: window.innerWidth, winH: window.innerHeight, vx: 0, vy: 0 };
-}
-
-/** Offset tra layout viewport e visual viewport (gesture Android, barre dinamiche). */
-function syncVisualViewportInsetCssVars() {
-  const vv = window.visualViewport;
-  let gapBottom = 0;
-  let gapTop = 0;
-  if (vv && vv.width > 0 && vv.height > 0) {
-    gapBottom = Math.max(0, window.innerHeight - vv.offsetTop - vv.height);
-    gapTop = Math.max(0, vv.offsetTop);
-  }
-  document.documentElement.style.setProperty('--vv-layout-gap-bottom', `${gapBottom}px`);
-  document.documentElement.style.setProperty('--vv-layout-gap-top', `${gapTop}px`);
-}
-
 /** Dopo login / PWA: alcuni browser aggiornano visualViewport in ritardo; forza pi? passate di resize. */
 function scheduleViewportSync() {
   resize();
@@ -321,21 +296,18 @@ function scheduleViewportSync() {
 }
 
 function resize() {
-  syncVisualViewportInsetCssVars();
+  const { winW, winH, vx, vy, scale } = applyGameViewportChromeVars();
   if (!canvas) return;
-  const { winW, winH, vx, vy } = getViewportForCanvasScale();
   W = FIXED_GAME_W;
   H = FIXED_GAME_H;
   canvas.width = W;
   canvas.height = H;
-  const scale = Math.min(winW / W, winH / H);
   const dispW = W * scale;
   const dispH = H * scale;
   canvas.style.width = dispW + 'px';
   canvas.style.height = dispH + 'px';
   canvas.style.left = vx + (winW - dispW) * 0.5 + 'px';
   canvas.style.top = vy + (winH - dispH) * 0.5 + 'px';
-  document.documentElement.style.setProperty('--ui-scale', String(scale));
   /** Cerchi bonus sul canvas: raggio HAZARD_R ? diametro in px CSS come sul canvas scalato. */
   document.documentElement.style.setProperty('--bonus-dot-size', `${2 * HAZARD_R * scale}px`);
   document.documentElement.style.setProperty('--bonus-dot-gap', `${Math.round(Math.max(10, 18 * scale))}px`);
