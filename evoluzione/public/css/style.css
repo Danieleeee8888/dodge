@@ -7,6 +7,8 @@ html {
 }
 
 :root {
+  /** Fallback pagine senza game-engine (profilo pubblico, admin); il gioco sovrascrive da JS. */
+  --ui-scale: 1;
   --vv-layout-gap-bottom: 0px;
   --vv-layout-gap-top: 0px;
   /** PWA standalone: se safe-area è 0 ma resta area gesture, evita pulsanti tagliati in basso. */
@@ -163,14 +165,14 @@ html.admin-html .admin-bottom-dock {
 /* ⌂ come classifica/profilo nel gioco */
 html.admin-html .admin-dock-circle-home {
   flex-shrink: 0;
-  width: 58px;
-  height: 58px;
-  min-width: 58px;
+  width: max(52px, calc(54px * var(--ui-scale)));
+  height: max(52px, calc(54px * var(--ui-scale)));
+  min-width: max(52px, calc(54px * var(--ui-scale)));
   border-radius: 50%;
   border: 1px solid rgba(96, 165, 250, 0.62);
   background: rgba(0, 0, 0, 0.72);
   color: #dbeafe;
-  font-size: 1.38rem;
+  font-size: 1.22rem;
   line-height: 1;
   font-family: inherit;
   display: flex;
@@ -1371,10 +1373,11 @@ canvas {
   right:auto;
   transform:translateX(-50%);
 }
-/* Classifica, profilo, istruzioni: ⌂ centrato blu */
+/* Classifica, profilo, istruzioni, profilo pubblico standalone: ⌂ centrato blu */
 #view-leaderboard .subview-round-back,
 #view-profile .subview-round-back,
-#view-howto .subview-round-back {
+#view-howto .subview-round-back,
+.profile-public-page .subview-round-back {
   font-size:1.22rem;
   line-height:1;
   font-family:inherit;
@@ -1386,7 +1389,8 @@ canvas {
 }
 #view-leaderboard .subview-round-back:active,
 #view-profile .subview-round-back:active,
-#view-howto .subview-round-back:active {
+#view-howto .subview-round-back:active,
+.profile-public-page .subview-round-back:active {
   background:rgba(37,99,235,0.16);
   border-color:rgba(147,197,253,0.88);
   color:#f0f9ff;
