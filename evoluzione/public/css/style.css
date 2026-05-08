@@ -68,39 +68,33 @@ html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--su
   padding-bottom: calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
 }
 
-/* ── Pagina admin: viewport fisso + solo il main scrolla (Chrome / touch) ─────────
-   Evita flex-min-height-0 su Android Chrome; niente touch-action:none sugli avi
-   (blocca il pan verso il figlio scrollabile). */
+/**
+ * ── Pagina admin ────────────────────────────────────────────────────────────
+ *  - lo scroll è quello nativo della pagina (`page-scroll-root` su <html>),
+ *  - la barra inferiore è `position: fixed` con stesso nero del body (sembra parte della cornice),
+ *  - il contenuto ha padding inferiore per non finire sotto la barra.
+ *  Questo pattern è lo stesso di `profile.html` ed è stabile su Chrome Android.
+ */
 html.admin-html {
   font-size: clamp(11px, 3.5vmin, 18px);
-  height: 100%;
-  overflow: hidden;
   -webkit-text-size-adjust: 100%;
+  background: #000;
 }
 
 html.admin-html body.admin-body {
   margin: 0;
-  min-height: 100vh;
   min-height: 100dvh;
-  height: 100%;
-  overflow: hidden;
   background: #000;
   font-family: monospace;
   color: #fff;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: auto;
 }
 
+/** Altezza minima ≈ viewport reale (la barra resta sempre attaccata al fondo schermo). */
 .admin-page-shell {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
   width: 100%;
-  /* Altezza reale da JS (visualViewport); fallback svh su Chrome mobile */
-  height: var(--admin-vvh, 100svh);
-  overflow: hidden;
+  min-height: var(--admin-vvh, 100dvh);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -111,19 +105,10 @@ html.admin-html .admin-scroll-inner select {
   touch-action: manipulation;
 }
 
-/**
- * Area contenuti: flex che occupa lo spazio sopra la barra (min-height:0 = scroll affidabile su Chrome).
- */
+/** Wrapper contenuti: lo scroll è del documento, qui solo layout. */
 .admin-scroll-outer {
-  position: relative;
   flex: 1 1 auto;
-  min-height: 0;
   width: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;
   box-sizing: border-box;
 }
 
@@ -136,25 +121,28 @@ html.admin-html .admin-scroll-inner select {
   padding:
     max(1rem, calc(env(safe-area-inset-top, 0px) + 0.35rem))
     max(1rem, env(safe-area-inset-right))
-    max(1.25rem, calc(env(safe-area-inset-bottom, 0px) * 0.25 + 1rem))
+    /* lascia spazio per la barra fissa in basso (cerchi + safe area) */
+    calc(max(56px, calc(58px * var(--ui-scale))) + max(1rem, env(safe-area-inset-bottom, 0px)) + 1.6rem)
     max(1rem, env(safe-area-inset-left));
   box-sizing: border-box;
 }
 
 /**
- * Barra fissa in basso: stesso nero del body — i pulsanti sembrano sulla cornice;
- * il contenuto scorre sopra e finisce dietro questa fascia (flex-shrink: 0).
+ * Barra fissa: stesso nero del body — i pulsanti sembrano "appoggiati" sullo sfondo;
+ * il contenuto scorre dietro fino al fondo pagina.
  */
 html.admin-html .admin-nav-chrome {
-  position: relative;
-  flex-shrink: 0;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 25;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: max(1rem, calc(1.15rem * var(--ui-scale)));
-  padding: 0.35rem max(1rem, env(safe-area-inset-left)) calc(0.5rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
+  padding: 0.5rem max(1rem, env(safe-area-inset-left)) calc(0.55rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-right));
   background: #000;
   pointer-events: auto;
 }
