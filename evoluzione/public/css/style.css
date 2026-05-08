@@ -128,18 +128,22 @@ html.page-scroll-root body.page-scroll-body .admin-page.screen-view--sub {
   right: auto;
 }
 
-/** ⌂ admin: stesso linguaggio del ⌂ blu classifica / morte */
-.home-bar-btn--admin-blue {
+/**
+ * ⌂ admin: identico al ⌂ blu di classifica / profilo / istruzioni.
+ * Due classi battono `.home-bar-btn` che altrimenti, più in basso nel file,
+ * sovrascriverebbe colore e bordo.
+ */
+.home-bar-btn.home-bar-btn--admin-blue {
   color: #dbeafe;
   border-color: rgba(96, 165, 250, 0.62);
-  background: #000;
+  background: rgba(0, 0, 0, 0.72);
   font-size: 1.22rem;
   line-height: 1;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45), 0 0 18px rgba(59, 130, 246, 0.38);
   text-shadow: 0 0 12px rgba(96, 165, 250, 0.45);
 }
 
-.home-bar-btn--admin-blue:active {
+.home-bar-btn.home-bar-btn--admin-blue:active {
   background: rgba(37, 99, 235, 0.16);
   border-color: rgba(147, 197, 253, 0.88);
   color: #f0f9ff;
