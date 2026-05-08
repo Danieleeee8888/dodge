@@ -70,22 +70,20 @@ html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--su
 
 /**
  * ── Pagina admin ────────────────────────────────────────────────────────────
- *  - lo scroll è quello nativo della pagina (`page-scroll-root` su <html>),
- *  - la barra inferiore è `position: fixed` con stesso nero del body (sembra parte della cornice),
- *  - il contenuto ha padding inferiore per non finire sotto la barra.
- *  Questo pattern è lo stesso di `profile.html` ed è stabile su Chrome Android.
+ *  Pattern minimo: scroll del documento (come profile.html, identico).
+ *  Niente `min-height`, niente flex, niente shell fixed. La barra è solo
+ *  `position: fixed` in basso, lo spazio è riservato dal padding-bottom del contenuto.
  */
 html.admin-html {
   font-size: clamp(11px, 3.5vmin, 18px);
   -webkit-text-size-adjust: 100%;
   background: #000;
-  /** Solo pan verticale: niente pinch-zoom (causa di "scroll a due dita" su Chrome Android). */
+  /** Niente pinch-zoom: causa di "scroll a due dita" su Chrome Android. */
   touch-action: pan-y;
 }
 
 html.admin-html body.admin-body {
   margin: 0;
-  min-height: 100dvh;
   background: #000;
   font-family: monospace;
   color: #fff;
@@ -94,13 +92,14 @@ html.admin-html body.admin-body {
   touch-action: pan-y;
 }
 
-/** Altezza minima ≈ viewport reale (la barra resta sempre attaccata al fondo schermo). */
 .admin-page-shell {
   width: 100%;
-  min-height: var(--admin-vvh, 100dvh);
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
+}
+
+.admin-scroll-outer {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 html.admin-html .admin-scroll-inner input[type="text"],
@@ -108,25 +107,16 @@ html.admin-html .admin-scroll-inner select {
   touch-action: manipulation;
 }
 
-/** Wrapper contenuti: lo scroll è del documento, qui solo layout. */
-.admin-scroll-outer {
-  flex: 1 1 auto;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 .admin-scroll-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
   gap: 0.75rem;
-  padding:
-    max(1rem, calc(env(safe-area-inset-top, 0px) + 0.35rem))
-    max(1rem, env(safe-area-inset-right))
-    /* lascia spazio per la barra fissa in basso (cerchi + safe area) */
-    calc(max(56px, calc(58px * var(--ui-scale))) + max(1rem, env(safe-area-inset-bottom, 0px)) + 1.6rem)
-    max(1rem, env(safe-area-inset-left));
+  padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  /* spazio per la barra fissa in basso */
+  padding-bottom: calc(max(56px, calc(58px * var(--ui-scale))) + max(1rem, env(safe-area-inset-bottom, 0px)) + 1.6rem);
   box-sizing: border-box;
 }
 
