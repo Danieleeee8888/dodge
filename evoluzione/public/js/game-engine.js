@@ -380,6 +380,11 @@ let level, baseTriangles, baseSquares, baseSpeed;
 let shieldActive, shieldEnd, slowActive, slowEnd;
 let greenModeActive = false, greenModeEnd = 0;
 let hasExtraLife = 0;
+/** Contatori per una singola run (POST /api/game/end). */
+let runBonusesCollected = { red: 0, blue: 0, yellow: 0, green: 0, purple: 0 };
+let runExtraLivesUsed = 0;
+let runShieldsConsumed = 0;
+let runWhitesKilledByYellow = 0;
 /** Prossimo istante in cui pu? comparire il pallino viola (performance.now). */
 let nextPurpleAt = 0;
 /** Espansione gialla rapida sui bianchi tolti dal bonus giallo. */
@@ -440,9 +445,15 @@ function renderRecordsInto(el) {
       rank.className = 'rec-rank';
       rank.textContent = `${i + 1}.`;
 
-      const tag = document.createElement('span');
-      tag.className = 'rec-tag';
+      const tag = document.createElement('button');
+      tag.type = 'button';
+      tag.className = 'rec-tag rec-tag-btn js-no-start';
       tag.textContent = (row.displayName || row.username || '???').slice(0, 12);
+      tag.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (!row.uid) return;
+        window.location.href = `/profile/${encodeURIComponent(row.uid)}`;
+      });
 
       const time = document.createElement('span');
       time.className = 'rec-time';
@@ -517,6 +528,17 @@ async function setupProfileView() {
   const displayInput = document.getElementById('profile-display-name');
   const emailEl = document.getElementById('profile-info-email');
   const msgEl = document.getElementById('profile-msg');
+  const openAdminBtn = document.getElementById('btn-open-admin');
+  const bestStatsEl = document.getElementById('profile-info-best');
+  const totalGamesEl = document.getElementById('profile-info-total-games');
+  const totalPlaytimeEl = document.getElementById('profile-info-total-playtime');
+  const colorMap = {
+    red: document.getElementById('profile-stat-red'),
+    blue: document.getElementById('profile-stat-blue'),
+    yellow: document.getElementById('profile-stat-yellow'),
+    green: document.getElementById('profile-stat-green'),
+    purple: document.getElementById('profile-stat-purple'),
+  };
   const guest = isGuestModeActive();
 
   viewProfile?.classList.toggle('view-profile--guest', guest);
@@ -527,6 +549,10 @@ async function setupProfileView() {
     if (usernameEl) usernameEl.textContent = 'Ospite (offline)';
     if (emailEl) emailEl.textContent = '';
     if (bestEl) bestEl.textContent = 'Miglior tempo personale: ? (solo sul dispositivo in questa sessione)';
+    if (bestStatsEl) bestStatsEl.textContent = 'Tempo migliore: -';
+    if (totalGamesEl) totalGamesEl.textContent = 'Partite giocate: -';
+    if (totalPlaytimeEl) totalPlaytimeEl.textContent = 'Tempo totale di gioco: -';
+    Object.values(colorMap).forEach((el) => { if (el) el.textContent = '0'; });
     if (displayInput) {
       displayInput.value = '';
       displayInput.disabled = true;
@@ -551,6 +577,36 @@ async function setupProfileView() {
     const d = resolveDisplayName(profile);
     displayInput.value = d === '???' ? '' : d;
   }
+  if (openAdminBtn) {
+    const isAdmin = String(profile?.role || 'user') === 'admin' && String(profile?.email || '').toLowerCase() === 'danielet88@gmail.com';
+    openAdminBtn.hidden = !isAdmin;
+  }
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const response = await fetch('/api/player/stats', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.ok) {
+      const payload = await response.json();
+      const stats = payload?.stats || {};
+      const bestSec = Number(stats.best_time_seconds || 0);
+      const totalGames = Number(stats.total_games || 0);
+      const totalPlay = Number(stats.total_playtime_seconds || 0);
+      if (bestStatsEl) bestStatsEl.textContent = `Tempo migliore: ${fmt(Math.floor(bestSec * 1000))}`;
+      if (totalGamesEl) totalGamesEl.textContent = `Partite giocate: ${totalGames}`;
+      if (totalPlaytimeEl) {
+        const hh = Math.floor(totalPlay / 3600);
+        const mm = Math.floor((totalPlay % 3600) / 60);
+        const ss = Math.floor(totalPlay % 60);
+        totalPlaytimeEl.textContent = `Tempo totale di gioco: ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+      }
+      if (colorMap.red) colorMap.red.textContent = String(Math.floor(Number(stats.red_collected || 0)));
+      if (colorMap.blue) colorMap.blue.textContent = String(Math.floor(Number(stats.blue_collected || 0)));
+      if (colorMap.yellow) colorMap.yellow.textContent = String(Math.floor(Number(stats.yellow_collected || 0)));
+      if (colorMap.green) colorMap.green.textContent = String(Math.floor(Number(stats.green_collected || 0)));
+      if (colorMap.purple) colorMap.purple.textContent = String(Math.floor(Number(stats.purple_collected || 0)));
+    }
+  } catch (_) {}
 }
 
 let _navBound = false;
@@ -599,6 +655,10 @@ function bindHomeNav() {
     e.stopPropagation();
     window.location.href = '/auth.html';
   });
+  document.getElementById('btn-open-admin')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.location.href = '/admin';
+  });
 
   const btnSaveDisplay = document.getElementById('btn-save-display');
   if (btnSaveDisplay && btnSaveDisplay.dataset.bound !== '1') {
@@ -622,6 +682,19 @@ function bindHomeNav() {
       }
     });
   }
+
+  document.querySelectorAll('.profile-tab-btn').forEach((btn) => {
+    if (btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const target = btn.getAttribute('data-profile-tab');
+      document.querySelectorAll('.profile-tab-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
+      document.querySelectorAll('[data-profile-panel]').forEach((panel) => {
+        panel.hidden = panel.getAttribute('data-profile-panel') !== target;
+      });
+    });
+  });
 
   // ? HOME (tutti i pulsanti back)
   document.querySelectorAll('.js-back-home').forEach(btn => {
@@ -1180,13 +1253,14 @@ function restoreWhiteSpeedsAfterSlow() {
  * Toglie un terzo dei bianchi in campo, arrotondato per ECCESSO: ceil(n/3) da togliere.
  * Esempio: 14 bianchi ? toglie 5 ? restano 9. Al level-up (+1 tri +1 quad in quota) il target sale di 2 (es. 9?11).
  * Abbassa le quote target (tri / spirali) come i tipi effettivamente rimossi.
+ * @returns {number} Bianchi rimossi (per stats bonus giallo).
  */
 function removeThirdOfWhites(withYellowFx) {
   const whites = balls.filter((b) => b.type === 'white');
   const n = whites.length;
-  if (n < 1) return;
+  if (n < 1) return 0;
   const removeCount = Math.ceil(n / 3);
-  if (removeCount <= 0) return;
+  if (removeCount <= 0) return 0;
   const shuffled = whites.slice();
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -1210,6 +1284,7 @@ function removeThirdOfWhites(withYellowFx) {
   }
   baseTriangles = Math.max(WHITE_START_TRIANGLES, baseTriangles - rT);
   baseSquares = Math.max(WHITE_START_SQUARES, baseSquares - rS);
+  return removeCount;
 }
 
 function applyGreenModeToWhite(b, enabled) {
@@ -1514,6 +1589,10 @@ function startGame() {
   shieldActive = false; slowActive = false;
   greenModeActive = false; greenModeEnd = 0;
   hasExtraLife = 0;
+  runBonusesCollected = { red: 0, blue: 0, yellow: 0, green: 0, purple: 0 };
+  runExtraLivesUsed = 0;
+  runShieldsConsumed = 0;
+  runWhitesKilledByYellow = 0;
   yellowPopAuras = [];
   greenPopAuras = [];
   syncPowerHud(performance.now());
@@ -1533,8 +1612,9 @@ function startGame() {
   applyIntroCdVisual(3, 'r');
 }
 
-function die() {
+function die(opts = {}) {
   if (shieldActive) {
+    runShieldsConsumed++;
     shieldActive = false;
     syncPowerHud(performance.now());
     flash = 1; flashCol = 'rgba(255,68,68,0.5)';
@@ -1542,6 +1622,7 @@ function die() {
     return;
   }
   if (hasExtraLife > 0) {
+    runExtraLivesUsed++;
     const consumedIndex = hasExtraLife - 1;
     hasExtraLife--;
     const now = performance.now();
@@ -1581,6 +1662,7 @@ function die() {
   const diedElapsed = elapsed;
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
+  const deathCause = opts.deathCause === 'square' ? 'square' : 'triangle';
   burst(px,py,'#fff',40);
   startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
   if (deathUiTimeoutId != null) {
@@ -1609,25 +1691,68 @@ function die() {
         if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio???</p>';
         applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed);
         renderRecordsInto(recEl);
-        const result = await saveScore(currentUserId, diedElapsed);
-        if (!result || !result.ok) {
-          const msg = result?.reason === 'permission'
-            ? 'verifica l\'email per salvare i record'
-            : 'errore di rete ? punteggio non salvato';
-          if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
-        } else {
-          if (result.improved && result.inTop10) {
-            const badge = document.createElement('p');
-            badge.className = 'rec-saving rec-saving--highlight';
-            badge.textContent = 'nuovo record in classifica!';
-            if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
-          } else if (result.improved) {
-            const badge = document.createElement('p');
-            badge.className = 'rec-saving';
-            badge.textContent = 'record personale!';
-            if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
+        let apiOk = false;
+        try {
+          const token = await user.getIdToken();
+          const apiRes = await fetch('/api/game/end', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              duration_seconds: diedElapsed / 1000,
+              level_reached: diedLevel,
+              whites_on_screen_at_death: diedNb,
+              death_cause: deathCause,
+              bonus_active: null,
+              bonuses_collected: { ...runBonusesCollected },
+              extra_lives_used: runExtraLivesUsed,
+              shields_consumed: runShieldsConsumed,
+              whites_killed_by_yellow: runWhitesKilledByYellow,
+            }),
+          });
+          const payload = await apiRes.json().catch(() => ({}));
+          if (apiRes.ok && payload.ok) {
+            apiOk = true;
+            await fetchLeaderboard(10).catch(() => {});
+            if (payload.improved && payload.inTop10) {
+              const badge = document.createElement('p');
+              badge.className = 'rec-saving rec-saving--highlight';
+              badge.textContent = 'nuovo record in classifica!';
+              if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
+            } else if (payload.improved) {
+              const badge = document.createElement('p');
+              badge.className = 'rec-saving';
+              badge.textContent = 'record personale!';
+              if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
+            }
+            renderRecordsInto(recEl);
           }
-          renderRecordsInto(recEl);
+        } catch (_) {
+          apiOk = false;
+        }
+        if (!apiOk) {
+          const result = await saveScore(currentUserId, diedElapsed);
+          if (!result || !result.ok) {
+            const msg = result?.reason === 'permission'
+              ? 'verifica l\'email per salvare i record'
+              : 'errore di rete ? punteggio non salvato';
+            if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
+          } else {
+            if (result.improved && result.inTop10) {
+              const badge = document.createElement('p');
+              badge.className = 'rec-saving rec-saving--highlight';
+              badge.textContent = 'nuovo record in classifica!';
+              if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
+            } else if (result.improved) {
+              const badge = document.createElement('p');
+              badge.className = 'rec-saving';
+              badge.textContent = 'record personale!';
+              if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
+            }
+            renderRecordsInto(recEl);
+          }
         }
       }
     } else {
@@ -2119,8 +2244,14 @@ function loop(now){
     // collisione
     if(px>-200){
       if (checkCollision(b, px, py)) {
-        if(b.type==='white'){ balls.splice(i,1); spawnBall('white', { movement: b.movement }); die(); continue; }
+        if(b.type==='white'){
+          balls.splice(i,1);
+          spawnBall('white', { movement: b.movement });
+          die({ deathCause: b.shape === 'triangle' ? 'triangle' : 'square' });
+          continue;
+        }
         if(b.type==='red'){
+          runBonusesCollected.red++;
           shieldActive=true; shieldEnd=now+SHIELD_DURATION_MS;
           if (audioEnabled) playSoundBonus('red');
           spawnFloatingText(b.x, b.y, 'SCUDO', '#ff6b6b');
@@ -2131,6 +2262,7 @@ function loop(now){
           continue;
         }
         if(b.type==='blue'){
+          runBonusesCollected.blue++;
           const alreadySlow = slowActive;
           slowActive=true; slowEnd=now+SLOW_DURATION_MS;
           if (audioEnabled) playSoundBonus('blue');
@@ -2153,9 +2285,10 @@ function loop(now){
           continue;
         }
         if(b.type==='yellow'){
+          runBonusesCollected.yellow++;
           if (audioEnabled) playSoundBonus('yellow');
           spawnFloatingText(b.x, b.y, '- UN TERZO', '#f5e6a0');
-          removeThirdOfWhites(true);
+          runWhitesKilledByYellow += removeThirdOfWhites(true);
           burst(b.x,b.y,'#e9c81a',26);
           flash=0.4; flashCol='rgba(233,200,26,0.22)';
           // Non usare `i`: removeThirdOfWhites ha gi? mutato `balls`, l?indice del giallo ? cambiato.
@@ -2164,6 +2297,7 @@ function loop(now){
           continue;
         }
         if (b.type === 'purple') {
+          runBonusesCollected.purple++;
           hasExtraLife = Math.min(3, hasExtraLife + 1);
           if (audioEnabled) playSoundBonus('purple');
           spawnFloatingText(b.x, b.y, 'VITA IN PI?', '#e9d5ff');
@@ -2175,6 +2309,7 @@ function loop(now){
           continue;
         }
         if (b.type === 'green') {
+          runBonusesCollected.green++;
           greenModeActive = true;
           greenModeEnd = now + GREEN_MODE_DURATION_MS;
           applyGreenModeToWhites(true);
