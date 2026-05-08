@@ -16,8 +16,16 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
+        "source": "/admin",
+        "destination": "/admin.html"
+      },
+      {
         "source": "/admin/**",
         "destination": "/admin.html"
+      },
+      {
+        "source": "/profile",
+        "destination": "/profile.html"
       },
       {
         "source": "/profile/**",
