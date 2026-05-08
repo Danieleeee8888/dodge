@@ -1,27 +1,14 @@
 <!DOCTYPE html>
-<html lang="it" class="admin-html page-scroll-root">
+<html lang="it" class="page-scroll-root">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Admin - DODGE</title>
-  <!-- Gate UX: schermo nero finché admin.js non verifica auth + ruolo (overlay sotto). -->
-  <style>
-    html[data-admin-gate="pending"],
-    html[data-admin-gate="pending"] body.admin-body {
-      background: #000 !important;
-      margin: 0;
-      min-height: 100%;
-    }
-  </style>
-  <link rel="stylesheet" href="/css/style.css?v=20260509c">
+  <link rel="stylesheet" href="/css/style.css?v=20260509d">
 </head>
-<body class="admin-body page-scroll-body">
-  <script>
-    document.documentElement.setAttribute('data-admin-gate', 'pending');
-  </script>
-  <div id="admin-auth-blocking" style="position:fixed;inset:0;z-index:2147483647;background:#000;" aria-hidden="true"></div>
+<body class="page-scroll-body">
 
-  <main class="admin-view">
+  <main class="screen-view screen-view--sub admin-page" style="display:flex;">
     <h2 class="view-title">PANNELLO ADMIN</h2>
 
     <section id="admin-section-overview" class="admin-section">

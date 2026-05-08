@@ -70,38 +70,25 @@ html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--su
 
 /**
  * ── Pagina admin ────────────────────────────────────────────────────────────
- *  Stessa identica struttura di `profile.html`:
- *    <body class="admin-body page-scroll-body">
- *      <main class="admin-view"> ... </main>
- *      <nav class="admin-nav-chrome"> ... </nav>
- *    </body>
- *  Lo scroll è del documento (page-scroll-root). Niente shell, niente wrapper interni.
+ *  Stessa identica struttura del profilo pubblico:
+ *    <html class="page-scroll-root">
+ *    <body class="page-scroll-body">
+ *      <main class="screen-view screen-view--sub admin-page" style="display:flex;">
+ *      <nav class="admin-nav-chrome">  (barra fissa nera in basso)
+ *  Lo scroll è del documento, identico a profile.html.
  */
-html.admin-html {
-  font-size: clamp(11px, 3.5vmin, 18px);
-  -webkit-text-size-adjust: 100%;
-  background: #000;
+html.page-scroll-root body.page-scroll-body .admin-page.screen-view--sub {
+  /* lascia spazio per la barra fissa in basso (cerchi + safe area) */
+  padding-bottom: calc(max(56px, calc(58px * var(--ui-scale))) + max(1rem, env(safe-area-inset-bottom, 0px)) + 1.6rem);
 }
 
-html.admin-html body.admin-body {
-  margin: 0;
-  background: #000;
-  font-family: monospace;
-  color: #fff;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-html.admin-html .admin-view input[type="text"],
-html.admin-html .admin-view select {
+.admin-page input[type="text"],
+.admin-page select {
   touch-action: manipulation;
 }
 
-/**
- * Barra fissa: stesso nero del body — i pulsanti sembrano "appoggiati" sullo sfondo;
- * il contenuto scorre dietro fino al fondo pagina.
- */
-html.admin-html .admin-nav-chrome {
+/** Barra fissa nera — stesso nero della pagina, sembra parte della cornice. */
+.admin-nav-chrome {
   position: fixed;
   left: 0;
   right: 0;
@@ -122,8 +109,8 @@ html.admin-html .admin-nav-chrome {
   pointer-events: auto;
 }
 
-html.admin-html .admin-nav-chrome .home-bar-btn,
-html.admin-html .admin-nav-chrome .home-dock-btn {
+.admin-nav-chrome .home-bar-btn,
+.admin-nav-chrome .home-dock-btn {
   position: static;
   transform: none;
   left: auto;
@@ -131,7 +118,7 @@ html.admin-html .admin-nav-chrome .home-dock-btn {
 }
 
 /** ⌂ admin: stesso linguaggio del ⌂ blu classifica / morte */
-html.admin-html .home-bar-btn--admin-blue {
+.home-bar-btn--admin-blue {
   color: #dbeafe;
   border-color: rgba(96, 165, 250, 0.62);
   background: #000;
@@ -141,21 +128,21 @@ html.admin-html .home-bar-btn--admin-blue {
   text-shadow: 0 0 12px rgba(96, 165, 250, 0.45);
 }
 
-html.admin-html .home-bar-btn--admin-blue:active {
+.home-bar-btn--admin-blue:active {
   background: rgba(37, 99, 235, 0.16);
   border-color: rgba(147, 197, 253, 0.88);
   color: #f0f9ff;
 }
 
 /** Profilo admin = #btn-home-profile sulla home */
-html.admin-html #btn-admin-dock-profile.home-dock-btn {
+#btn-admin-dock-profile.home-dock-btn {
   background: #000;
   border-color: rgba(192, 132, 252, 0.82);
   color: #c084fc;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.55), 0 0 14px rgba(168, 85, 247, 0.28);
 }
 
-html.admin-html #btn-admin-dock-profile.home-dock-btn:active {
+#btn-admin-dock-profile.home-dock-btn:active {
   background: #070707;
   border-color: rgba(216, 180, 254, 0.95);
   color: #e9d5ff;
@@ -1519,27 +1506,14 @@ canvas {
 }
 
 /**
- * `<main class="admin-view">`: container del contenuto admin (figlio diretto di body).
- * Layout in colonna; padding-bottom riserva spazio per la barra fissa in basso.
+ * `<main class="screen-view screen-view--sub admin-page">`: usa il pattern del profilo
+ * pubblico; `.admin-page` aggiunge solo larghezza massima e gap delle sezioni.
  */
-.admin-view {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.75rem;
+.admin-page > .admin-section {
   width: 100%;
   max-width: min(28rem, calc(100% - 0.5rem));
   margin-left: auto;
   margin-right: auto;
-  padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
-  padding-bottom: calc(max(56px, calc(58px * var(--ui-scale))) + max(1rem, env(safe-area-inset-bottom, 0px)) + 1.6rem);
-  box-sizing: border-box;
-}
-.admin-view > .view-title {
-  flex-shrink: 0;
-  align-self: center;
 }
 .admin-section {
   width: 100%;
