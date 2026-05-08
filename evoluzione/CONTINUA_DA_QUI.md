@@ -16,7 +16,8 @@ Path assoluti consigliati per strumenti che accettano path completi: prefisso `C
 - **Piano:** Blaze (pay-as-you-go; quote no-cost generose per traffico basso)
 - **Servizi attivi:** Authentication (email+password), Firestore, Realtime Database, Hosting, **Cloud Functions v2** (`api`, region `europe-west1`)
 - **API HTTP:** rewrite Hosting `/api/**` → function `api`; es. `GET /api/player/stats` (Bearer token). Fine partita: `POST /api/game/end` (stats + storico + classifica allineata al vecchio `saveScore`).
-- **Migrazione stats storiche:** preferire `POST /api/admin/backfill-stats-from-history` (admin loggato, dopo backup Firestore); opzione legacy da console: `import('/js/stats-migration.js').then(m => m.runPhase1StatsMigration())`.
+- **Migrazione stats storiche (solo emergenza):** `POST /api/admin/backfill-stats-from-history` con Bearer admin, dopo backup Firestore; oppure da console: `import('/js/stats-migration.js').then(m => m.runPhase1StatsMigration())`. Il pulsante è stato rimosso dall’UI admin dopo stabilizzazione in produzione.
+- **Profilo in-app:** layout a quattro pannelli verticali (dati personali, statistiche, premi e missioni in anteprima non interattiva) in `public/index.html` + classi `.profile-layout` / `.profile-panel` in `style.css`.
 - **Backup Firestore:** snapshot gestito es. `gs://dodge-84439-firestore-backups/firestore_backup_20260508_231902` — inventario anche in `ROLLBACK_PLAN.md` (root repo).
 
 Oggetto `firebaseConfig` dell’app web: `public/js/firebase-init.js` (unica fonte nel repo).

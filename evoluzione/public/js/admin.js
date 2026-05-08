@@ -296,20 +296,6 @@ function bindEvents() {
       setMsg('Export games non disponibile.');
     }
   });
-  document.getElementById('btn-admin-backfill-stats')?.addEventListener('click', async () => {
-    if (!window.confirm('Eseguire la migrazione stats da storico? Assicurati di aver fatto backup Firestore.')) return;
-    try {
-      const r = await fetch('/api/admin/backfill-stats-from-history', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${state.token}` },
-      });
-      if (!r.ok) throw new Error(`HTTP_${r.status}`);
-      const body = await r.json();
-      setMsg(`Migrazione ok: ${JSON.stringify(body)}`);
-    } catch (_) {
-      setMsg('Migrazione fallita o non autorizzata.');
-    }
-  });
   window.addEventListener('popstate', () => {
     void routeLoad();
   });

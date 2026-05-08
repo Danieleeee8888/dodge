@@ -104,52 +104,60 @@
   <div id="view-profile" class="screen-view screen-view--sub" hidden>
     <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
     <h2 class="view-title">PROFILO</h2>
-    <div class="profile-tabs profile-account-only">
-      <button type="button" class="profile-tab-btn js-no-start is-active" data-profile-tab="personal">Dati personali</button>
-      <button type="button" class="profile-tab-btn js-no-start" data-profile-tab="stats">Stats</button>
-      <button type="button" class="profile-tab-btn js-no-start" data-profile-tab="rewards">Premi</button>
-      <button type="button" class="profile-tab-btn js-no-start" data-profile-tab="missions">Missioni</button>
-    </div>
 
-    <div class="profile-tab-content profile-account-only" data-profile-panel="personal">
-      <p class="profile-info profile-info--dim"><span class="profile-label">Username</span> <span id="profile-info-username" class="profile-mono"></span></p>
-      <label for="profile-display-name" class="profile-label-row">Nome visualizzato</label>
-      <div class="profile-display-row">
-        <input type="text" id="profile-display-name" class="profile-display-input js-no-start" maxlength="24" autocomplete="nickname" enterkeyhint="done" />
-        <button type="button" id="btn-save-display" class="home-btn home-btn--compact js-no-start">SALVA</button>
-      </div>
-      <p class="profile-hint profile-info--dim">Compare in classifica; l’username account resta quello scelto alla registrazione.</p>
-      <p id="profile-info-email" class="profile-info profile-info--dim"></p>
-      <button type="button" id="btn-open-admin" class="home-btn js-no-start" hidden>PANNELLO ADMIN</button>
-      <button type="button" id="btn-reset-pw" class="home-btn js-no-start">RESET PASSWORD</button>
-      <button type="button" id="btn-logout" class="home-btn home-btn--danger js-no-start">ESCI</button>
-    </div>
+    <div class="profile-layout profile-account-only">
+      <section class="profile-panel" aria-labelledby="profile-heading-personal">
+        <h3 id="profile-heading-personal" class="profile-panel-title">Dati personali</h3>
+        <p class="profile-info profile-info--dim"><span class="profile-label">Username</span> <span id="profile-info-username" class="profile-mono"></span></p>
+        <label for="profile-display-name" class="profile-label-row">Nome visualizzato</label>
+        <div class="profile-display-row">
+          <input type="text" id="profile-display-name" class="profile-display-input js-no-start" maxlength="24" autocomplete="nickname" enterkeyhint="done" />
+          <button type="button" id="btn-save-display" class="home-btn home-btn--compact js-no-start">Salva</button>
+        </div>
+        <p class="profile-hint profile-info--dim">Compare in classifica; l’username account resta quello scelto alla registrazione.</p>
+        <p id="profile-info-email" class="profile-info profile-info--dim"></p>
+        <div class="profile-account-actions">
+          <button type="button" id="btn-open-admin" class="home-btn home-btn--compact home-btn--ghost js-no-start" hidden>Pannello admin</button>
+          <button type="button" id="btn-reset-pw" class="home-btn home-btn--compact home-btn--ghost js-no-start">Reset password</button>
+          <button type="button" id="btn-logout" class="home-btn home-btn--compact home-btn--danger js-no-start">Esci</button>
+        </div>
+      </section>
 
-    <div class="profile-tab-content profile-account-only" data-profile-panel="stats" hidden>
-      <p id="profile-info-best" class="profile-info"></p>
-      <p id="profile-info-total-games" class="profile-info"></p>
-      <p id="profile-info-total-playtime" class="profile-info"></p>
-      <div class="profile-color-stats">
-        <div class="profile-color-stat profile-color-stat--red"><span class="profile-color-dot"></span><span id="profile-stat-red">0</span></div>
-        <div class="profile-color-stat profile-color-stat--blue"><span class="profile-color-dot"></span><span id="profile-stat-blue">0</span></div>
-        <div class="profile-color-stat profile-color-stat--yellow"><span class="profile-color-dot"></span><span id="profile-stat-yellow">0</span></div>
-        <div class="profile-color-stat profile-color-stat--green"><span class="profile-color-dot"></span><span id="profile-stat-green">0</span></div>
-        <div class="profile-color-stat profile-color-stat--purple"><span class="profile-color-dot"></span><span id="profile-stat-purple">0</span></div>
-      </div>
-    </div>
+      <section class="profile-panel" aria-labelledby="profile-heading-stats">
+        <h3 id="profile-heading-stats" class="profile-panel-title">Statistiche</h3>
+        <p id="profile-info-best" class="profile-info"></p>
+        <p id="profile-info-total-games" class="profile-info"></p>
+        <p id="profile-info-total-playtime" class="profile-info"></p>
+        <div class="profile-color-stats">
+          <div class="profile-color-stat profile-color-stat--red"><span class="profile-color-dot"></span><span id="profile-stat-red">0</span></div>
+          <div class="profile-color-stat profile-color-stat--blue"><span class="profile-color-dot"></span><span id="profile-stat-blue">0</span></div>
+          <div class="profile-color-stat profile-color-stat--yellow"><span class="profile-color-dot"></span><span id="profile-stat-yellow">0</span></div>
+          <div class="profile-color-stat profile-color-stat--green"><span class="profile-color-dot"></span><span id="profile-stat-green">0</span></div>
+          <div class="profile-color-stat profile-color-stat--purple"><span class="profile-color-dot"></span><span id="profile-stat-purple">0</span></div>
+        </div>
+      </section>
 
-    <div class="profile-tab-content profile-account-only" data-profile-panel="rewards" hidden>
-      <div class="profile-rewards-grid" id="profile-rewards-grid">
-        <div class="profile-reward-item profile-reward-item--locked">Rosso Plus</div><div class="profile-reward-item profile-reward-item--locked">Rosso Premium</div>
-        <div class="profile-reward-item profile-reward-item--locked">Blu Plus</div><div class="profile-reward-item profile-reward-item--locked">Blu Premium</div>
-        <div class="profile-reward-item profile-reward-item--locked">Giallo Plus</div><div class="profile-reward-item profile-reward-item--locked">Giallo Premium</div>
-        <div class="profile-reward-item profile-reward-item--locked">Verde Plus</div><div class="profile-reward-item profile-reward-item--locked">Verde Premium</div>
-        <div class="profile-reward-item profile-reward-item--locked">Viola Plus</div><div class="profile-reward-item profile-reward-item--locked">Viola Premium</div>
-      </div>
-    </div>
+      <section class="profile-panel profile-panel--preview" aria-labelledby="profile-heading-rewards">
+        <h3 id="profile-heading-rewards" class="profile-panel-title">Premi <span class="profile-panel-badge">Anteprima</span></h3>
+        <p class="profile-panel-note profile-info--dim">Solo visione: assegnazione e utilizzo arrivano con la versione 2.</p>
+        <div class="profile-rewards-grid profile-rewards-preview" id="profile-rewards-grid">
+          <div class="profile-reward-item profile-reward-item--locked">Rosso Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Rosso Premium</div>
+          <div class="profile-reward-item profile-reward-item--locked">Blu Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Blu Premium</div>
+          <div class="profile-reward-item profile-reward-item--locked">Giallo Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Giallo Premium</div>
+          <div class="profile-reward-item profile-reward-item--locked">Verde Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Verde Premium</div>
+          <div class="profile-reward-item profile-reward-item--locked">Viola Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Viola Premium</div>
+        </div>
+      </section>
 
-    <div class="profile-tab-content profile-account-only" data-profile-panel="missions" hidden>
-      <p class="profile-info profile-info--dim">In arrivo</p>
+      <section class="profile-panel profile-panel--preview" aria-labelledby="profile-heading-missions">
+        <h3 id="profile-heading-missions" class="profile-panel-title">Missioni <span class="profile-panel-badge">Presto</span></h3>
+        <p class="profile-panel-note profile-info--dim">Obiettivi e ricompense giornaliere saranno parte della versione 2.</p>
+      </section>
     </div>
 
     <div class="profile-guest-stack">

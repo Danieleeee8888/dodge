@@ -11,19 +11,24 @@
     <button type="button" class="subview-round-back subview-bar-back--center js-no-start" id="btn-public-back" aria-label="Torna alla home" title="Home">⌂</button>
     <h2 class="view-title">PROFILO PUBBLICO</h2>
     <p class="profile-info"><span id="public-profile-name">...</span></p>
-    <div class="profile-tab-content" style="max-width:24rem;">
-      <p id="public-best" class="profile-info">Tempo migliore: -</p>
-      <p id="public-total-games" class="profile-info">Partite giocate: -</p>
-      <p id="public-total-playtime" class="profile-info">Tempo totale di gioco: -</p>
-      <div class="profile-color-stats">
-        <div class="profile-color-stat profile-color-stat--red"><span class="profile-color-dot"></span><span id="public-red">0</span></div>
-        <div class="profile-color-stat profile-color-stat--blue"><span class="profile-color-dot"></span><span id="public-blue">0</span></div>
-        <div class="profile-color-stat profile-color-stat--yellow"><span class="profile-color-dot"></span><span id="public-yellow">0</span></div>
-        <div class="profile-color-stat profile-color-stat--green"><span class="profile-color-dot"></span><span id="public-green">0</span></div>
-        <div class="profile-color-stat profile-color-stat--purple"><span class="profile-color-dot"></span><span id="public-purple">0</span></div>
-      </div>
-      <p class="profile-info profile-info--dim" style="margin-top:0.75rem;">Premi</p>
-      <div class="profile-rewards-grid" id="public-rewards-grid"></div>
+    <div class="profile-layout">
+      <section class="profile-panel">
+        <h3 class="profile-panel-title">Statistiche</h3>
+        <p id="public-best" class="profile-info">Tempo migliore: -</p>
+        <p id="public-total-games" class="profile-info">Partite giocate: -</p>
+        <p id="public-total-playtime" class="profile-info">Tempo totale di gioco: -</p>
+        <div class="profile-color-stats">
+          <div class="profile-color-stat profile-color-stat--red"><span class="profile-color-dot"></span><span id="public-red">0</span></div>
+          <div class="profile-color-stat profile-color-stat--blue"><span class="profile-color-dot"></span><span id="public-blue">0</span></div>
+          <div class="profile-color-stat profile-color-stat--yellow"><span class="profile-color-dot"></span><span id="public-yellow">0</span></div>
+          <div class="profile-color-stat profile-color-stat--green"><span class="profile-color-dot"></span><span id="public-green">0</span></div>
+          <div class="profile-color-stat profile-color-stat--purple"><span class="profile-color-dot"></span><span id="public-purple">0</span></div>
+        </div>
+      </section>
+      <section class="profile-panel profile-panel--preview">
+        <h3 class="profile-panel-title">Premi <span class="profile-panel-badge">Anteprima</span></h3>
+        <div class="profile-rewards-grid profile-rewards-preview" id="public-rewards-grid"></div>
+      </section>
     </div>
     <p id="public-profile-msg" class="profile-msg"></p>
   </main>

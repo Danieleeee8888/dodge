@@ -683,19 +683,6 @@ function bindHomeNav() {
     });
   }
 
-  document.querySelectorAll('.profile-tab-btn').forEach((btn) => {
-    if (btn.dataset.bound === '1') return;
-    btn.dataset.bound = '1';
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const target = btn.getAttribute('data-profile-tab');
-      document.querySelectorAll('.profile-tab-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-      document.querySelectorAll('[data-profile-panel]').forEach((panel) => {
-        panel.hidden = panel.getAttribute('data-profile-panel') !== target;
-      });
-    });
-  });
-
   // ? HOME (tutti i pulsanti back)
   document.querySelectorAll('.js-back-home').forEach(btn => {
     btn.addEventListener('click', e => {
