@@ -2,6 +2,32 @@ import { auth, authPersistenceReady } from './firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getProfile } from './profile.js';
 
+/** Attende il primo snapshot Auth (sessione ripristinata), poi verifica solo `users.role` (UX). */
+async function ensureAdminUserOrRedirect() {
+  await authPersistenceReady;
+  const user = await new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      unsub();
+      resolve(u);
+    });
+  });
+  if (!user) {
+    window.location.replace('/');
+    return null;
+  }
+  const profile = await getProfile(user.uid).catch(() => null);
+  if (String(profile?.role || 'user') !== 'admin') {
+    window.location.replace('/');
+    return null;
+  }
+  return user;
+}
+
+function revealAdminShell() {
+  document.documentElement.removeAttribute('data-admin-gate');
+  document.getElementById('admin-auth-blocking')?.remove();
+}
+
 /** Pixel / Chrome mobile: 100dvh spesso non coincide col viewport visibile (barra URL). */
 function syncAdminViewportHeight() {
   const vv = window.visualViewport;
@@ -302,23 +328,14 @@ function bindEvents() {
 }
 
 async function bootstrap() {
-  await authPersistenceReady;
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      window.location.href = '/auth.html';
-      return;
-    }
-    const profile = await getProfile(user.uid).catch(() => null);
-    const isAdmin = String(profile?.role || 'user') === 'admin' && String(profile?.email || '').toLowerCase() === 'danielet88@gmail.com';
-    if (!isAdmin) {
-      setMsg('Accesso negato: area riservata admin.');
-      return;
-    }
-    state.token = await user.getIdToken();
-    syncAdminViewportHeight();
-    bindEvents();
-    await routeLoad();
-  });
+  const user = await ensureAdminUserOrRedirect();
+  if (!user) return;
+
+  revealAdminShell();
+  state.token = await user.getIdToken();
+  syncAdminViewportHeight();
+  bindEvents();
+  await routeLoad();
 }
 
 bootstrap();

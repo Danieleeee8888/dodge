@@ -4,9 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Admin - DODGE</title>
+  <!-- Gate UX: schermo bianco finché admin.js non verifica auth + ruolo (overlay sotto). -->
+  <style>
+    html[data-admin-gate="pending"],
+    html[data-admin-gate="pending"] body.admin-body {
+      background: #fff !important;
+      margin: 0;
+      min-height: 100%;
+    }
+  </style>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="admin-body">
+  <script>
+    document.documentElement.setAttribute('data-admin-gate', 'pending');
+  </script>
+  <!-- Copre tutto finché il modulo non completa i check (evita flash del layout admin). -->
+  <div id="admin-auth-blocking" style="position:fixed;inset:0;z-index:2147483647;background:#fff;" aria-hidden="true"></div>
   <div class="admin-page-shell">
   <main class="admin-scroll-outer">
     <div class="admin-scroll-inner admin-view">
