@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Admin - DODGE</title>
-  <!-- Gate UX: schermo bianco finché admin.js non verifica auth + ruolo (overlay sotto). -->
+  <!-- Gate UX: schermo nero finché admin.js non verifica auth + ruolo (overlay sotto). -->
   <style>
     html[data-admin-gate="pending"],
     html[data-admin-gate="pending"] body.admin-body {
@@ -13,17 +13,15 @@
       min-height: 100%;
     }
   </style>
-  <link rel="stylesheet" href="/css/style.css?v=20260509b">
+  <link rel="stylesheet" href="/css/style.css?v=20260509c">
 </head>
 <body class="admin-body page-scroll-body">
   <script>
     document.documentElement.setAttribute('data-admin-gate', 'pending');
   </script>
-  <!-- Copre tutto finché il modulo non completa i check (evita flash del layout admin). -->
   <div id="admin-auth-blocking" style="position:fixed;inset:0;z-index:2147483647;background:#000;" aria-hidden="true"></div>
-  <div class="admin-page-shell">
-  <main class="admin-scroll-outer">
-    <div class="admin-scroll-inner admin-view">
+
+  <main class="admin-view">
     <h2 class="view-title">PANNELLO ADMIN</h2>
 
     <section id="admin-section-overview" class="admin-section">
@@ -84,7 +82,6 @@
     </section>
 
     <p id="admin-msg" class="profile-msg"></p>
-    </div>
   </main>
 
   <nav class="admin-nav-chrome" aria-label="Navigazione">
@@ -93,7 +90,7 @@
       <svg class="home-dock-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"><circle cx="12" cy="9" r="3.2"/><path d="M6.5 19.5c0-3.2 2.7-5.2 5.5-5.2s5.5 2 5.5 5.2"/></svg>
     </button>
   </nav>
-  </div>
+
   <script type="module" src="/js/admin.js"></script>
 </body>
 </html>
