@@ -238,8 +238,15 @@ async function routeLoad() {
   }
 }
 
+const OPEN_SCREEN_KEY = 'dodge_open_screen';
+
 function bindEvents() {
-  document.getElementById('btn-admin-home')?.addEventListener('click', () => {
+  document.getElementById('btn-admin-dock-home')?.addEventListener('click', () => {
+    sessionStorage.removeItem(OPEN_SCREEN_KEY);
+    window.location.href = '/index.html';
+  });
+  document.getElementById('btn-admin-dock-profile')?.addEventListener('click', () => {
+    sessionStorage.setItem(OPEN_SCREEN_KEY, 'profile');
     window.location.href = '/index.html';
   });
   document.getElementById('btn-admin-open-players')?.addEventListener('click', () => {

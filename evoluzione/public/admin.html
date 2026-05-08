@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" class="page-scroll-root">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - DODGE</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <main class="screen-view screen-view--sub admin-view" style="display:flex;">
-    <button type="button" class="subview-round-back subview-bar-back--center js-no-start" id="btn-admin-home" aria-label="Torna alla home" title="Home">⌂</button>
+<body class="page-scroll-body">
+  <main class="screen-view screen-view--sub admin-view admin-view--page" style="display:flex;">
     <h2 class="view-title">PANNELLO ADMIN</h2>
 
     <section id="admin-section-overview" class="admin-section">
@@ -72,6 +71,11 @@
 
     <p id="admin-msg" class="profile-msg"></p>
   </main>
+
+  <nav class="admin-bottom-dock" aria-label="Navigazione">
+    <button type="button" class="home-btn home-btn--dock js-no-start" id="btn-admin-dock-home" aria-label="Home gioco">⌂ Home</button>
+    <button type="button" class="home-btn home-btn--dock home-btn--dock-accent js-no-start" id="btn-admin-dock-profile" aria-label="Profilo account">Profilo</button>
+  </nav>
   <script type="module" src="/js/admin.js"></script>
 </body>
 </html>

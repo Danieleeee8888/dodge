@@ -37,6 +37,70 @@ html, body {
   -webkit-user-select: none;
 }
 
+/* Pagine standalone (admin, profilo pubblico): scroll verticale con il touch */
+html.page-scroll-root {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y pinch-zoom;
+  overscroll-behavior-y: contain;
+  height: auto;
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+html.page-scroll-root body.page-scroll-body {
+  overflow-x: hidden;
+  overflow-y: visible;
+  touch-action: pan-y pinch-zoom;
+  min-height: 100%;
+  min-height: max(100%, 100dvh);
+}
+
+html.page-scroll-root body.page-scroll-body .screen-view {
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.page-scroll-root body.page-scroll-body .screen-view--sub.admin-view--page {
+  padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px) + var(--vv-layout-gap-bottom, 0px));
+}
+
+html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--sub {
+  padding-bottom: calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
+}
+
+.admin-bottom-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  gap: 0.45rem;
+  justify-content: center;
+  align-items: stretch;
+  padding: 0.45rem max(0.75rem, env(safe-area-inset-left)) calc(0.45rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-right));
+  background: rgba(6, 8, 18, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+.home-btn--dock {
+  flex: 1;
+  max-width: 12rem;
+  padding: 0.62rem 0.45rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  touch-action: manipulation;
+}
+
+.home-btn--dock-accent {
+  border-color: rgba(168, 85, 247, 0.45);
+  color: rgba(237, 225, 255, 0.95);
+}
+
 /* ── SHELL ────────────────────────────────────────────────────────────────── */
 .shell {
   position: relative;

@@ -2659,6 +2659,7 @@ onAuthStateChanged(auth, async (user) => {
       window.location.href = '/auth.html';
       return;
     } else {
+      sessionStorage.removeItem('dodge_open_screen');
       currentUserId = null;
       currentUserEmail = '';
       currentUsername = 'ospite';
@@ -2694,7 +2695,14 @@ onAuthStateChanged(auth, async (user) => {
   bindHomeNav();
   setupMenuUI();
   updateShellForPhase('menu');
-  showScreenView('home');
+  const pendingScreen = sessionStorage.getItem('dodge_open_screen');
+  if (pendingScreen === 'profile' && user) {
+    sessionStorage.removeItem('dodge_open_screen');
+    await setupProfileView().catch(() => {});
+    showScreenView('profile');
+  } else {
+    showScreenView('home');
+  }
 
   if (ctx) requestAnimationFrame(loop);
 });
