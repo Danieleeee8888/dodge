@@ -95,11 +95,13 @@ html.admin-html body.admin-body {
 .admin-page-shell {
   width: 100%;
   box-sizing: border-box;
+  touch-action: pan-y;
 }
 
 .admin-scroll-outer {
   width: 100%;
   box-sizing: border-box;
+  touch-action: pan-y;
 }
 
 html.admin-html .admin-scroll-inner input[type="text"],
@@ -118,6 +120,22 @@ html.admin-html .admin-scroll-inner select {
   /* spazio per la barra fissa in basso */
   padding-bottom: calc(max(56px, calc(58px * var(--ui-scale))) + max(1rem, env(safe-area-inset-bottom, 0px)) + 1.6rem);
   box-sizing: border-box;
+  touch-action: pan-y;
+}
+
+/** Tutto il contenuto admin: pan verticale (annulla qualsiasi cattura sotto-elementi). */
+html.admin-html .admin-section,
+html.admin-html .admin-panel,
+html.admin-html .admin-card-grid,
+html.admin-html .admin-kpi,
+html.admin-html .admin-list,
+html.admin-html .admin-list-row,
+html.admin-html .admin-table-wrap,
+html.admin-html .admin-table,
+html.admin-html .admin-actions,
+html.admin-html .admin-inline,
+html.admin-html .view-title {
+  touch-action: pan-y;
 }
 
 /**
