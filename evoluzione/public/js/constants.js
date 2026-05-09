@@ -42,12 +42,17 @@ export const INTRO_CD_MS = 850;
 
 /**
  * Numeri effettivi in partita quando è attivo un premio Plus (run corrente).
- * Rosso: durata scudo al pickup. Blu/Giallo/Viola: intervallo tra uno spawn e il successivo (dopo il primo).
+ * Rosso: durata scudo al pickup.
+ * Blu/Giallo/Viola: primo spawn e intervalli successivi (ms dall’inizio run / dall’ultimo spawn).
  * Verde: durata «cursore piccolo» al pickup del bonus verde (effetto alternativo al verde classico).
  */
 export const PLUS_PRIZE_RED_SHIELD_DURATION_MS = 13000;
+/** Default = base: stesso bilanciamento di prima finché non le abbassi per rendere il Plus più forte. */
+export const PLUS_PRIZE_BLUE_FIRST_SPAWN_MS = BLUE_BONUS_FIRST_SPAWN_MS;
 export const PLUS_PRIZE_BLUE_SPAWN_EVERY_MS = 22000;
+export const PLUS_PRIZE_YELLOW_FIRST_SPAWN_MS = YELLOW_BONUS_FIRST_SPAWN_MS;
 export const PLUS_PRIZE_YELLOW_SPAWN_EVERY_MS = 40000;
+export const PLUS_PRIZE_PURPLE_FIRST_SPAWN_MS = PURPLE_BONUS_FIRST_SPAWN_MS;
 export const PLUS_PRIZE_PURPLE_SPAWN_EVERY_MS = 50000;
 export const PLUS_PRIZE_GREEN_PLAYER_DURATION_MS = GREEN_MODE_DURATION_MS;
 

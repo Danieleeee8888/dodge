@@ -32,8 +32,11 @@ import {
   INTRO_CD_MS,
   PLUS_PRIZE_EFFECT_LABEL,
   PLUS_PRIZE_RED_SHIELD_DURATION_MS,
+  PLUS_PRIZE_BLUE_FIRST_SPAWN_MS,
   PLUS_PRIZE_BLUE_SPAWN_EVERY_MS,
+  PLUS_PRIZE_YELLOW_FIRST_SPAWN_MS,
   PLUS_PRIZE_YELLOW_SPAWN_EVERY_MS,
+  PLUS_PRIZE_PURPLE_FIRST_SPAWN_MS,
   PLUS_PRIZE_PURPLE_SPAWN_EVERY_MS,
   PLUS_PRIZE_GREEN_PLAYER_DURATION_MS,
 } from './constants.js';
@@ -381,6 +384,9 @@ let runBlueSpawnEveryMs = BLUE_BONUS_SPAWN_EVERY_MS;
 let runYellowSpawnEveryMs = YELLOW_BONUS_SPAWN_EVERY_MS;
 let runPurpleSpawnEveryMs = PURPLE_BONUS_SPAWN_EVERY_MS;
 let runGreenPlusPlayerDurationMs = GREEN_MODE_DURATION_MS;
+let runBlueFirstSpawnMs = BLUE_BONUS_FIRST_SPAWN_MS;
+let runYellowFirstSpawnMs = YELLOW_BONUS_FIRST_SPAWN_MS;
+let runPurpleFirstSpawnMs = PURPLE_BONUS_FIRST_SPAWN_MS;
 /** Contatori per una singola run (POST /api/game/end). */
 let runBonusesCollected = { red: 0, blue: 0, yellow: 0, green: 0, purple: 0 };
 let runExtraLivesUsed = 0;
@@ -403,10 +409,22 @@ function applyRunPrizeConstants() {
   runYellowSpawnEveryMs = YELLOW_BONUS_SPAWN_EVERY_MS;
   runPurpleSpawnEveryMs = PURPLE_BONUS_SPAWN_EVERY_MS;
   runGreenPlusPlayerDurationMs = GREEN_MODE_DURATION_MS;
+  runBlueFirstSpawnMs = BLUE_BONUS_FIRST_SPAWN_MS;
+  runYellowFirstSpawnMs = YELLOW_BONUS_FIRST_SPAWN_MS;
+  runPurpleFirstSpawnMs = PURPLE_BONUS_FIRST_SPAWN_MS;
   if (currentRunPrize === 'red_plus') runShieldDurationMs = PLUS_PRIZE_RED_SHIELD_DURATION_MS;
-  if (currentRunPrize === 'blue_plus') runBlueSpawnEveryMs = PLUS_PRIZE_BLUE_SPAWN_EVERY_MS;
-  if (currentRunPrize === 'yellow_plus') runYellowSpawnEveryMs = PLUS_PRIZE_YELLOW_SPAWN_EVERY_MS;
-  if (currentRunPrize === 'purple_plus') runPurpleSpawnEveryMs = PLUS_PRIZE_PURPLE_SPAWN_EVERY_MS;
+  if (currentRunPrize === 'blue_plus') {
+    runBlueFirstSpawnMs = PLUS_PRIZE_BLUE_FIRST_SPAWN_MS;
+    runBlueSpawnEveryMs = PLUS_PRIZE_BLUE_SPAWN_EVERY_MS;
+  }
+  if (currentRunPrize === 'yellow_plus') {
+    runYellowFirstSpawnMs = PLUS_PRIZE_YELLOW_FIRST_SPAWN_MS;
+    runYellowSpawnEveryMs = PLUS_PRIZE_YELLOW_SPAWN_EVERY_MS;
+  }
+  if (currentRunPrize === 'purple_plus') {
+    runPurpleFirstSpawnMs = PLUS_PRIZE_PURPLE_FIRST_SPAWN_MS;
+    runPurpleSpawnEveryMs = PLUS_PRIZE_PURPLE_SPAWN_EVERY_MS;
+  }
   if (currentRunPrize === 'green_plus') runGreenPlusPlayerDurationMs = PLUS_PRIZE_GREEN_PLAYER_DURATION_MS;
 }
 
@@ -1842,7 +1860,7 @@ function finishIntroCountdown() {
   }
   startTime = performance.now();
   elapsed = 0;
-  nextPurpleAt = startTime + PURPLE_BONUS_FIRST_SPAWN_MS;
+  nextPurpleAt = startTime + runPurpleFirstSpawnMs;
   lastRed = startTime;
   lastBlue = startTime;
   lastYellow = startTime;
@@ -2494,7 +2512,7 @@ function loop(now){
     lastRed = now;
     spawnBall('red');
   }
-  if (!firstBlueSpawned && elapsed >= BLUE_BONUS_FIRST_SPAWN_MS) {
+  if (!firstBlueSpawned && elapsed >= runBlueFirstSpawnMs) {
     firstBlueSpawned = true;
     lastBlue = now;
     spawnBall('blue');
@@ -2502,7 +2520,7 @@ function loop(now){
     lastBlue = now;
     spawnBall('blue');
   }
-  if (!firstYellowSpawned && elapsed >= YELLOW_BONUS_FIRST_SPAWN_MS) {
+  if (!firstYellowSpawned && elapsed >= runYellowFirstSpawnMs) {
     firstYellowSpawned = true;
     lastYellow = now;
     spawnBall('yellow');
