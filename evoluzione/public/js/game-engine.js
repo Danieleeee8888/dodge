@@ -92,8 +92,6 @@ function syncAudioChromeVisibility() {
   audioCornerBtn.classList.toggle('audio-corner--hidden', hide);
 }
 const pauseOverlay = document.getElementById('pauseOverlay');
-const runPrizeHudEl = document.getElementById('runPrizeHud');
-const runPrizeHudIconEl = document.getElementById('runPrizeHudIcon');
 let deferredInstallPrompt = null;
 let installNudgeEl = null;
 
@@ -372,6 +370,12 @@ let runGreenSkipped = 0;
 let runMaxExtraLivesSimultaneous = 0;
 
 const RUN_PRIZE_CODES = ['red_plus', 'blue_plus', 'yellow_plus', 'green_plus', 'purple_plus'];
+/** Riservato a openPrizePicker: torna alla home senza iniziare la partita. */
+const PRIZE_PICK_BACK_HOME = '__prize_pick_back__';
+const HUD_PRIZE_CLASSES = [
+  'hud--prize-red_plus', 'hud--prize-blue_plus', 'hud--prize-yellow_plus',
+  'hud--prize-green_plus', 'hud--prize-purple_plus',
+];
 
 function applyRunPrizeConstants() {
   runShieldDurationMs = SHIELD_DURATION_MS;
@@ -809,6 +813,7 @@ function openPrizePicker(counts) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('prizePickOverlay');
     const grid = document.getElementById('prizePickGrid');
+    const btnBack = document.getElementById('prizePickBack');
     const btnPure = document.getElementById('prizePickPure');
     const btnGo = document.getElementById('prizePickConfirm');
     if (!overlay || !grid || !btnPure || !btnGo) {
@@ -827,6 +832,7 @@ function openPrizePicker(counts) {
       overlay.hidden = true;
       overlay.setAttribute('aria-hidden', 'true');
       grid.replaceChildren();
+      if (btnBack) btnBack.onclick = null;
       btnPure.onclick = null;
       btnGo.onclick = null;
     };
@@ -858,6 +864,7 @@ function openPrizePicker(counts) {
       });
       grid.appendChild(bt);
     }
+    if (btnBack) btnBack.onclick = () => finish(PRIZE_PICK_BACK_HOME);
     btnPure.onclick = () => finish(null);
     btnGo.onclick = () => finish(selected);
     btnGo.disabled = true;
@@ -884,6 +891,10 @@ async function beginStartGameSequence() {
         if (total > 0) {
           chosen = await openPrizePicker(counts);
         }
+        if (chosen === PRIZE_PICK_BACK_HOME) {
+          currentRunPrize = null;
+          return;
+        }
         await postGameStartApi(chosen);
       } catch (_) {
         await postGameStartApi(null);
@@ -898,28 +909,14 @@ async function beginStartGameSequence() {
   }
 }
 
-function syncRunPrizeHud() {
-  if (!runPrizeHudEl) return;
-  if (!running || !currentRunPrize) {
-    runPrizeHudEl.hidden = true;
-    runPrizeHudEl.setAttribute('aria-hidden', 'true');
-    return;
-  }
-  runPrizeHudEl.hidden = false;
-  runPrizeHudEl.removeAttribute('hidden');
-  runPrizeHudEl.setAttribute('aria-hidden', 'false');
-  const meta = {
-    red_plus: '#ff6b6b',
-    blue_plus: '#6eb3ff',
-    yellow_plus: '#e9c81a',
-    green_plus: '#34cc6e',
-    purple_plus: '#c084fc',
-  };
-  const col = meta[currentRunPrize] || '#fff';
-  if (runPrizeHudIconEl) {
-    runPrizeHudIconEl.innerHTML =
-      `<span class="prize-pick-orbit" style="color:${col}"><span class="prize-pick-dot" style="background:${col}"></span></span>`;
-  }
+/** Colora TEMPO / LV / oggetti in base al premio Plus attivo (niente badge ad angolo). */
+function syncHudRunPrizeAccent() {
+  const hudEl = document.getElementById('hud');
+  if (!hudEl) return;
+  for (const c of HUD_PRIZE_CLASSES) hudEl.classList.remove(c);
+  if (!running || !currentRunPrize) return;
+  const cls = `hud--prize-${currentRunPrize}`;
+  if (HUD_PRIZE_CLASSES.includes(cls)) hudEl.classList.add(cls);
 }
 
 let _navBound = false;
@@ -1903,7 +1900,7 @@ function startGame() {
   yellowPopAuras = [];
   greenPopAuras = [];
   syncPowerHud(performance.now());
-  syncRunPrizeHud();
+  syncHudRunPrizeAccent();
   lastLevelUp = 0;
   bgPhase = 0; flash = 0; flashCol = 'rgba(255,255,255,0.2)';
   const [cx, cy] = getPlayerSpawnXY();
@@ -1960,7 +1957,7 @@ function die(opts = {}) {
   syncPowerHud(performance.now());
   stopMusic();
   running = false;
-  syncRunPrizeHud();
+  syncHudRunPrizeAccent();
   fingerDown = false;
   paused = false;
   resumeCountdown = null;
@@ -2154,6 +2151,7 @@ function isControlTarget(el) {
 
 window.addEventListener('mousedown', e=>{
   if (isControlTarget(e.target)) return;
+  if (e.target && e.target.closest && e.target.closest('#prizePickOverlay')) return;
   if (!running && e.target.closest('.js-no-start')) return;
   if (running && paused && !resumeCountdown) return;
   const [x,y]=getXY(e);
@@ -2177,6 +2175,7 @@ window.addEventListener('mouseup', ()=>{ fingerDown=false; });
 
 window.addEventListener('touchstart', e=>{
   if (isControlTarget(e.target)) return;
+  if (e.target && e.target.closest && e.target.closest('#prizePickOverlay')) return;
   if (running && e.touches.length >= 2) {
     e.preventDefault();
     togglePause();

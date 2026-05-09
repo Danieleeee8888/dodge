@@ -571,6 +571,13 @@ canvas {
 #hud .hud-time  { white-space:nowrap; }
 #hud .hud-nb    { white-space:nowrap; opacity:0.92; }
 
+/* HUD: accento colore premio Plus attivo (TEMPO / LV / oggetti) */
+#hud.hud--prize-red_plus   { color:#ff6b6b;   text-shadow:0 0 14px rgba(255,107,107,0.38); }
+#hud.hud--prize-blue_plus  { color:#6eb3ff;   text-shadow:0 0 14px rgba(110,179,255,0.38); }
+#hud.hud--prize-yellow_plus{ color:#e9c81a; text-shadow:0 0 14px rgba(233,200,26,0.38); }
+#hud.hud--prize-green_plus { color:#5ee9a0;   text-shadow:0 0 14px rgba(52,204,110,0.4); }
+#hud.hud--prize-purple_plus{ color:#d8b4fe;  text-shadow:0 0 14px rgba(192,132,252,0.38); }
+
 /* ── BARRA CHROME IN BASSO: audio sx · classifica centro · profilo dx ────── */
 #audioCornerBtn {
   position:fixed;
@@ -1689,6 +1696,7 @@ canvas {
   position: fixed;
   inset: 0;
   z-index: 120;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1791,26 +1799,11 @@ canvas {
   background: rgba(80,120,220,0.35);
   border-color: rgba(140,170,255,0.5);
 }
-
-.run-prize-hud {
-  position: fixed;
-  top: max(10px, env(safe-area-inset-top));
-  right: max(10px, env(safe-area-inset-right));
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.28rem 0.45rem;
-  border-radius: 0.4rem;
-  background: rgba(0,0,0,0.45);
-  border: 1px solid rgba(255,255,255,0.12);
-  font-size: 0.55rem;
-  letter-spacing: 0.14em;
-  pointer-events: none;
+.prize-pick-btn--back {
+  border-color: rgba(148,163,184,0.45);
+  background: rgba(255,255,255,0.06);
+  color: rgba(226,232,240,0.95);
 }
-.run-prize-hud[hidden] { display: none !important; }
-.run-prize-hud__icon .prize-pick-orbit { width: 1.1rem; height: 1.1rem; }
-.run-prize-hud__txt { opacity: 0.85; }
 
 /* Profilo: missioni e premi Plus */
 .profile-missions-root { display: flex; flex-direction: column; gap: 0.75rem; }
