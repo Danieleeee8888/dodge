@@ -72,17 +72,6 @@ export async function claimUsername(username, uid, email) {
       has_purple_plus: false,
       has_purple_premium: false,
       premi_usati_count: 0,
-      active_mission: null,
-      mission_started_at: null,
-      mission_progress: {},
-      prizes: {
-        red_plus: 0,
-        blue_plus: 0,
-        yellow_plus: 0,
-        green_plus: 0,
-        purple_plus: 0,
-      },
-      pending_run_prize: null,
       updated_at: now,
     });
   });

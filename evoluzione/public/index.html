@@ -52,22 +52,6 @@
   </div>
 </div>
 
-<div id="prizePickOverlay" class="prize-pick-overlay" hidden aria-hidden="true">
-  <div class="prize-pick-panel">
-    <h2 class="prize-pick-title">Vuoi attivare un premio per questa run?</h2>
-    <div class="prize-pick-grid" id="prizePickGrid" role="group" aria-label="Premi disponibili"></div>
-    <div class="prize-pick-actions">
-      <button type="button" id="prizePickPure" class="prize-pick-btn prize-pick-btn--pure">Gioca puro</button>
-      <button type="button" id="prizePickConfirm" class="prize-pick-btn prize-pick-btn--go" disabled>Inizia partita</button>
-    </div>
-  </div>
-</div>
-
-<div id="runPrizeHud" class="run-prize-hud" hidden aria-hidden="true">
-  <span class="run-prize-hud__icon" id="runPrizeHudIcon" aria-hidden="true"></span>
-  <span class="run-prize-hud__txt">Plus</span>
-</div>
-
 <div id="shield-hud">
   <div id="strack"><div id="sfill"></div></div>
 </div>
@@ -153,15 +137,26 @@
         </div>
       </section>
 
-      <section class="profile-panel" aria-labelledby="profile-heading-missions">
-        <h3 id="profile-heading-missions" class="profile-panel-title">Missioni</h3>
-        <div id="profile-missions-root" class="profile-missions-root"></div>
+      <section class="profile-panel profile-panel--preview" aria-labelledby="profile-heading-rewards">
+        <h3 id="profile-heading-rewards" class="profile-panel-title">Premi <span class="profile-panel-badge">Anteprima</span></h3>
+        <p class="profile-panel-note profile-info--dim">Solo visione: assegnazione e utilizzo arrivano con la versione 2.</p>
+        <div class="profile-rewards-grid profile-rewards-preview" id="profile-rewards-grid">
+          <div class="profile-reward-item profile-reward-item--locked">Rosso Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Rosso Premium</div>
+          <div class="profile-reward-item profile-reward-item--locked">Blu Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Blu Premium</div>
+          <div class="profile-reward-item profile-reward-item--locked">Giallo Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Giallo Premium</div>
+          <div class="profile-reward-item profile-reward-item--locked">Verde Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Verde Premium</div>
+          <div class="profile-reward-item profile-reward-item--locked">Viola Plus</div>
+          <div class="profile-reward-item profile-reward-item--locked">Viola Premium</div>
+        </div>
       </section>
 
-      <section class="profile-panel" aria-labelledby="profile-heading-rewards">
-        <h3 id="profile-heading-rewards" class="profile-panel-title">Premi Plus</h3>
-        <p class="profile-panel-note profile-info--dim">Potrai scegliere un premio all’inizio di ogni partita se ne hai almeno uno in tasca.</p>
-        <div id="profile-prizes-grid" class="profile-prizes-grid"></div>
+      <section class="profile-panel profile-panel--preview" aria-labelledby="profile-heading-missions">
+        <h3 id="profile-heading-missions" class="profile-panel-title">Missioni <span class="profile-panel-badge">Presto</span></h3>
+        <p class="profile-panel-note profile-info--dim">Obiettivi e ricompense giornaliere saranno parte della versione 2.</p>
       </section>
     </div>
 
