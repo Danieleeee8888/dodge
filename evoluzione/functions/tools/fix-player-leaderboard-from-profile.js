@@ -131,6 +131,9 @@ async function syncUid(db, uid, apply) {
 
   await lbRef.set(lbPayload, {merge: true});
   await pureRef.set(purePayload, {merge: true});
+  await db.collection("users").doc(uid).set({
+    bestTime_prize_used: FieldValue.delete(),
+  }, {merge: true});
   if (statsSnap.exists) {
     await statsRef.set(statsPayload, {merge: true});
   }

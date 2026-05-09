@@ -55,6 +55,7 @@ import {
   saveScore, fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
   invalidateLeaderboardUsernameMap,
 } from './leaderboard.js';
+import { fillProfileBestStatRows } from './profile-best-display.js';
 
 let currentUserId = null;
 /** Username account (fisso, registrazione). */
@@ -841,12 +842,12 @@ function maybeShowPlusLaunchNotice(user) {
 async function setupProfileView() {
   const viewProfile = document.getElementById('view-profile');
   const usernameEl = document.getElementById('profile-info-username');
-  const bestEl = document.getElementById('profile-info-best');
+  const bestMainEl = document.getElementById('profile-best-main');
+  const bestPureEl = document.getElementById('profile-best-pure');
   const displayInput = document.getElementById('profile-display-name');
   const emailEl = document.getElementById('profile-info-email');
   const msgEl = document.getElementById('profile-msg');
   const openAdminBtn = document.getElementById('btn-open-admin');
-  const bestStatsEl = document.getElementById('profile-info-best');
   const totalGamesEl = document.getElementById('profile-info-total-games');
   const totalPlaytimeEl = document.getElementById('profile-info-total-playtime');
   const colorMap = {
@@ -865,8 +866,7 @@ async function setupProfileView() {
   if (guest) {
     if (usernameEl) usernameEl.textContent = 'Ospite (offline)';
     if (emailEl) emailEl.textContent = '';
-    if (bestEl) bestEl.textContent = 'Miglior tempo personale: ? (solo sul dispositivo in questa sessione)';
-    if (bestStatsEl) bestStatsEl.textContent = 'Tempo migliore: -';
+    fillProfileBestStatRows(bestMainEl, bestPureEl, { generalMs: 0, pureMs: 0, prizeUsed: '', fmt });
     if (totalGamesEl) totalGamesEl.textContent = 'Partite giocate: -';
     if (totalPlaytimeEl) totalPlaytimeEl.textContent = 'Tempo totale di gioco: -';
     Object.values(colorMap).forEach((el) => { if (el) el.textContent = '0'; });
@@ -885,12 +885,6 @@ async function setupProfileView() {
   if (usernameEl) usernameEl.textContent = profile?.username || currentUsername || '???';
   if (emailEl) emailEl.textContent = currentUserEmail;
   if (msgEl) msgEl.textContent = '';
-  const best = profile?.bestTime || 0;
-  if (bestEl) {
-    bestEl.textContent = best > 0
-      ? `Miglior tempo personale: ${fmt(best)}`
-      : 'Miglior tempo personale: ?';
-  }
   if (displayInput) {
     const d = resolveDisplayName(profile);
     displayInput.value = d === '???' ? '' : d;
@@ -907,10 +901,13 @@ async function setupProfileView() {
     if (response.ok) {
       const payload = await response.json();
       const stats = payload?.stats || {};
-      const bestSec = Number(stats.best_time_seconds || 0);
+      let generalMs = Math.floor(Number(stats.best_general_ms || 0));
+      if (generalMs < 1) generalMs = Math.floor(Math.max(0, Number(profile?.bestTime) || 0));
+      const pureMs = Math.floor(Number(stats.best_pure_ms || 0));
+      const prizeUsed = String(stats.best_general_prize_used || '').trim();
+      fillProfileBestStatRows(bestMainEl, bestPureEl, { generalMs, pureMs, prizeUsed, fmt });
       const totalGames = Number(stats.total_games || 0);
       const totalPlay = Number(stats.total_playtime_seconds || 0);
-      if (bestStatsEl) bestStatsEl.textContent = `Tempo migliore: ${fmt(Math.floor(bestSec * 1000))}`;
       if (totalGamesEl) totalGamesEl.textContent = `Partite giocate: ${totalGames}`;
       if (totalPlaytimeEl) {
         const hh = Math.floor(totalPlay / 3600);
@@ -923,8 +920,22 @@ async function setupProfileView() {
       if (colorMap.yellow) colorMap.yellow.textContent = String(Math.floor(Number(stats.yellow_collected || 0)));
       if (colorMap.green) colorMap.green.textContent = String(Math.floor(Number(stats.green_collected || 0)));
       if (colorMap.purple) colorMap.purple.textContent = String(Math.floor(Number(stats.purple_collected || 0)));
+    } else {
+      fillProfileBestStatRows(bestMainEl, bestPureEl, {
+        generalMs: Math.floor(Math.max(0, Number(profile?.bestTime) || 0)),
+        pureMs: 0,
+        prizeUsed: '',
+        fmt,
+      });
     }
-  } catch (_) {}
+  } catch (_) {
+    fillProfileBestStatRows(bestMainEl, bestPureEl, {
+      generalMs: Math.floor(Math.max(0, Number(profile?.bestTime) || 0)),
+      pureMs: 0,
+      prizeUsed: '',
+      fmt,
+    });
+  }
   await refreshProfileMissionsAndPrizes().catch(() => {});
 }
 

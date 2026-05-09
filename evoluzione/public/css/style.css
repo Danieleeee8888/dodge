@@ -1530,6 +1530,13 @@ canvas {
 .profile-color-stat--yellow .profile-color-dot { background: #e9c81a; }
 .profile-color-stat--green .profile-color-dot { background: #34cc6e; }
 .profile-color-stat--purple .profile-color-dot { background: #a855f7; }
+
+.profile-best-time-plus--red { color: #ff4444; font-weight: 600; }
+.profile-best-time-plus--blue { color: #4488ff; font-weight: 600; }
+.profile-best-time-plus--yellow { color: #e9c81a; font-weight: 600; }
+.profile-best-time-plus--green { color: #34cc6e; font-weight: 600; }
+.profile-best-time-plus--purple { color: #a855f7; font-weight: 600; }
+
 .profile-rewards-grid {
   width: 100%;
   display: grid;

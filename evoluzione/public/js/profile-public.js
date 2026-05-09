@@ -1,4 +1,5 @@
 import { applyGameViewportChromeVars } from './viewport-ui-scale.js';
+import { fillProfileBestStatRows } from './profile-best-display.js';
 
 function bindViewportUiSync() {
   const run = () => {
@@ -75,7 +76,16 @@ async function loadPublicProfile() {
     const user = payload?.user || {};
     const stats = payload?.stats || {};
     document.getElementById('public-profile-name').textContent = user.displayName || user.username || 'Giocatore';
-    document.getElementById('public-best').textContent = `Tempo migliore: ${fmt(Math.floor(Number(stats.best_time_seconds || 0) * 1000))}`;
+    fillProfileBestStatRows(
+      document.getElementById('profile-best-main'),
+      document.getElementById('profile-best-pure'),
+      {
+        generalMs: Math.floor(Number(stats.best_general_ms || 0)),
+        pureMs: Math.floor(Number(stats.best_pure_ms || 0)),
+        prizeUsed: String(stats.best_general_prize_used || '').trim(),
+        fmt,
+      },
+    );
     document.getElementById('public-total-games').textContent = `Partite giocate: ${Math.floor(Number(stats.total_games || 0))}`;
     document.getElementById('public-total-playtime').textContent = `Tempo totale di gioco: ${formatHhmmss(stats.total_playtime_seconds || 0)}`;
     document.getElementById('public-red').textContent = String(Math.floor(Number(stats?.collected?.red || 0)));

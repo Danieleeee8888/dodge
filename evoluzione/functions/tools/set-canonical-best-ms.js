@@ -51,7 +51,10 @@ async function applyCanonical(db, targetUid, canonicalMs) {
   const u = userSnap.data() || {};
   const displayName = String(u.displayName || u.username || "Player").slice(0, 24);
 
-  await db.collection("users").doc(targetUid).set({bestTime: canonicalMs}, {merge: true});
+  await db.collection("users").doc(targetUid).set({
+    bestTime: canonicalMs,
+    bestTime_prize_used: FieldValue.delete(),
+  }, {merge: true});
 
   await db.collection("leaderboard").doc(targetUid).set({
     uid: targetUid,

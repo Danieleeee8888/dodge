@@ -23,7 +23,7 @@ Path assoluti consigliati per strumenti che accettano path completi: prefisso `C
 - **Migrazione stats storiche (solo emergenza):** `POST /api/admin/backfill-stats-from-history` con Bearer admin, dopo backup Firestore; oppure da console: `import('/js/stats-migration.js').then(m => m.runPhase1StatsMigration())`. Il pulsante è stato rimosso dall’UI admin dopo stabilizzazione in produzione.
 - **Admin overview:** KPI `Partite 24h/7gg` affiancati da `Tempo giocato 24h/7gg`, calcolati sommando `recent_games.duration_seconds` in `GET /api/admin/overview`.
 - **Profilo in-app:** dati personali, statistiche, **Missioni** (attiva / lista / annulla), **Premi Plus** (solo contatori 0–10 e testo effetti). Scelta premio **solo** a inizio partita (overlay in `index.html`); effetti run in `game-engine.js` (incluso Verde Plus = cursore rimpicciolito).
-- **Profilo pubblico** (`profile.html` + `profile-public.js`): statistiche e **totale simbolico** «bonus presi» (somma dei contatori `collected` rosso/blu/giallo/verde/viola). L’API `GET /api/player/stats/:userId` (`publicStatsShape`) **non** espone inventario `prizes` né flag legacy Plus/Premium.
+- **Profilo pubblico** (`profile.html` + `profile-public.js`): statistiche e **totale simbolico** «bonus presi» (somma dei contatori `collected` rosso/blu/giallo/verde/viola). Le API `GET /api/player/stats` e `GET /api/player/stats/:userId` includono **`best_general_ms`**, **`best_pure_ms`**, **`best_general_prize_used`** (codice Plus sul PB generale, solo se valido) oltre a `publicStatsShape`. UI profilo (in-app + pubblico): una riga **Miglior tempo** se coincide col puro; se diverso, seconda riga **Miglior tempo puro** e il tempo generale evidenziato col **colore del premio** se noto. **`users.bestTime_prize_used`:** scritto da `POST /api/game/end` quando migliora il PB (delete se run senza Plus); **cancellato** da sync canonico admin / tool `set-canonical-best-ms`.
 - **Backup Firestore:** snapshot gestito es. `gs://dodge-84439-firestore-backups/firestore_backup_20260508_231902` — inventario anche in `ROLLBACK_PLAN.md` (root repo).
 
 Oggetto `firebaseConfig` dell’app web: `public/js/firebase-init.js` (unica fonte nel repo).
@@ -50,6 +50,7 @@ evoluzione/
 │       ├── missions-config.json
 │       ├── admin.js
 │       ├── profile-public.js
+│       ├── profile-best-display.js   (miglior tempo / puro profilo)
 │       ├── viewport-ui-scale.js   (--ui-scale + gap visual viewport, condiviso gioco / profilo pubblico / admin)
 │       └── game-engine.js
 │   ├── admin.html
@@ -77,7 +78,7 @@ evoluzione/
 - **Modalità guest offline:** da `auth.html` è disponibile il pulsante `Provalo offline`; entra nel gioco senza account, mostra il tempo nel game over per screenshot, **nessun salvataggio** su Firestore. **Classifica globale** dall’icona **gialla** in basso al centro sulla home; schermata **Profilo** mostra copy ospite + pulsante opzionale «Accedi o registrati» (senza «ESCI» verso login come unico gesto).
 - **Classifica:** due tab **Generale** (TOP 15, miglior tempo assoluto; pallino colore del **Premio Plus** usato in quel record; codice sconosciuto → pallino grigio) e **Pura** (TOP 15 solo run **senza** premio Plus). Vista classifica: solo tab + lista record (nessun testo esplicativo sotto i tab). Firestore: `leaderboard` / `scores` (+ campo opzionale `prize_used`), `leaderboard_pure` scritta solo dal backend. La pura unisce `leaderboard_pure` + `scores` puri con scansione ampia (`FALLBACK_SCAN_LIMIT` in `leaderboard.js`, es. 2500 righe) perché molte run Plus in cima a `scores` non «taglino fuori» tempi puri alti. **`isPureScoreRow`:** conta come pura anche `prize_used === false` o `0` (legacy). Diagnostica produzione: da `evoluzione/functions` eseguire `node tools/diag-leaderboard-gap.js bartolomeo` con credenziali Admin (`GOOGLE_APPLICATION_CREDENTIALS` o ADC `gcloud auth application-default login`). `applyOptimisticScore` passa anche il premio della run; `saveScore` (fallback) conta come pura.
 - **Formato tempo UI:** ovunque nel gioco/classifica/profilo il timer è in `mm:ss:000` (millisecondi a 3 cifre, minuti senza limite ore).
-- **Profilo:** username account (fisso), **nome visualizzato** (modificabile, max 24 caratteri, compare in classifica), miglior tempo personale (`bestTime`); pannelli **Missioni** e **Premi Plus** collegati alle API sopra. **Copy missioni/premi:** sotto «Inizia partita» nell’overlay premio e nel pannello Missioni è indicato che le run **con** premio Plus non contano per le missioni (solo «Gioca puro»).
+- **Profilo:** username account (fisso), **nome visualizzato** (modificabile, max 24 caratteri, compare in classifica), statistiche con **miglior tempo** vs **miglior tempo puro** (vedi API sopra); pannelli **Missioni** e **Premi Plus** collegati alle API sopra. **Copy missioni/premi:** sotto «Inizia partita» nell’overlay premio e nel pannello Missioni è indicato che le run **con** premio Plus non contano per le missioni (solo «Gioca puro»).
 - PWA: manifest, service worker, icone.
 - Target: **mobile** (PC browser secondario).
 

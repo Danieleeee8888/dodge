@@ -192,6 +192,33 @@ async function requireAdmin(req, res, next) {
   }
 }
 
+/** Miglior tempo globale / puro / codice Plus sul PB (solo lettura profilo). */
+async function profileBestFieldsForUid(uid, cachedUserDocData = undefined) {
+  let u;
+  let pureSnap;
+  if (cachedUserDocData !== undefined) {
+    u = cachedUserDocData || {};
+    pureSnap = await db.collection("leaderboard_pure").doc(uid).get();
+  } else {
+    const [userSnap, pSnap] = await Promise.all([
+      db.collection("users").doc(uid).get(),
+      db.collection("leaderboard_pure").doc(uid).get(),
+    ]);
+    pureSnap = pSnap;
+    u = userSnap.exists ? userSnap.data() || {} : {};
+  }
+  const generalMs = Math.floor(safeNum(u.bestTime, 0));
+  const pureMs = pureSnap.exists ? Math.floor(safeNum(pureSnap.data().ms, 0)) : 0;
+  const rawPrize = u.bestTime_prize_used;
+  const ps = rawPrize == null ? "" : String(rawPrize).trim();
+  const prizeOk = ps && PRIZE_CODES.includes(ps);
+  return {
+    best_general_ms: generalMs,
+    best_pure_ms: pureMs,
+    best_general_prize_used: prizeOk ? ps : "",
+  };
+}
+
 function publicStatsShape(statsDoc) {
   const d = statsDoc || {};
   return {
@@ -312,8 +339,12 @@ async function upsertPlayerStatsIfMissing(uid) {
 app.get("/api/player/stats", requireAuth, async (req, res) => {
   try {
     await upsertPlayerStatsIfMissing(req.uid);
-    const snap = await db.collection("player_stats").doc(req.uid).get();
-    return res.json({ok: true, uid: req.uid, stats: snap.data() || {}});
+    const [snap, bests] = await Promise.all([
+      db.collection("player_stats").doc(req.uid).get(),
+      profileBestFieldsForUid(req.uid),
+    ]);
+    const base = snap.exists ? snap.data() || {} : {};
+    return res.json({ok: true, uid: req.uid, stats: {...base, ...bests}});
   } catch (e) {
     logger.error("GET /api/player/stats", e);
     return res.status(500).json({error: "internal_error"});
@@ -331,6 +362,8 @@ app.get("/api/player/stats/:userId", async (req, res) => {
     if (!userSnap.exists) return res.status(404).json({error: "not_found"});
     const u = userSnap.data() || {};
     const stats = publicStatsShape(statsSnap.exists ? statsSnap.data() : {});
+    const bests = await profileBestFieldsForUid(userId, u);
+    Object.assign(stats, bests);
     return res.json({
       ok: true,
       user: {
@@ -678,11 +711,17 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       const newBestMs = Math.max(userBestMs, runMsTx);
       if (newBestMs > userBestMs) {
         shouldUpdateLeaderboard = true;
-        tx.set(userRef, {
+        const userPbPatch = {
           bestTime: newBestMs,
           gamesPlayed: safeNum(user.gamesPlayed, 0) + 1,
           lastSeen: nowTs(),
-        }, {merge: true});
+        };
+        if (prizeUsedForLeaderboards && PRIZE_CODES.includes(String(prizeUsedForLeaderboards))) {
+          userPbPatch.bestTime_prize_used = String(prizeUsedForLeaderboards);
+        } else {
+          userPbPatch.bestTime_prize_used = admin.firestore.FieldValue.delete();
+        }
+        tx.set(userRef, userPbPatch, {merge: true});
       } else {
         tx.set(userRef, {
           gamesPlayed: safeNum(user.gamesPlayed, 0) + 1,
@@ -1019,7 +1058,14 @@ app.post("/api/admin/sync-leaderboard-from-user-profile", requireAuth, requireAd
     }
 
     if (usedForceMs) {
-      await db.collection("users").doc(targetUid).set({bestTime: canonicalMs}, {merge: true});
+      await db.collection("users").doc(targetUid).set({
+        bestTime: canonicalMs,
+        bestTime_prize_used: admin.firestore.FieldValue.delete(),
+      }, {merge: true});
+    } else {
+      await db.collection("users").doc(targetUid).set({
+        bestTime_prize_used: admin.firestore.FieldValue.delete(),
+      }, {merge: true});
     }
 
     const lbRow = {
