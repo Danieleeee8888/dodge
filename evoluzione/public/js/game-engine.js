@@ -529,11 +529,11 @@ function hideScreen() {
 }
 
 const PROFILE_MISSION_DEFS = [
-  {code: 'red_plus', title: 'Rosso Plus', desc: '6+ bonus rossi nella stessa partita, in 10 partite.', reward: '3× Rosso Plus', effect: 'Scudo 13s'},
-  {code: 'blue_plus', title: 'Blu Plus', desc: '5+ bonus blu nella stessa partita, in 10 partite.', reward: '3× Blu Plus', effect: 'Blu ogni 22s'},
-  {code: 'yellow_plus', title: 'Giallo Plus', desc: 'Uccisioni bianchi col giallo: 100 totali.', reward: '3× Giallo Plus', effect: 'Giallo ogni 40s'},
-  {code: 'green_plus', title: 'Verde Plus', desc: '2+ verdi saltati (stessa partita), in 10 partite.', reward: '3× Verde Plus', effect: 'Cursore piccolo 10s'},
-  {code: 'purple_plus', title: 'Viola Plus', desc: '2+ vite extra insieme (max run), in 10 partite.', reward: '3× Viola Plus', effect: 'Viola ogni 50s'},
+  {code: 'red_plus', title: 'Rosso Plus', desc: '6+ bonus rossi nella stessa partita, in 10 partite.', reward: '3× Rosso Plus', effect: 'Scudo prolungato'},
+  {code: 'blue_plus', title: 'Blu Plus', desc: '5+ bonus blu nella stessa partita, in 10 partite.', reward: '3× Blu Plus', effect: 'Blu più frequente'},
+  {code: 'yellow_plus', title: 'Giallo Plus', desc: 'Uccisioni bianchi col giallo: 100 totali.', reward: '3× Giallo Plus', effect: 'Giallo più frequente'},
+  {code: 'green_plus', title: 'Verde Plus', desc: '2+ verdi saltati (stessa partita), in 10 partite.', reward: '3× Verde Plus', effect: 'Cursore piccolo'},
+  {code: 'purple_plus', title: 'Viola Plus', desc: '2+ vite extra insieme (max run), in 10 partite.', reward: '3× Viola Plus', effect: 'Viola più frequente'},
 ];
 
 function prizeOrbitHtml(color) {
