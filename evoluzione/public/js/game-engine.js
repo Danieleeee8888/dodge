@@ -495,6 +495,12 @@ function syncLeaderboardTabButtons() {
   p.classList.toggle('leaderboard-tab--active', !isGen);
   g.setAttribute('aria-selected', isGen ? 'true' : 'false');
   p.setAttribute('aria-selected', !isGen ? 'true' : 'false');
+  const hint = document.getElementById('lb-tab-hint');
+  if (hint) {
+    hint.textContent = isGen
+      ? 'Generale: miglior tempo assoluto (anche con Premio Plus). Pallino = Plus usato in quel record.'
+      : 'Pura: miglior tempo ottenuto senza Premio Plus attivo. Chi ha fatto il PB con Plus resta in alto in Generale ma può mancare qui se il meglio «pulito» non è tra i primi 15.';
+  }
 }
 
 function bindLeaderboardTabs() {
@@ -562,11 +568,14 @@ function renderRecordsInto(el) {
       right.className = 'rec-row-right';
 
       const prizeCode = row.prize_used && kind === 'general' ? String(row.prize_used) : '';
-      if (prizeCode && LEADERBOARD_PRIZE_DOT_COLORS[prizeCode]) {
+      if (prizeCode) {
+        const color = LEADERBOARD_PRIZE_DOT_COLORS[prizeCode] || '#94a3b8';
         const dot = document.createElement('span');
         dot.className = 'rec-prize-dot';
-        dot.style.background = LEADERBOARD_PRIZE_DOT_COLORS[prizeCode];
-        dot.title = prizeCode.replace('_plus', ' Plus');
+        dot.style.background = color;
+        dot.title = LEADERBOARD_PRIZE_DOT_COLORS[prizeCode]
+          ? prizeCode.replace('_plus', ' Plus')
+          : `Premio Plus (${prizeCode})`;
         dot.setAttribute('aria-hidden', 'true');
         right.appendChild(dot);
       }

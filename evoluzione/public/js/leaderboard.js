@@ -12,7 +12,8 @@ let _cacheGeneral = [];
 let _cachePure = [];
 const SCORE_MIN = 1;
 const SCORE_MAX = 7200000;
-const FALLBACK_SCAN_LIMIT = 400;
+/** Partite recenti in `scores`: serve coprire abbastanza righe perché molte run Plus in cima non escludano dal merge i migliori tempi puri. */
+const FALLBACK_SCAN_LIMIT = 2500;
 const USERNAME_UID_MAP_TTL_MS = 60_000;
 
 let _uidToClaimedUsername = null;
@@ -64,10 +65,15 @@ function isValidMs(ms) {
   return ms >= SCORE_MIN && ms <= SCORE_MAX;
 }
 
-/** Run senza Premio Plus (storico senza campo conta come pura). */
+/**
+ * Run senza Premio Plus (campo assente o vuoto = pura).
+ * Legacy: alcuni client salvavano «nessun premio» come boolean false o 0; non sono codici Plus.
+ */
 export function isPureScoreRow(row) {
   const p = row?.prize_used;
-  return p == null || p === '';
+  if (p == null || p === '') return true;
+  if (p === false || p === 0) return true;
+  return false;
 }
 
 function dedupeBestByUid(rows, n = LEADERBOARD_TOP_N) {
