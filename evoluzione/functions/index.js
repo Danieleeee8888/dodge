@@ -16,9 +16,11 @@ app.use(cors({origin: true}));
 app.use(express.json({limit: "1mb"}));
 
 const ADMIN_EMAIL = "danielet88@gmail.com";
+const LEADERBOARD_TOP_N = 15;
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
+const PLUS_LAUNCH_GIFT_FIELD = "plus_launch_gift_2026_05";
 
 const missionsPackage = require("./missions-config.json");
 const MISSION_WINDOW_MS = Number(missionsPackage.MISSION_WINDOW_MS) > 0
@@ -556,6 +558,8 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
     let shouldUpdateLeaderboard = false;
     let userBestMs = 0;
     let displayName = "";
+    /** Impostato nella transaction: premio Plus effettivo per questa run (per score/classifica generale). */
+    let prizeUsedForLeaderboards = null;
     /** @type {{ mission_warning?: string, mission_completed?: boolean }} */
     const responseExtra = {};
 
@@ -581,6 +585,8 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       if (clientPrize && prizeUsedEffective && clientPrize !== prizeUsedEffective) {
         logger.warn("POST /api/game/end prize mismatch", {uid, clientPrize, prizeUsedEffective});
       }
+
+      prizeUsedForLeaderboards = prizeUsedEffective;
 
       const next = {
         user_id: uid,
@@ -680,7 +686,8 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       });
 
       userBestMs = safeNum(user.bestTime, 0);
-      const newBestMs = Math.max(userBestMs, Math.floor(duration * 1000));
+      const runMsTx = Math.floor(duration * 1000);
+      const newBestMs = Math.max(userBestMs, runMsTx);
       if (newBestMs > userBestMs) {
         shouldUpdateLeaderboard = true;
         tx.set(userRef, {
@@ -694,31 +701,54 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
           lastSeen: nowTs(),
         }, {merge: true});
       }
+
+      // Classifica «pura»: solo run senza Premio Plus attivo.
+      if (!prizeUsedEffective) {
+        const pureLbRef = db.collection("leaderboard_pure").doc(uid);
+        const pureSnap = await tx.get(pureLbRef);
+        const pureBestMs = pureSnap.exists ? safeNum(pureSnap.data().ms, 0) : 0;
+        if (runMsTx > pureBestMs) {
+          tx.set(pureLbRef, {
+            uid,
+            displayName,
+            ms: runMsTx,
+            updatedAt: nowTs(),
+          }, {merge: true});
+        }
+      }
     });
 
     const runMs = Math.floor(duration * 1000);
-    await db.collection("scores").add({
+    const scorePayload = {
       uid,
       displayName,
       ms: runMs,
       createdAt: nowTs(),
-    });
+    };
+    if (prizeUsedForLeaderboards) {
+      scorePayload.prize_used = prizeUsedForLeaderboards;
+    }
+    await db.collection("scores").add(scorePayload);
 
-    let inTop10Result = false;
+    let inTop15Result = false;
     if (shouldUpdateLeaderboard) {
-      const lbSnap = await db.collection("leaderboard").orderBy("ms", "desc").limit(10).get();
+      const lbSnap = await db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N).get();
       const rows = lbSnap.docs.map((d) => ({id: d.id, ...d.data()}));
       const myEntry = rows.find((r) => r.uid === uid || r.id === uid);
       const worstMs = rows.length > 0 ? rows[rows.length - 1].ms : 0;
-      const inTop10 = rows.length < 10 || myEntry !== undefined || runMs > worstMs;
-      if (inTop10) {
-        await db.collection("leaderboard").doc(uid).set({
+      const inTop15 = rows.length < LEADERBOARD_TOP_N || myEntry !== undefined || runMs > worstMs;
+      if (inTop15) {
+        const lbRow = {
           uid,
           displayName,
           ms: runMs,
           updatedAt: nowTs(),
-        }, {merge: true});
-        inTop10Result = true;
+          prize_used: prizeUsedForLeaderboards
+            ? prizeUsedForLeaderboards
+            : admin.firestore.FieldValue.delete(),
+        };
+        await db.collection("leaderboard").doc(uid).set(lbRow, {merge: true});
+        inTop15Result = true;
       }
     }
 
@@ -737,7 +767,8 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
     return res.json({
       ok: true,
       improved: shouldUpdateLeaderboard,
-      inTop10: inTop10Result,
+      inTop15: inTop15Result,
+      inTop10: inTop15Result,
       ...responseExtra,
     });
   } catch (e) {
@@ -760,7 +791,7 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       db.collection("recent_games").where("played_at", ">=", dayAgo).get(),
       db.collection("recent_games").where("played_at", ">=", weekAgo).get(),
       db.collection("recent_games").get(),
-      db.collection("leaderboard").orderBy("ms", "desc").limit(10).get(),
+      db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N).get(),
       db.collection("player_stats").get(),
     ]);
 
@@ -791,7 +822,7 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       sum7 += safeNum(d.data()?.duration_seconds, 0);
     });
 
-    const top10 = leaderboardSnap.docs.map((d) => d.data());
+    const top15 = leaderboardSnap.docs.map((d) => d.data());
     let connected_sessions_now = 0;
     try {
       const presSnap = await admin.database().ref("app_presence/sessions").get();
@@ -811,7 +842,8 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       connected_sessions_now,
       avg_run_seconds_last_7d: recent7dSnap.size ? (sum7 / recent7dSnap.size) : 0,
       duration_distribution: distPlayers,
-      top10,
+      top15,
+      top10: top15,
     });
   } catch (e) {
     logger.error("GET /api/admin/overview", e);
@@ -975,6 +1007,63 @@ app.post("/api/admin/grant-self-test-plus-prizes", requireAuth, requireAdmin, as
     return res.json({ok: true, prizes});
   } catch (e) {
     logger.error("POST /api/admin/grant-self-test-plus-prizes", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+/**
+ * Solo admin: regalo lancio Missioni/Premi Plus.
+ * Idempotente: ogni utente riceve +1 per colore una sola volta.
+ */
+app.post("/api/admin/grant-plus-launch-gift", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const usersSnap = await db.collection("users").get();
+    let batch = db.batch();
+    let ops = 0;
+    let granted = 0;
+    let skipped = 0;
+    const flush = async () => {
+      if (ops === 0) return;
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    };
+
+    for (const userDoc of usersSnap.docs) {
+      const uid = userDoc.id;
+      const statsRef = db.collection("player_stats").doc(uid);
+      const statsSnap = await statsRef.get();
+      const stats = statsSnap.exists ? (statsSnap.data() || {}) : {};
+      if (stats[PLUS_LAUNCH_GIFT_FIELD] === true) {
+        skipped += 1;
+        continue;
+      }
+
+      const prizes = normalizePrizesObject(stats.prizes);
+      for (const code of PRIZE_CODES) {
+        prizes[code] = Math.min(10, safeNum(prizes[code], 0) + 1);
+      }
+      batch.set(statsRef, {
+        user_id: uid,
+        prizes,
+        [PLUS_LAUNCH_GIFT_FIELD]: true,
+        updated_at: nowTs(),
+      }, {merge: true});
+      ops += 1;
+      granted += 1;
+      if (ops >= 400) await flush();
+    }
+    await flush();
+
+    return res.json({
+      ok: true,
+      users_total: usersSnap.size,
+      gift_granted: granted,
+      already_had_gift: skipped,
+      gift_field: PLUS_LAUNCH_GIFT_FIELD,
+    });
+  } catch (e) {
+    logger.error("POST /api/admin/grant-plus-launch-gift", e);
     return res.status(500).json({error: "internal_error"});
   }
 });

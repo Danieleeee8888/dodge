@@ -52,7 +52,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getProfile, resolveDisplayName, updateDisplayName } from './profile.js';
 import {
-  saveScore, fetchLeaderboard, getCachedLeaderboard, applyOptimisticScore,
+  saveScore, fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
   invalidateLeaderboardUsernameMap,
 } from './leaderboard.js';
 
@@ -63,6 +63,7 @@ let currentUsername = '???';
 let currentDisplayName = '???';
 let currentUserEmail = '';
 const GUEST_MODE_KEY = 'dodge_guest_mode';
+const PLUS_LAUNCH_NOTICE_KEY = 'dodge_plus_launch_notice_2026_05_v1';
 let guestModeEnabled = false;
 
 function isGuestModeActive() {
@@ -129,6 +130,14 @@ function safeLocalGet(key, def) {
 }
 function safeLocalSet(key, val) {
   try { localStorage.setItem(key, val); } catch (e) {}
+}
+
+function hasSeenPlusLaunchNotice() {
+  return safeLocalGet(PLUS_LAUNCH_NOTICE_KEY, '') === 'seen';
+}
+
+function markPlusLaunchNoticeSeen() {
+  safeLocalSet(PLUS_LAUNCH_NOTICE_KEY, 'seen');
 }
 
 function isIOSLike() {
@@ -405,6 +414,15 @@ const HUD_PRIZE_CLASSES = [
   'hud--prize-green_plus', 'hud--prize-purple_plus',
 ];
 
+/** Pallino classifica generale: colore del Premio Plus usato in quella run record. */
+const LEADERBOARD_PRIZE_DOT_COLORS = {
+  red_plus: '#ff6b6b',
+  blue_plus: '#6eb3ff',
+  yellow_plus: '#e9c81a',
+  green_plus: '#34cc6e',
+  purple_plus: '#c084fc',
+};
+
 function applyRunPrizeConstants() {
   runShieldDurationMs = SHIELD_DURATION_MS;
   runBlueSpawnEveryMs = BLUE_BONUS_SPAWN_EVERY_MS;
@@ -465,13 +483,49 @@ const cdNumEl = document.getElementById('cdNum');
 
 let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
+/** Tab attiva sulla vista classifica (`records-block-lb`). */
+let leaderboardViewTab = 'general';
+
+function syncLeaderboardTabButtons() {
+  const g = document.getElementById('lb-tab-general');
+  const p = document.getElementById('lb-tab-pure');
+  if (!g || !p) return;
+  const isGen = leaderboardViewTab === 'general';
+  g.classList.toggle('leaderboard-tab--active', isGen);
+  p.classList.toggle('leaderboard-tab--active', !isGen);
+  g.setAttribute('aria-selected', isGen ? 'true' : 'false');
+  p.setAttribute('aria-selected', !isGen ? 'true' : 'false');
+}
+
+function bindLeaderboardTabs() {
+  const root = document.getElementById('view-leaderboard');
+  if (!root || root.dataset.lbTabsBound === '1') return;
+  root.dataset.lbTabsBound = '1';
+  document.getElementById('lb-tab-general')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    leaderboardViewTab = 'general';
+    syncLeaderboardTabButtons();
+    renderRecordsInto(document.getElementById('records-block-lb'));
+  });
+  document.getElementById('lb-tab-pure')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    leaderboardViewTab = 'pure';
+    syncLeaderboardTabButtons();
+    renderRecordsInto(document.getElementById('records-block-lb'));
+  });
+}
+
 function renderRecordsInto(el) {
   if (!el) return;
-  const rec = getCachedLeaderboard();
+  const isLbPage = el.id === 'records-block-lb';
+  const kind = isLbPage ? leaderboardViewTab : 'general';
+  const rec = getCachedLeaderboard(kind);
   el.textContent = '';
 
   const title = document.createElement('h2');
-  title.textContent = 'TOP 10 GLOBALE';
+  title.textContent = kind === 'pure'
+    ? 'TOP 15 · CLASSIFICA PURA'
+    : 'TOP 15 · CLASSIFICA GENERALE';
   el.appendChild(title);
 
   const list = document.createElement('ol');
@@ -504,14 +558,28 @@ function renderRecordsInto(el) {
         window.location.href = `/profile/${encodeURIComponent(row.uid)}`;
       });
 
+      const right = document.createElement('span');
+      right.className = 'rec-row-right';
+
+      const prizeCode = row.prize_used && kind === 'general' ? String(row.prize_used) : '';
+      if (prizeCode && LEADERBOARD_PRIZE_DOT_COLORS[prizeCode]) {
+        const dot = document.createElement('span');
+        dot.className = 'rec-prize-dot';
+        dot.style.background = LEADERBOARD_PRIZE_DOT_COLORS[prizeCode];
+        dot.title = prizeCode.replace('_plus', ' Plus');
+        dot.setAttribute('aria-hidden', 'true');
+        right.appendChild(dot);
+      }
+
       const time = document.createElement('span');
       time.className = 'rec-time';
       time.textContent = fmt(row.ms);
 
       left.appendChild(rank);
       left.appendChild(tag);
+      right.appendChild(time);
       item.appendChild(left);
-      item.appendChild(time);
+      item.appendChild(right);
       list.appendChild(item);
     });
   }
@@ -730,6 +798,41 @@ async function refreshProfileMissionsAndPrizes() {
       }
     });
   });
+}
+
+function closePlusLaunchNotice() {
+  const overlay = document.getElementById('plusLaunchOverlay');
+  markPlusLaunchNoticeSeen();
+  if (!overlay) return;
+  overlay.hidden = true;
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+async function closePlusLaunchNoticeAndOpenProfile() {
+  closePlusLaunchNotice();
+  await setupProfileView().catch(() => {});
+  showScreenView('profile');
+}
+
+function maybeShowPlusLaunchNotice(user) {
+  if (!user || isGuestModeActive() || !auth.currentUser?.emailVerified || hasSeenPlusLaunchNotice()) return;
+  const overlay = document.getElementById('plusLaunchOverlay');
+  if (!overlay) return;
+
+  if (overlay.dataset.bound !== '1') {
+    overlay.dataset.bound = '1';
+    document.getElementById('plusLaunchClose')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closePlusLaunchNotice();
+    });
+    document.getElementById('plusLaunchProfile')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      void closePlusLaunchNoticeAndOpenProfile();
+    });
+  }
+
+  overlay.hidden = false;
+  overlay.setAttribute('aria-hidden', 'false');
 }
 
 async function setupProfileView() {
@@ -962,6 +1065,8 @@ function bindHomeNav() {
   if (_navBound) return;
   _navBound = true;
 
+  bindLeaderboardTabs();
+
   // GIOCA
   document.getElementById('btn-play')?.addEventListener('click', e => {
     e.stopPropagation();
@@ -970,10 +1075,12 @@ function bindHomeNav() {
 
   const openLeaderboard = (e) => {
     e.stopPropagation();
+    leaderboardViewTab = 'general';
+    syncLeaderboardTabButtons();
     const lbEl = document.getElementById('records-block-lb');
     renderRecordsInto(lbEl);
     showScreenView('leaderboard');
-    fetchLeaderboard(10).then(() => renderRecordsInto(lbEl)).catch(() => {});
+    fetchBothLeaderboards().then(() => renderRecordsInto(lbEl)).catch(() => {});
   };
   document.getElementById('btn-home-leaderboard')?.addEventListener('click', openLeaderboard);
 
@@ -1022,7 +1129,7 @@ function bindHomeNav() {
         const profile = await getProfile(currentUserId);
         currentDisplayName = resolveDisplayName(profile);
         invalidateLeaderboardUsernameMap();
-        await fetchLeaderboard(10).catch(() => {});
+        await fetchBothLeaderboards().catch(() => {});
         setupMenuUI();
         if (msgEl) msgEl.textContent = 'Nome visualizzato aggiornato.';
       } catch (err) {
@@ -2036,7 +2143,7 @@ function die(opts = {}) {
         if (recEl) recEl.innerHTML = '<p class="rec-saving">verifica l\'email per salvare i record ? controlla anche lo spam</p>';
       } else {
         if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio???</p>';
-        applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed);
+        applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed, currentRunPrize || null);
         renderRecordsInto(recEl);
         let apiOk = false;
         try {
@@ -2065,8 +2172,8 @@ function die(opts = {}) {
           const payload = await apiRes.json().catch(() => ({}));
           if (apiRes.ok && payload.ok) {
             apiOk = true;
-            await fetchLeaderboard(10).catch(() => {});
-            if (payload.improved && payload.inTop10) {
+            await fetchBothLeaderboards().catch(() => {});
+            if (payload.improved && (payload.inTop15 || payload.inTop10)) {
               const badge = document.createElement('p');
               badge.className = 'rec-saving rec-saving--highlight';
               badge.textContent = 'nuovo record in classifica!';
@@ -2090,7 +2197,7 @@ function die(opts = {}) {
               : 'errore di rete ? punteggio non salvato';
             if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
           } else {
-            if (result.improved && result.inTop10) {
+            if (result.improved && (result.inTop15 || result.inTop10)) {
               const badge = document.createElement('p');
               badge.className = 'rec-saving rec-saving--highlight';
               badge.textContent = 'nuovo record in classifica!';
@@ -2182,6 +2289,7 @@ function isControlTarget(el) {
   if (!el) return false;
   if (el.id === 'audioCornerBtn' || (el.closest && el.closest('#audioCornerBtn'))) return true;
   if (el.id === 'homeCornerBtn' || (el.closest && el.closest('#homeCornerBtn'))) return true;
+  if (el.closest && el.closest('#plusLaunchOverlay')) return true;
   // Blocca startGame se siamo sulla home screen (non death)
   if (screen && screen.style.display !== 'none' && !screen.classList.contains('screen-death')) return true;
   // Blocca i pulsanti js-no-start anche nel death screen (HOME, RIPROVA)
@@ -2192,6 +2300,7 @@ function isControlTarget(el) {
 window.addEventListener('mousedown', e=>{
   if (isControlTarget(e.target)) return;
   if (e.target && e.target.closest && e.target.closest('#prizePickOverlay')) return;
+  if (e.target && e.target.closest && e.target.closest('#plusLaunchOverlay')) return;
   if (!running && e.target.closest('.js-no-start')) return;
   if (running && paused && !resumeCountdown) return;
   const [x,y]=getXY(e);
@@ -2216,6 +2325,7 @@ window.addEventListener('mouseup', ()=>{ fingerDown=false; });
 window.addEventListener('touchstart', e=>{
   if (isControlTarget(e.target)) return;
   if (e.target && e.target.closest && e.target.closest('#prizePickOverlay')) return;
+  if (e.target && e.target.closest && e.target.closest('#plusLaunchOverlay')) return;
   if (running && e.touches.length >= 2) {
     e.preventDefault();
     togglePause();
@@ -3051,7 +3161,7 @@ onAuthStateChanged(auth, async (user) => {
       currentUserEmail = '';
       currentUsername = 'ospite';
       currentDisplayName = 'OSPITE OFFLINE';
-      await fetchLeaderboard(10).catch(() => {});
+      await fetchBothLeaderboards().catch(() => {});
     }
   }
 
@@ -3065,7 +3175,7 @@ onAuthStateChanged(auth, async (user) => {
     const profile = await getProfile(user.uid).catch(() => null);
     currentUsername = profile?.username || user.email || '???';
     currentDisplayName = resolveDisplayName(profile);
-    await fetchLeaderboard(10).catch(() => {});
+    await fetchBothLeaderboards().catch(() => {});
   }
 
   if (loader) {
@@ -3091,6 +3201,7 @@ onAuthStateChanged(auth, async (user) => {
     showScreenView('profile');
   } else {
     showScreenView('home');
+    maybeShowPlusLaunchNotice(user);
   }
 
   if (ctx) requestAnimationFrame(loop);

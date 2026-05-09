@@ -26,6 +26,17 @@ service cloud.firestore {
              && request.resource.data.displayName.matches('^[^<>]{1,24}$');
     }
 
+    function leaderboardPrizeUsedOk() {
+      return !('prize_used' in request.resource.data)
+             || request.resource.data.prize_used == null
+             || (
+               request.resource.data.prize_used is string
+               && request.resource.data.prize_used.size() >= 3
+               && request.resource.data.prize_used.size() <= 32
+               && request.resource.data.prize_used.matches('^[a-z_]+$')
+             );
+    }
+
     // Profilo utente: solo il proprietario può leggere e modificare
     match /users/{uid} {
       allow read: if canReadUser(uid);
@@ -113,7 +124,17 @@ service cloud.firestore {
                     && validDisplayNameReq()
                     && request.resource.data.ms is int
                     && request.resource.data.ms > 0
-                    && request.resource.data.ms <= 7200000;
+                    && request.resource.data.ms <= 7200000
+                    && (
+                      !('prize_used' in request.resource.data)
+                      || request.resource.data.prize_used == null
+                      || (
+                        request.resource.data.prize_used is string
+                        && request.resource.data.prize_used.size() >= 3
+                        && request.resource.data.prize_used.size() <= 32
+                        && request.resource.data.prize_used.matches('^[a-z_]+$')
+                      )
+                    );
       allow update, delete: if false;
     }
 
@@ -128,7 +149,8 @@ service cloud.firestore {
                     && validDisplayNameReq()
                     && request.resource.data.ms is int
                     && request.resource.data.ms > 0
-                    && request.resource.data.ms <= 7200000;
+                    && request.resource.data.ms <= 7200000
+                    && leaderboardPrizeUsedOk();
       allow update: if request.auth != null
                     && request.auth.token.email_verified == true
                     && request.auth.uid == uid
@@ -137,17 +159,34 @@ service cloud.firestore {
                         request.resource.data.ms > resource.data.ms
                         && request.resource.data.uid == uid
                         && validDisplayNameReq()
+                        && leaderboardPrizeUsedOk()
                       )
                       || (
                         request.resource.data.ms == resource.data.ms
                         && request.resource.data.uid == resource.data.uid
                         && request.resource.data.uid == uid
                         && validDisplayNameReq()
+                        && leaderboardPrizeUsedOk()
                         && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['displayName', 'updatedAt'])
+                            .hasOnly(['displayName', 'updatedAt', 'prize_used'])
                       )
                     );
       allow delete: if false;
+    }
+
+    // Classifica globale «pura»: scrittura solo backend; solo nome aggiornabile dal client (come leaderboard).
+    match /leaderboard_pure/{uid} {
+      allow read: if true;
+      allow create, delete: if false;
+      allow update: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && request.auth.uid == uid
+                    && resource.data.uid == uid
+                    && request.resource.data.uid == uid
+                    && request.resource.data.ms == resource.data.ms
+                    && validDisplayNameReq()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['displayName', 'updatedAt']);
     }
 
     // Tutto il resto: negato

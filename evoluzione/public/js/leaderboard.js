@@ -2,13 +2,18 @@ import { db } from './firebase-init.js';
 import { resolveDisplayName } from './profile.js';
 import {
   collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, limit,
+  where,
   getDocs, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-let _cache = [];
+/** Lunghezza classifica globale (generale e pura). */
+export const LEADERBOARD_TOP_N = 15;
+
+let _cacheGeneral = [];
+let _cachePure = [];
 const SCORE_MIN = 1;
 const SCORE_MAX = 7200000;
-const FALLBACK_SCAN_LIMIT = 300;
+const FALLBACK_SCAN_LIMIT = 400;
 const USERNAME_UID_MAP_TTL_MS = 60_000;
 
 let _uidToClaimedUsername = null;
@@ -60,7 +65,13 @@ function isValidMs(ms) {
   return ms >= SCORE_MIN && ms <= SCORE_MAX;
 }
 
-function dedupeBestByUid(rows, n = 10) {
+/** Run senza Premio Plus (storico senza campo conta come pura). */
+export function isPureScoreRow(row) {
+  const p = row?.prize_used;
+  return p == null || p === '';
+}
+
+function dedupeBestByUid(rows, n = LEADERBOARD_TOP_N) {
   const bestByUid = new Map();
   rows.forEach((row) => {
     const uid = row?.uid;
@@ -81,20 +92,70 @@ function dedupeBestByUid(rows, n = 10) {
   return n >= sorted.length ? sorted : sorted.slice(0, n);
 }
 
-async function fetchLegacyScoresTop(n = 10) {
+async function fetchLegacyScoresTop(n = LEADERBOARD_TOP_N) {
   const q = query(collection(db, 'scores'), orderBy('ms', 'desc'), limit(Math.max(n, FALLBACK_SCAN_LIMIT)));
   const snap = await getDocs(q);
   const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   return dedupeBestByUid(rows, n);
 }
 
+async function fetchLegacyScoresTopPure(n = LEADERBOARD_TOP_N) {
+  const q = query(collection(db, 'scores'), orderBy('ms', 'desc'), limit(FALLBACK_SCAN_LIMIT));
+  const snap = await getDocs(q);
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(isPureScoreRow);
+  return dedupeBestByUid(rows, n);
+}
+
 /**
- * Unisce leaderboard + storico scores (best per uid), poi risolve il nome visualizzato.
+ * kind: 'general' | 'pure'
+ * Unisce leaderboard (+ storico scores filtrato per pura) e risolve il nome visualizzato.
  */
-export async function fetchLeaderboard(n = 10) {
+export async function fetchLeaderboard(kind = 'general', n = LEADERBOARD_TOP_N) {
   const uidToSlug = await getUidToClaimedUsernameMap().catch(() => new Map());
+  const lbLimit = Math.max(n, 60);
+
+  if (kind === 'pure') {
+    try {
+      const [lbPureSnap, scSnap] = await Promise.all([
+        getDocs(query(collection(db, 'leaderboard_pure'), orderBy('ms', 'desc'), limit(lbLimit))),
+        getDocs(query(
+          collection(db, 'scores'),
+          where('prize_used', '==', null),
+          orderBy('ms', 'desc'),
+          limit(FALLBACK_SCAN_LIMIT),
+        )),
+      ]);
+      const combined = [
+        ...lbPureSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        ...scSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+      ];
+      if (combined.length === 0) {
+        _cachePure = [];
+        return _cachePure;
+      }
+      const merged = dedupeBestByUid(combined, 9999);
+      _cachePure = dedupeBestByUid(applyPublicDisplayNames(merged, uidToSlug), n);
+      return _cachePure;
+    } catch (e) {
+      try {
+        const lbPureSnap = await getDocs(query(collection(db, 'leaderboard_pure'), orderBy('ms', 'desc'), limit(lbLimit)));
+        const legacyPure = await fetchLegacyScoresTopPure(n);
+        const combined = [
+          ...lbPureSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+          ...legacyPure,
+        ];
+        const merged = dedupeBestByUid(combined, 9999);
+        _cachePure = dedupeBestByUid(applyPublicDisplayNames(merged, uidToSlug), n);
+        return _cachePure;
+      } catch (e2) {
+        _cachePure = await fetchLegacyScoresTopPure(n).catch(() => []);
+        _cachePure = dedupeBestByUid(applyPublicDisplayNames(_cachePure, uidToSlug), n);
+        return _cachePure;
+      }
+    }
+  }
+
   try {
-    const lbLimit = Math.max(n, 50);
     const [lbSnap, scSnap] = await Promise.all([
       getDocs(query(collection(db, 'leaderboard'), orderBy('ms', 'desc'), limit(lbLimit))),
       getDocs(query(collection(db, 'scores'), orderBy('ms', 'desc'), limit(FALLBACK_SCAN_LIMIT))),
@@ -104,48 +165,54 @@ export async function fetchLeaderboard(n = 10) {
       ...scSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
     ];
     if (combined.length === 0) {
-      _cache = [];
-      return _cache;
+      _cacheGeneral = [];
+      return _cacheGeneral;
     }
     const merged = dedupeBestByUid(combined, 9999);
-    _cache = dedupeBestByUid(applyPublicDisplayNames(merged, uidToSlug), n);
-    return _cache;
+    _cacheGeneral = dedupeBestByUid(applyPublicDisplayNames(merged, uidToSlug), n);
+    return _cacheGeneral;
   } catch (e) {
-    _cache = await fetchLegacyScoresTop(n).catch(() => []);
-    _cache = dedupeBestByUid(applyPublicDisplayNames(_cache, uidToSlug), n);
-    return _cache;
+    _cacheGeneral = await fetchLegacyScoresTop(n).catch(() => []);
+    _cacheGeneral = dedupeBestByUid(applyPublicDisplayNames(_cacheGeneral, uidToSlug), n);
+    return _cacheGeneral;
   }
 }
 
-export function getCachedLeaderboard() {
-  return _cache;
+/** Compat: una volta caricate entrambe le classifiche le cache sono aggiornate. */
+export async function fetchBothLeaderboards(n = LEADERBOARD_TOP_N) {
+  await Promise.all([
+    fetchLeaderboard('general', n),
+    fetchLeaderboard('pure', n),
+  ]);
+}
+
+export function getCachedLeaderboard(kind = 'general') {
+  return kind === 'pure' ? _cachePure : _cacheGeneral;
 }
 
 /**
- * Aggiorna la cache locale in modo ottimistico (prima che la scrittura su Firestore finisca).
- * Sostituisce l'entry esistente dell'utente se il nuovo tempo è migliore, altrimenti non fa nulla.
+ * Aggiorna la cache della classifica generale in modo ottimistico.
+ * prizeUsed: codice premio Plus (es. red_plus) o null se run pura.
  */
-export function applyOptimisticScore(uid, displayName, ms) {
+export function applyOptimisticScore(uid, displayName, ms, prizeUsed = null) {
   const t = Math.floor(ms);
   if (!isValidMs(t)) return;
-  const idx = _cache.findIndex(r => r.uid === uid);
+  const idx = _cacheGeneral.findIndex(r => r.uid === uid);
+  const row = { id: uid, uid, displayName, ms: t };
+  if (prizeUsed) row.prize_used = prizeUsed;
   if (idx >= 0) {
-    if (t <= _cache[idx].ms) return;
-    _cache[idx] = { ..._cache[idx], ms: t, displayName };
+    if (t <= _cacheGeneral[idx].ms) return;
+    const merged = { ..._cacheGeneral[idx], ...row };
+    if (!prizeUsed) delete merged.prize_used;
+    _cacheGeneral[idx] = merged;
   } else {
-    _cache.push({ id: uid, uid, displayName, ms: t });
+    _cacheGeneral.push(row);
   }
-  _cache = _cache.sort((a, b) => b.ms - a.ms).slice(0, 10);
+  _cacheGeneral = _cacheGeneral.sort((a, b) => b.ms - a.ms).slice(0, LEADERBOARD_TOP_N);
 }
 
 /**
- * Salva il punteggio seguendo questa logica:
- *   1. Se non batte il record personale → aggiorna solo gamesPlayed, fine.
- *   2. Se batte il record personale → aggiorna bestTime in users/{uid}.
- *   3. Controlla se il nuovo tempo entra nei top 10.
- *   4. Se entra → setDoc su leaderboard/{uid} (sovrascrive eventuale entry precedente).
- *
- * Ritorna { ok, improved, inTop10, reason? }
+ * Salva il punteggio (fallback se /api/game/end non disponibile): trattato come run pura.
  */
 export async function saveScore(uid, ms) {
   const t = Math.floor(ms);
@@ -167,31 +234,29 @@ export async function saveScore(uid, ms) {
     const updates = { gamesPlayed: (data.gamesPlayed || 0) + 1 };
     if (improved) updates.bestTime = t;
     await updateDoc(userRef, updates);
-    // Manteniamo lo storico completo: protegge dai reset e permette ricostruzione classifica.
     await addDoc(collection(db, 'scores'), {
       uid, displayName, ms: t, createdAt: serverTimestamp(),
     });
 
     if (!improved) return { ok: true, improved: false };
 
-    // Nuovo record personale — controlla se entra in top 10
-    const lb = await fetchLeaderboard(10);
+    const lb = await fetchLeaderboard('general', LEADERBOARD_TOP_N);
     const myEntry = lb.find(r => r.uid === uid);
     const worstMs = lb.length > 0 ? lb[lb.length - 1].ms : 0;
-    const inTop10 = lb.length < 10 || myEntry !== undefined || t > worstMs;
+    const inTop15 = lb.length < LEADERBOARD_TOP_N || myEntry !== undefined || t > worstMs;
 
-    if (!inTop10) return { ok: true, improved: true, inTop10: false };
+    if (!inTop15) return { ok: true, improved: true, inTop15: false, inTop10: false };
 
-    // Scrivi / sostituisci la entry in classifica
     try {
       await setDoc(doc(db, 'leaderboard', uid), {
         uid, displayName, ms: t, updatedAt: serverTimestamp(),
       });
     } catch (e) {
-      // Se la write su `leaderboard` fallisce, la classifica resta ricostruibile da `scores`.
+      // ignore
     }
-    await fetchLeaderboard(10);
-    return { ok: true, improved: true, inTop10: true };
+    await fetchLeaderboard('general', LEADERBOARD_TOP_N);
+    await fetchLeaderboard('pure', LEADERBOARD_TOP_N).catch(() => {});
+    return { ok: true, improved: true, inTop15: true, inTop10: true };
 
   } catch (e) {
     const reason = e.code === 'permission-denied' ? 'permission' : 'network';

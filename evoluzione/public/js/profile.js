@@ -125,6 +125,11 @@ export async function updateDisplayName(uid, displayName) {
   if (lbSnap.exists()) {
     await updateDoc(lbRef, { displayName: name, updatedAt: serverTimestamp() });
   }
+  const lbPureRef = doc(db, 'leaderboard_pure', uid);
+  const lbPureSnap = await getDoc(lbPureRef);
+  if (lbPureSnap.exists()) {
+    await updateDoc(lbPureRef, { displayName: name, updatedAt: serverTimestamp() });
+  }
 }
 
 export async function getProfile(uid) {

@@ -65,6 +65,27 @@
   </div>
 </div>
 
+<div id="plusLaunchOverlay" class="plus-launch-overlay js-no-start" hidden aria-hidden="true">
+  <div class="plus-launch-panel" role="dialog" aria-modal="true" aria-labelledby="plusLaunchTitle">
+    <div class="plus-launch-dots" aria-hidden="true">
+      <span class="menu-bonus-dot menu-bonus-dot--red"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--blue"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--yellow"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--green"></span>
+      <span class="menu-bonus-dot menu-bonus-dot--purple"></span>
+    </div>
+    <h2 id="plusLaunchTitle" class="plus-launch-title">Missioni e Premi Plus</h2>
+    <p class="plus-launch-copy">Nel profilo trovi le Missioni: completale giocando puro per ottenere Premi Plus.</p>
+    <p class="plus-launch-copy">I Premi Plus sono bonus speciali da scegliere a inizio partita, uno per run.</p>
+    <p class="plus-launch-gift">Regalo di lancio: 1 Premio Plus per ogni colore a tutti gli utenti iscritti.</p>
+    <div class="plus-launch-actions">
+      <button type="button" id="plusLaunchProfile" class="plus-launch-btn plus-launch-btn--primary">Vai al profilo</button>
+      <button type="button" id="plusLaunchClose" class="plus-launch-btn">Ho capito</button>
+    </div>
+    <p class="plus-launch-note">Questo avviso verrà mostrato una sola volta.</p>
+  </div>
+</div>
+
 <div id="shield-hud">
   <div id="strack"><div id="sfill"></div></div>
 </div>
@@ -110,6 +131,10 @@
   <!-- ── CLASSIFICA ────────────────────────────────────────── -->
   <div id="view-leaderboard" class="screen-view screen-view--sub" hidden>
     <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
+    <div class="leaderboard-tab-strip" role="tablist" aria-label="Tipo classifica">
+      <button type="button" id="lb-tab-general" class="leaderboard-tab leaderboard-tab--active js-no-start" role="tab" aria-selected="true">Generale</button>
+      <button type="button" id="lb-tab-pure" class="leaderboard-tab js-no-start" role="tab" aria-selected="false">Pura</button>
+    </div>
     <div id="records-block-lb"></div>
   </div>
 

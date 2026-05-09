@@ -993,6 +993,20 @@ canvas {
 #records-block-lb .rec-tag-btn:active {
   opacity: 0.8;
 }
+#records-block .rec-row-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+}
+#records-block .rec-prize-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(255,255,255,0.28);
+}
 #records-block .rec-time {
   flex:0 0 auto;
   min-width:10ch;
@@ -1356,6 +1370,38 @@ canvas {
 .screen-view--sub .view-title { margin-top:0.15rem; }
 .screen-view--sub #records-block-lb { margin-top:0.15rem; }
 
+/* Tab classifica generale / pura */
+.leaderboard-tab-strip {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: center;
+  align-items: stretch;
+  width: min(24rem, calc(100% - 1.1rem));
+  max-width: calc(100% - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+  margin: 0.35rem auto 0;
+  box-sizing: border-box;
+}
+.leaderboard-tab {
+  flex: 1;
+  font: inherit;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 2px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: rgba(220,228,255,0.65);
+  cursor: pointer;
+}
+.leaderboard-tab--active {
+  border-color: rgba(147,197,253,0.55);
+  background: rgba(147,197,253,0.14);
+  color: rgba(240,245,255,0.95);
+}
+.leaderboard-tab:active { opacity: 0.88; }
+
 /* Profilo */
 .profile-info { font-size:0.88rem; letter-spacing:0.06em; color:#fff; text-align:center; }
 .profile-info--dim { color:rgba(255,255,255,0.45); font-size:0.75rem; }
@@ -1681,6 +1727,20 @@ canvas {
   letter-spacing:0.12em;
   font-weight:700;
 }
+#records-block-lb .rec-row-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+}
+#records-block-lb .rec-prize-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(255,255,255,0.28);
+}
 #records-block-lb .rec-time {
   flex:0 0 auto;
   min-width:10ch;
@@ -1810,6 +1870,85 @@ canvas {
   line-height: 1.4;
   color: rgba(200,210,235,0.72);
   text-align: center;
+}
+
+/* Avviso lancio Missioni / Premi Plus */
+.plus-launch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 125;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.76);
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+.plus-launch-overlay[hidden] { display: none !important; }
+.plus-launch-panel {
+  width: min(22rem, 100%);
+  padding: 1rem 1.1rem 1.15rem;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(216,180,254,0.42);
+  background: rgba(6,8,18,0.97);
+  box-shadow: 0 12px 42px rgba(0,0,0,0.62), 0 0 26px rgba(168,85,247,0.16);
+}
+.plus-launch-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+}
+.plus-launch-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-transform: uppercase;
+  color: rgba(245,240,255,0.96);
+}
+.plus-launch-copy,
+.plus-launch-gift,
+.plus-launch-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: rgba(226,232,240,0.82);
+}
+.plus-launch-gift {
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(250,204,21,0.34);
+  background: rgba(250,204,21,0.08);
+  color: rgba(255,245,190,0.94);
+  font-weight: 700;
+}
+.plus-launch-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.plus-launch-btn {
+  font: inherit;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  padding: 0.58rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 2px solid rgba(255,255,255,0.2);
+  cursor: pointer;
+  color: #e8ecff;
+  background: rgba(255,255,255,0.08);
+}
+.plus-launch-btn--primary {
+  background: rgba(168,85,247,0.32);
+  border-color: rgba(216,180,254,0.58);
+}
+.plus-launch-note {
+  font-size: 0.58rem;
+  color: rgba(200,210,235,0.56);
 }
 
 /* Profilo: missioni e premi Plus */

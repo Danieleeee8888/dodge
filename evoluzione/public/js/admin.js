@@ -201,7 +201,7 @@ async function loadOverview() {
     ['≥210s', dist.over210 || 0],
   ].map(([k, v]) => `<p class="admin-list-row"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></p>`).join('');
 
-  const top = data?.top10 || [];
+  const top = data?.top15 || data?.top10 || [];
   document.getElementById('admin-top10').innerHTML = top.map((r, i) =>
     `<p class="admin-list-row"><span>${i + 1}. ${escapeHtml(r.displayName || r.username || 'Player')}</span><strong>${fmtMs(Number(r.ms || 0))}</strong></p>`).join('');
 }
