@@ -57,15 +57,12 @@
     <h2 class="prize-pick-title">Vuoi attivare un premio per questa run?</h2>
     <div class="prize-pick-grid" id="prizePickGrid" role="group" aria-label="Premi disponibili"></div>
     <div class="prize-pick-actions">
+      <button type="button" id="prizePickBack" class="prize-pick-btn prize-pick-btn--back">Indietro</button>
       <button type="button" id="prizePickPure" class="prize-pick-btn prize-pick-btn--pure">Gioca puro</button>
       <button type="button" id="prizePickConfirm" class="prize-pick-btn prize-pick-btn--go" disabled>Inizia partita</button>
     </div>
+    <p class="prize-pick-mission-note">Le run con un premio Plus attivo non contano per il progresso delle missioni.</p>
   </div>
-</div>
-
-<div id="runPrizeHud" class="run-prize-hud" hidden aria-hidden="true">
-  <span class="run-prize-hud__icon" id="runPrizeHudIcon" aria-hidden="true"></span>
-  <span class="run-prize-hud__txt">Plus</span>
 </div>
 
 <div id="shield-hud">
@@ -155,6 +152,7 @@
 
       <section class="profile-panel" aria-labelledby="profile-heading-missions">
         <h3 id="profile-heading-missions" class="profile-panel-title">Missioni</h3>
+        <p class="profile-panel-note profile-info--dim">Le run con un premio Plus attivo non contano per il progresso delle missioni; usa «Gioca puro» per farle avanzare.</p>
         <div id="profile-missions-root" class="profile-missions-root"></div>
       </section>
 

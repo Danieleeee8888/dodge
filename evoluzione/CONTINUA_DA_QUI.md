@@ -74,7 +74,7 @@ evoluzione/
 - **Modalità guest offline:** da `auth.html` è disponibile il pulsante `Provalo offline`; entra nel gioco senza account, mostra il tempo nel game over per screenshot, **nessun salvataggio** su Firestore. **Classifica globale** dall’icona **gialla** in basso al centro sulla home; schermata **Profilo** mostra copy ospite + pulsante opzionale «Accedi o registrati» (senza «ESCI» verso login come unico gesto).
 - **Classifica:** `applyOptimisticScore` + `renderRecordsInto` subito dopo la morte; `saveScore` legge il **nome visualizzato** da `users/{uid}` (non dalla sessione) e scrive `displayName` su `scores` / `leaderboard`; merge con storico `scores` + refresh in background. Layout righe: posizione + nome a sinistra, tempo a destra allineato.
 - **Formato tempo UI:** ovunque nel gioco/classifica/profilo il timer è in `mm:ss:000` (millisecondi a 3 cifre, minuti senza limite ore).
-- **Profilo:** username account (fisso), **nome visualizzato** (modificabile, max 24 caratteri, compare in classifica), miglior tempo personale (`bestTime`); pannelli **Missioni** e **Premi Plus** collegati alle API sopra.
+- **Profilo:** username account (fisso), **nome visualizzato** (modificabile, max 24 caratteri, compare in classifica), miglior tempo personale (`bestTime`); pannelli **Missioni** e **Premi Plus** collegati alle API sopra. **Copy missioni/premi:** sotto «Inizia partita» nell’overlay premio e nel pannello Missioni è indicato che le run **con** premio Plus non contano per le missioni (solo «Gioca puro»).
 - PWA: manifest, service worker, icone.
 - Target: **mobile** (PC browser secondario).
 

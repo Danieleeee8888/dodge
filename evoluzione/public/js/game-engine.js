@@ -627,6 +627,7 @@ async function refreshProfileMissionsAndPrizes() {
 
   html += '<div class="profile-missions-list">';
   for (const def of PROFILE_MISSION_DEFS) {
+    if (active && def.code === active.code) continue;
     const n = Math.min(10, Math.max(0, Math.floor(Number(prizesMap[def.code] || 0))));
     const cap = n >= 10;
     const blocked = slotBusy;

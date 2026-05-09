@@ -1804,6 +1804,13 @@ canvas {
   background: rgba(255,255,255,0.06);
   color: rgba(226,232,240,0.95);
 }
+.prize-pick-mission-note {
+  margin: 0.65rem 0 0;
+  font-size: 0.62rem;
+  line-height: 1.4;
+  color: rgba(200,210,235,0.72);
+  text-align: center;
+}
 
 /* Profilo: missioni e premi Plus */
 .profile-missions-root { display: flex; flex-direction: column; gap: 0.75rem; }
