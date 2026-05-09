@@ -1,3 +1,5 @@
+import missionsConfigJson from './missions-config.json' assert { type: 'json' };
+
 export const FIXED_GAME_W = 400;
 export const FIXED_GAME_H = 720;
 export const MAX_CANVAS_CSS_W = 430;
@@ -65,3 +67,29 @@ export const PLUS_PRIZE_EFFECT_LABEL = Object.freeze({
   green_plus: 'Cursore piccolo',
   purple_plus: 'Viola più frequente',
 });
+
+/** Finestra temporale missione (ms). Modifica `missions-config.json`. */
+export const MISSION_WINDOW_MS = missionsConfigJson.MISSION_WINDOW_MS;
+/** Oggetto esposto per lettura (titoli, soglie). Stesso file copiato nelle Functions al deploy. */
+export const MISSIONS_CONFIG = missionsConfigJson;
+
+export function fillMissionDescriptionTemplate(missionRow) {
+  const tpl = missionRow.description_template || '';
+  return tpl.replace(/\{(\w+)\}/g, (_, k) =>
+    (missionRow[k] != null ? String(missionRow[k]) : `{${k}}`));
+}
+
+/** Righe profilo / picker: testi da `missions-config.json` + etichette effetto premio. */
+export function getProfileMissionDefs(effectLabelByCode) {
+  const { missions } = missionsConfigJson;
+  return Object.keys(missions).map((code) => {
+    const m = missions[code];
+    return {
+      code,
+      title: m.title,
+      desc: fillMissionDescriptionTemplate(m),
+      reward: m.reward_label,
+      effect: effectLabelByCode[code] || '',
+    };
+  });
+}

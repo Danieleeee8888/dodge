@@ -39,6 +39,8 @@ import {
   PLUS_PRIZE_PURPLE_FIRST_SPAWN_MS,
   PLUS_PRIZE_PURPLE_SPAWN_EVERY_MS,
   PLUS_PRIZE_GREEN_PLAYER_DURATION_MS,
+  getProfileMissionDefs,
+  MISSIONS_CONFIG,
 } from './constants.js';
 import { auth, authPersistenceReady, rtdb } from './firebase-init.js';
 import { ref, push, onDisconnect, set } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
@@ -568,13 +570,7 @@ function hideScreen() {
   if (homeCornerBtn) homeCornerBtn.classList.add('home-corner--hidden');
 }
 
-const PROFILE_MISSION_DEFS = [
-  {code: 'red_plus', title: 'Rosso Plus', desc: '6+ bonus rossi nella stessa partita, in 10 partite.', reward: '3× Rosso Plus'},
-  {code: 'blue_plus', title: 'Blu Plus', desc: '5+ bonus blu nella stessa partita, in 10 partite.', reward: '3× Blu Plus'},
-  {code: 'yellow_plus', title: 'Giallo Plus', desc: 'Uccisioni bianchi col giallo: 100 totali.', reward: '3× Giallo Plus'},
-  {code: 'green_plus', title: 'Verde Plus', desc: '2+ verdi saltati (stessa partita), in 10 partite.', reward: '3× Verde Plus'},
-  {code: 'purple_plus', title: 'Viola Plus', desc: '2+ vite extra insieme (max run), in 10 partite.', reward: '3× Viola Plus'},
-].map((row) => ({...row, effect: PLUS_PRIZE_EFFECT_LABEL[row.code] || ''}));
+const PROFILE_MISSION_DEFS = getProfileMissionDefs(PLUS_PRIZE_EFFECT_LABEL);
 
 function prizeOrbitHtml(color) {
   return `<span class="prize-pick-orbit" style="color:${color}"><span class="prize-pick-dot" style="background:${color}"></span></span>`;
@@ -643,12 +639,13 @@ async function refreshProfileMissionsAndPrizes() {
     const prog = active.progress || {};
     let cur = 0;
     let tgt = 10;
-    if (active.code === 'yellow_plus') {
+    const mc = MISSIONS_CONFIG.missions?.[active.code];
+    if (mc?.rule === 'yellow_kill_counter') {
       cur = Number(prog.counter || 0);
-      tgt = Number(prog.target || 100);
+      tgt = Number(prog.target || mc.counter_target || 100);
     } else {
       cur = Number(prog.qualifying_runs || 0);
-      tgt = Number(prog.target_runs || 10);
+      tgt = Number(prog.target_runs || mc?.target_runs || 10);
     }
     const pct = tgt > 0 ? Math.min(100, (cur / tgt) * 100) : 0;
     html += `<div class="profile-mission-active">

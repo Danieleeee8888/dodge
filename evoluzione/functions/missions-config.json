@@ -1,0 +1,48 @@
+{
+  "deploy_hint": "Modifica soglie/testi qui; per allineare backend copia automatica su deploy Functions (firebase.json predeploy). Deploy: firebase deploy --only hosting,functions.",
+  "MISSION_WINDOW_MS": 86400000,
+  "MISSION_PRIZE_AWARD_EACH_COMPLETE": 3,
+  "missions": {
+    "red_plus": {
+      "title": "Rosso Plus",
+      "reward_label": "3× Rosso Plus",
+      "rule": "bonus_collected",
+      "bonus_color": "red",
+      "min_same_run": 6,
+      "target_runs": 10,
+      "description_template": "Raccogli almeno {min_same_run} bonus rossi nella stessa partita, in {target_runs} partite diverse."
+    },
+    "blue_plus": {
+      "title": "Blu Plus",
+      "reward_label": "3× Blu Plus",
+      "rule": "bonus_collected",
+      "bonus_color": "blue",
+      "min_same_run": 5,
+      "target_runs": 10,
+      "description_template": "Raccogli almeno {min_same_run} bonus blu nella stessa partita, in {target_runs} partite diverse."
+    },
+    "yellow_plus": {
+      "title": "Giallo Plus",
+      "reward_label": "3× Giallo Plus",
+      "rule": "yellow_kill_counter",
+      "counter_target": 100,
+      "description_template": "Conta le uccisioni di bianchi ottenute tramite il bonus giallo: accumula {counter_target} in più partite."
+    },
+    "green_plus": {
+      "title": "Verde Plus",
+      "reward_label": "3× Verde Plus",
+      "rule": "green_skipped",
+      "min_same_run": 2,
+      "target_runs": 10,
+      "description_template": "Lascia uscire dal campo almeno {min_same_run} bonus verdi senza raccoglierli (stessa partita), in {target_runs} partite."
+    },
+    "purple_plus": {
+      "title": "Viola Plus",
+      "reward_label": "3× Viola Plus",
+      "rule": "max_extra_lives_simultaneous",
+      "min_same_run": 2,
+      "target_runs": 10,
+      "description_template": "Raggiungi almeno {min_same_run} vite extra contemporaneamente (massimo nella run), in {target_runs} partite."
+    }
+  }
+}

@@ -15,7 +15,7 @@ Path assoluti consigliati per strumenti che accettano path completi: prefisso `C
 - **Hosting URL:** `https://dodge-84439.web.app`
 - **Piano:** Blaze (pay-as-you-go; quote no-cost generose per traffico basso)
 - **Servizi attivi:** Authentication (email+password), Firestore, Realtime Database, Hosting, **Cloud Functions v2** (`api`, region `europe-west1`). **Presenza affluenza:** `app_presence/sessions` su RTDB (write da `game-engine.js`, conteggio in **GET /api/admin/overview** → KPI «Sessioni app aperte ora»); regole in `database.rules.json`.
-- **API HTTP:** rewrite Hosting `/api/**` → function `api`; es. `GET /api/player/stats` (Bearer token). Fine partita: `POST /api/game/end` (stats + storico + classifica). **Missioni e premi Plus:** `GET /api/missions/current`, `POST /api/missions/activate`, `POST /api/missions/cancel`, `GET /api/prizes`, `POST /api/game/start` (imposta `pending_run_prize` su `player_stats`), poi `POST /api/game/end` con `prize_used` (server usa `pending_run_prize`), contatori missione (`green_skipped_this_run`, `max_extra_lives_simultaneous_this_run`, ecc.). **`recent_games`** include `prize_used`.
+- **API HTTP:** rewrite Hosting `/api/**` → function `api`; es. `GET /api/player/stats` (Bearer token). Fine partita: `POST /api/game/end` (stats + storico + classifica). **Missioni e premi Plus:** `GET /api/missions/current`, `POST /api/missions/activate`, `POST /api/missions/cancel`, `GET /api/prizes`, `POST /api/game/start` (imposta `pending_run_prize` su `player_stats`), poi `POST /api/game/end` con `prize_used` (server usa `pending_run_prize`), contatori missione (`green_skipped_this_run`, `max_extra_lives_simultaneous_this_run`, ecc.). **`recent_games`** include `prize_used`. **Parametri missioni** (durata finestra, soglie bonus/partite, premio al completamento): `public/js/missions-config.json`; esportati anche da `constants.js` (`MISSION_WINDOW_MS`, `getProfileMissionDefs`). Copia automatica in `functions/` alla predeploy Functions (`scripts/copy-missions-config.js`).
 - **Firestore `player_stats` (oltre ai campi stats esistenti):** `active_mission`, `mission_started_at`, `mission_progress`, `prizes` (map 5 tipi 0–10), `pending_run_prize`. Nuovi utenti: default anche in `claimUsername` (`profile.js`) e in `upsertPlayerStatsIfMissing` (functions).
 - **Migrazione campi missioni/premi:** `POST /api/admin/migrate-missions-fields` (Bearer admin), idempotente, dopo backup se in produzione.
 - **Test premi in tasca (solo admin):** `POST /api/admin/grant-self-test-plus-prizes` oppure pulsante in `admin.html` — imposta sul proprio `player_stats` tutti i `prizes` Plus a **10/10** (per provare il picker a inizio partita; con 10/10 non si può attivare la missione di quel colore finché non consumi premi).
@@ -45,6 +45,7 @@ evoluzione/
 │       ├── profile.js
 │       ├── leaderboard.js
 │       ├── constants.js
+│       ├── missions-config.json
 │       ├── admin.js
 │       ├── profile-public.js
 │       ├── viewport-ui-scale.js   (--ui-scale + gap visual viewport, condiviso gioco / profilo pubblico / admin)

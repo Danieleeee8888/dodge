@@ -20,39 +20,46 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
-const MISSION_WINDOW_MS = 24 * 60 * 60 * 1000;
-const PRIZE_CODES = ["red_plus", "blue_plus", "yellow_plus", "green_plus", "purple_plus"];
+const missionsPackage = require("./missions-config.json");
+const MISSION_WINDOW_MS = Number(missionsPackage.MISSION_WINDOW_MS) > 0
+  ? Number(missionsPackage.MISSION_WINDOW_MS)
+  : 86400000;
+const MISSION_PRIZE_AWARD_EACH_COMPLETE = Number(missionsPackage.MISSION_PRIZE_AWARD_EACH_COMPLETE) >= 1
+  ? Math.floor(Number(missionsPackage.MISSION_PRIZE_AWARD_EACH_COMPLETE))
+  : 3;
+const MISSION_RULES = missionsPackage.missions && typeof missionsPackage.missions === "object"
+  ? missionsPackage.missions
+  : {};
+const PRIZE_CODES = Object.keys(MISSION_RULES);
 
-const MISSION_CATALOG = {
-  red_plus: {
-    title: "Rosso Plus",
-    description: "Raccogli almeno 6 bonus rossi nella stessa partita, in 10 partite diverse.",
-    reward_label: "3× Rosso Plus",
-  },
-  blue_plus: {
-    title: "Blu Plus",
-    description: "Raccogli almeno 5 bonus blu nella stessa partita, in 10 partite diverse.",
-    reward_label: "3× Blu Plus",
-  },
-  yellow_plus: {
-    title: "Giallo Plus",
-    description: "Conta le uccisioni di bianchi ottenute tramite il bonus giallo: accumula 100 in più partite.",
-    reward_label: "3× Giallo Plus",
-  },
-  green_plus: {
-    title: "Verde Plus",
-    description: "Lascia uscire dal campo almeno 2 bonus verdi senza raccoglierli (stessa partita), in 10 partite.",
-    reward_label: "3× Verde Plus",
-  },
-  purple_plus: {
-    title: "Viola Plus",
-    description: "Raggiungi almeno 2 vite extra contemporaneamente (massimo nella run), in 10 partite.",
-    reward_label: "3× Viola Plus",
-  },
-};
+function fillMissionDescTemplate(m) {
+  const tpl = String(m.description_template || "");
+  return tpl.replace(/\{(\w+)\}/g, (_, k) => (m[k] != null ? String(m[k]) : `{${k}}`));
+}
+
+function buildMissionCatalog() {
+  const out = {};
+  for (const code of Object.keys(MISSION_RULES)) {
+    const m = MISSION_RULES[code];
+    out[code] = {
+      title: m.title,
+      description: fillMissionDescTemplate(m),
+      reward_label: m.reward_label,
+    };
+  }
+  return out;
+}
+
+const MISSION_CATALOG = buildMissionCatalog();
+
+function missionRuleCfg(code) {
+  return MISSION_RULES[code];
+}
 
 function emptyPrizes() {
-  return {red_plus: 0, blue_plus: 0, yellow_plus: 0, green_plus: 0, purple_plus: 0};
+  const o = {};
+  for (const k of PRIZE_CODES) o[k] = 0;
+  return o;
 }
 
 function normalizePrizesObject(raw) {
@@ -65,8 +72,14 @@ function normalizePrizesObject(raw) {
 }
 
 function initialMissionProgress(code) {
-  if (code === "yellow_plus") return {counter: 0, target: 100};
-  return {qualifying_runs: 0, target_runs: 10};
+  const cfg = missionRuleCfg(code);
+  if (!cfg) return {qualifying_runs: 0, target_runs: 10};
+  if (cfg.rule === "yellow_kill_counter") {
+    const tgt = Number(cfg.counter_target);
+    return {counter: 0, target: Number.isFinite(tgt) && tgt > 0 ? tgt : 100};
+  }
+  const tr = Number(cfg.target_runs);
+  return {qualifying_runs: 0, target_runs: Number.isFinite(tr) && tr > 0 ? tr : 10};
 }
 
 function missionStartedToMillis(st) {
@@ -371,19 +384,20 @@ app.get("/api/missions/current", requireAuth, async (req, res) => {
       return res.json({ok: true, active: null});
     }
     const meta = MISSION_CATALOG[code];
+    const cfg = missionRuleCfg(code);
     const prog = s0.mission_progress || {};
     const startMs = missionStartedToMillis(s0.mission_started_at) || nowMs;
     const remainingMs = Math.max(0, MISSION_WINDOW_MS - (nowMs - startMs));
     let progressLabel = "";
     let progressCurrent = 0;
     let progressTarget = 0;
-    if (code === "yellow_plus") {
+    if (cfg && cfg.rule === "yellow_kill_counter") {
       progressCurrent = safeNum(prog.counter, 0);
-      progressTarget = safeNum(prog.target, 100);
+      progressTarget = safeNum(prog.target, safeNum(cfg.counter_target, 100));
       progressLabel = `${progressCurrent}/${progressTarget}`;
     } else {
       progressCurrent = safeNum(prog.qualifying_runs, 0);
-      progressTarget = safeNum(prog.target_runs, 10);
+      progressTarget = safeNum(prog.target_runs, safeNum(cfg && cfg.target_runs, 10));
       progressLabel = `${progressCurrent}/${progressTarget}`;
     }
     return res.json({
@@ -611,38 +625,36 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
           if (!MISSION_CATALOG[code]) {
             Object.assign(next, missionClearPatch());
           } else {
+          const cfg = missionRuleCfg(code);
           const prog = {...(s0.mission_progress || {})};
           let qualified = false;
-          if (code === "red_plus") {
-            qualified = Math.floor(safeNum(collected.red, 0)) >= 6;
-          } else if (code === "blue_plus") {
-            qualified = Math.floor(safeNum(collected.blue, 0)) >= 5;
-          } else if (code === "green_plus") {
-            qualified = greenSkipped >= 2;
-          } else if (code === "purple_plus") {
-            qualified = maxExtraLivesSim >= 2;
-          } else if (code === "yellow_plus") {
-            const tgt = safeNum(prog.target, 100);
-            prog.target = tgt;
+          if (cfg && cfg.rule === "bonus_collected") {
+            const col = String(cfg.bonus_color || "");
+            qualified = Math.floor(safeNum(collected[col], 0)) >= safeNum(cfg.min_same_run, 1);
+          } else if (cfg && cfg.rule === "green_skipped") {
+            qualified = greenSkipped >= safeNum(cfg.min_same_run, 1);
+          } else if (cfg && cfg.rule === "max_extra_lives_simultaneous") {
+            qualified = maxExtraLivesSim >= safeNum(cfg.min_same_run, 1);
+          } else if (cfg && cfg.rule === "yellow_kill_counter") {
+            prog.target = safeNum(cfg.counter_target, 100);
             prog.counter = safeNum(prog.counter, 0) + whitesKilled;
             qualified = false;
           }
-          if (code !== "yellow_plus" && qualified) {
+          if (cfg && cfg.rule !== "yellow_kill_counter" && qualified) {
             prog.qualifying_runs = safeNum(prog.qualifying_runs, 0) + 1;
-            const tgt = safeNum(prog.target_runs, 10);
-            prog.target_runs = tgt;
+            prog.target_runs = safeNum(cfg.target_runs, 10);
           }
           let completed = false;
-          if (code === "yellow_plus") {
-            completed = safeNum(prog.counter, 0) >= safeNum(prog.target, 100);
-          } else {
-            completed = safeNum(prog.qualifying_runs, 0) >= safeNum(prog.target_runs, 10);
+          if (cfg && cfg.rule === "yellow_kill_counter") {
+            completed = safeNum(prog.counter, 0) >= safeNum(cfg.counter_target, 100);
+          } else if (cfg) {
+            completed = safeNum(prog.qualifying_runs, 0) >= safeNum(cfg.target_runs, 10);
           }
           if (completed) {
             const cur = prizesBase[code] != null ? safeNum(prizesBase[code], 0) : 0;
             const room = Math.max(0, 10 - cur);
-            const award = Math.min(3, room);
-            if (award < 3) responseExtra.mission_warning = "partial_award_cap";
+            const award = Math.min(MISSION_PRIZE_AWARD_EACH_COMPLETE, room);
+            if (award < MISSION_PRIZE_AWARD_EACH_COMPLETE) responseExtra.mission_warning = "partial_award_cap";
             const prizes = {...prizesBase};
             prizes[code] = Math.min(10, cur + award);
             next.prizes = prizes;

@@ -3,7 +3,7 @@
  * si vede subito (fallback su cache se offline).
  * Bump CACHE quando vuoi uno svuotamento duro su tutti i client.
  */
-const CACHE = 'dodge-v25';
+const CACHE = 'dodge-v26';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -15,6 +15,7 @@ const PRECACHE = [
   '/js/profile.js',
   '/js/leaderboard.js',
   '/js/constants.js',
+  '/js/missions-config.json',
   '/js/game-engine.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
