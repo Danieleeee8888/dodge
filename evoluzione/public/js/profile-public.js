@@ -39,28 +39,16 @@ function formatHhmmss(totalSeconds) {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
 }
 
-const PUBLIC_PREMI = [
-  ['has_red_plus', 'Rosso Plus'],
-  ['has_red_premium', 'Rosso Premium'],
-  ['has_blue_plus', 'Blu Plus'],
-  ['has_blue_premium', 'Blu Premium'],
-  ['has_yellow_plus', 'Giallo Plus'],
-  ['has_yellow_premium', 'Giallo Premium'],
-  ['has_green_plus', 'Verde Plus'],
-  ['has_green_premium', 'Verde Premium'],
-  ['has_purple_plus', 'Viola Plus'],
-  ['has_purple_premium', 'Viola Premium'],
-];
+const COLLECTED_BONUS_KEYS = ['red', 'blue', 'yellow', 'green', 'purple'];
 
-function renderPublicRewards(rewards) {
-  const grid = document.getElementById('public-rewards-grid');
-  if (!grid) return;
-  const r = rewards || {};
-  grid.innerHTML = PUBLIC_PREMI.map(([key, label]) => {
-    const on = !!r[key];
-    const cls = on ? 'profile-reward-item profile-reward-item--owned' : 'profile-reward-item profile-reward-item--locked';
-    return `<div class="${cls}" aria-disabled="${!on}">${label}</div>`;
-  }).join('');
+/** Somma storica dei bonus colorati raccolti (stessi contatori della griglia sopra). */
+function bonusesCollectedTotal(collected) {
+  const c = collected && typeof collected === 'object' ? collected : {};
+  let sum = 0;
+  for (const k of COLLECTED_BONUS_KEYS) {
+    sum += Math.max(0, Math.floor(Number(c[k] || 0)));
+  }
+  return sum;
 }
 
 function getUserIdFromUrl() {
@@ -95,7 +83,10 @@ async function loadPublicProfile() {
     document.getElementById('public-yellow').textContent = String(Math.floor(Number(stats?.collected?.yellow || 0)));
     document.getElementById('public-green').textContent = String(Math.floor(Number(stats?.collected?.green || 0)));
     document.getElementById('public-purple').textContent = String(Math.floor(Number(stats?.collected?.purple || 0)));
-    renderPublicRewards(stats?.rewards || {});
+    const bonusTotalEl = document.getElementById('public-bonus-total');
+    if (bonusTotalEl) {
+      bonusTotalEl.textContent = `Bonus presi (totale): ${bonusesCollectedTotal(stats?.collected)}`;
+    }
   } catch (_) {
     if (msg) msg.textContent = 'Errore di rete.';
   }

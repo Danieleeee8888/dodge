@@ -206,18 +206,6 @@ function publicStatsShape(statsDoc) {
       green: safeNum(d.green_collected, 0),
       purple: safeNum(d.purple_collected, 0),
     },
-    rewards: {
-      has_red_plus: !!d.has_red_plus,
-      has_red_premium: !!d.has_red_premium,
-      has_blue_plus: !!d.has_blue_plus,
-      has_blue_premium: !!d.has_blue_premium,
-      has_yellow_plus: !!d.has_yellow_plus,
-      has_yellow_premium: !!d.has_yellow_premium,
-      has_green_plus: !!d.has_green_plus,
-      has_green_premium: !!d.has_green_premium,
-      has_purple_plus: !!d.has_purple_plus,
-      has_purple_premium: !!d.has_purple_premium,
-    },
   };
 }
 
