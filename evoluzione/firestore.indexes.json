@@ -9,14 +9,6 @@
       ]
     },
     {
-      "collectionGroup": "scores",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "prize_used", "order": "ASCENDING" },
-        { "fieldPath": "ms", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "recent_games",
       "queryScope": "COLLECTION",
       "fields": [

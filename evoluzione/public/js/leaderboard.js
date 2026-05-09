@@ -2,7 +2,6 @@ import { db } from './firebase-init.js';
 import { resolveDisplayName } from './profile.js';
 import {
   collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, limit,
-  where,
   getDocs, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -118,16 +117,14 @@ export async function fetchLeaderboard(kind = 'general', n = LEADERBOARD_TOP_N) 
     try {
       const [lbPureSnap, scSnap] = await Promise.all([
         getDocs(query(collection(db, 'leaderboard_pure'), orderBy('ms', 'desc'), limit(lbLimit))),
-        getDocs(query(
-          collection(db, 'scores'),
-          where('prize_used', '==', null),
-          orderBy('ms', 'desc'),
-          limit(FALLBACK_SCAN_LIMIT),
-        )),
+        getDocs(query(collection(db, 'scores'), orderBy('ms', 'desc'), limit(FALLBACK_SCAN_LIMIT))),
       ]);
+      const pureScoreRows = scSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter(isPureScoreRow);
       const combined = [
         ...lbPureSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-        ...scSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        ...pureScoreRows,
       ];
       if (combined.length === 0) {
         _cachePure = [];
@@ -137,21 +134,9 @@ export async function fetchLeaderboard(kind = 'general', n = LEADERBOARD_TOP_N) 
       _cachePure = dedupeBestByUid(applyPublicDisplayNames(merged, uidToSlug), n);
       return _cachePure;
     } catch (e) {
-      try {
-        const lbPureSnap = await getDocs(query(collection(db, 'leaderboard_pure'), orderBy('ms', 'desc'), limit(lbLimit)));
-        const legacyPure = await fetchLegacyScoresTopPure(n);
-        const combined = [
-          ...lbPureSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-          ...legacyPure,
-        ];
-        const merged = dedupeBestByUid(combined, 9999);
-        _cachePure = dedupeBestByUid(applyPublicDisplayNames(merged, uidToSlug), n);
-        return _cachePure;
-      } catch (e2) {
-        _cachePure = await fetchLegacyScoresTopPure(n).catch(() => []);
-        _cachePure = dedupeBestByUid(applyPublicDisplayNames(_cachePure, uidToSlug), n);
-        return _cachePure;
-      }
+      _cachePure = await fetchLegacyScoresTopPure(n).catch(() => []);
+      _cachePure = dedupeBestByUid(applyPublicDisplayNames(_cachePure, uidToSlug), n);
+      return _cachePure;
     }
   }
 
