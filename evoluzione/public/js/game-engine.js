@@ -92,6 +92,8 @@ function syncAudioChromeVisibility() {
   audioCornerBtn.classList.toggle('audio-corner--hidden', hide);
 }
 const pauseOverlay = document.getElementById('pauseOverlay');
+const runPrizeHudEl = document.getElementById('runPrizeHud');
+const runPrizeHudIconEl = document.getElementById('runPrizeHudIcon');
 let deferredInstallPrompt = null;
 let installNudgeEl = null;
 
@@ -351,12 +353,41 @@ let startTime, elapsed;
 let level, baseTriangles, baseSquares, baseSpeed;
 let shieldActive, shieldEnd, slowActive, slowEnd;
 let greenModeActive = false, greenModeEnd = 0;
+/** Con premio green_plus: rimpicciolisce il cursore invece dei bianchi. */
+let greenPlusPlayerMode = false, greenPlusPlayerEnd = 0;
 let hasExtraLife = 0;
+/** Premio Plus attivo per questa run (dopo POST /api/game/start). */
+let currentRunPrize = null;
+/** Override numerici solo per la run corrente. */
+let runShieldDurationMs = SHIELD_DURATION_MS;
+let runBlueSpawnEveryMs = BLUE_BONUS_SPAWN_EVERY_MS;
+let runYellowSpawnEveryMs = YELLOW_BONUS_SPAWN_EVERY_MS;
+let runPurpleSpawnEveryMs = PURPLE_BONUS_SPAWN_EVERY_MS;
 /** Contatori per una singola run (POST /api/game/end). */
 let runBonusesCollected = { red: 0, blue: 0, yellow: 0, green: 0, purple: 0 };
 let runExtraLivesUsed = 0;
 let runShieldsConsumed = 0;
 let runWhitesKilledByYellow = 0;
+let runGreenSkipped = 0;
+let runMaxExtraLivesSimultaneous = 0;
+
+const RUN_PRIZE_CODES = ['red_plus', 'blue_plus', 'yellow_plus', 'green_plus', 'purple_plus'];
+
+function applyRunPrizeConstants() {
+  runShieldDurationMs = SHIELD_DURATION_MS;
+  runBlueSpawnEveryMs = BLUE_BONUS_SPAWN_EVERY_MS;
+  runYellowSpawnEveryMs = YELLOW_BONUS_SPAWN_EVERY_MS;
+  runPurpleSpawnEveryMs = PURPLE_BONUS_SPAWN_EVERY_MS;
+  if (currentRunPrize === 'red_plus') runShieldDurationMs = 13000;
+  if (currentRunPrize === 'blue_plus') runBlueSpawnEveryMs = 22000;
+  if (currentRunPrize === 'yellow_plus') runYellowSpawnEveryMs = 40000;
+  if (currentRunPrize === 'purple_plus') runPurpleSpawnEveryMs = 50000;
+}
+
+function bumpRunMaxExtraLives() {
+  if (hasExtraLife > runMaxExtraLivesSimultaneous) runMaxExtraLivesSimultaneous = hasExtraLife;
+}
+
 /** Prossimo istante in cui pu? comparire il pallino viola (performance.now). */
 let nextPurpleAt = 0;
 /** Espansione gialla rapida sui bianchi tolti dal bonus giallo. */
@@ -493,6 +524,150 @@ function hideScreen() {
   if (homeCornerBtn) homeCornerBtn.classList.add('home-corner--hidden');
 }
 
+const PROFILE_MISSION_DEFS = [
+  {code: 'red_plus', title: 'Rosso Plus', desc: '6+ bonus rossi nella stessa partita, in 10 partite.', reward: '3× Rosso Plus', effect: 'Scudo 13s'},
+  {code: 'blue_plus', title: 'Blu Plus', desc: '5+ bonus blu nella stessa partita, in 10 partite.', reward: '3× Blu Plus', effect: 'Blu ogni 22s'},
+  {code: 'yellow_plus', title: 'Giallo Plus', desc: 'Uccisioni bianchi col giallo: 100 totali.', reward: '3× Giallo Plus', effect: 'Giallo ogni 40s'},
+  {code: 'green_plus', title: 'Verde Plus', desc: '2+ verdi saltati (stessa partita), in 10 partite.', reward: '3× Verde Plus', effect: 'Cursore piccolo 10s'},
+  {code: 'purple_plus', title: 'Viola Plus', desc: '2+ vite extra insieme (max run), in 10 partite.', reward: '3× Viola Plus', effect: 'Viola ogni 50s'},
+];
+
+function prizeOrbitHtml(color) {
+  return `<span class="prize-pick-orbit" style="color:${color}"><span class="prize-pick-dot" style="background:${color}"></span></span>`;
+}
+
+async function refreshProfileMissionsAndPrizes() {
+  const missionsRoot = document.getElementById('profile-missions-root');
+  const prizesRoot = document.getElementById('profile-prizes-grid');
+  if (!missionsRoot || !prizesRoot) return;
+
+  if (isGuestModeActive() || !currentUserId || !auth.currentUser?.emailVerified) {
+    missionsRoot.innerHTML = '<p class="profile-info profile-info--dim">Accedi con email verificata per missioni e premi in cloud.</p>';
+    prizesRoot.innerHTML = '';
+    return;
+  }
+
+  let missionsPayload = {active: null};
+  let prizesMap = {red_plus: 0, blue_plus: 0, yellow_plus: 0, green_plus: 0, purple_plus: 0};
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const [mRes, pRes] = await Promise.all([
+      fetch('/api/missions/current', {headers: {Authorization: `Bearer ${token}`}}),
+      fetch('/api/prizes', {headers: {Authorization: `Bearer ${token}`}}),
+    ]);
+    if (mRes.ok) missionsPayload = await mRes.json().catch(() => ({}));
+    if (pRes.ok) {
+      const pj = await pRes.json().catch(() => ({}));
+      prizesMap = {...prizesMap, ...(pj.prizes || {})};
+    }
+  } catch (_) {
+    missionsRoot.innerHTML = '<p class="profile-info profile-info--dim">Errore di rete nel caricamento missioni.</p>';
+    return;
+  }
+
+  const active = missionsPayload.active;
+  const slotBusy = !!active;
+  const prizeColors = {
+    red_plus: '#ff6b6b', blue_plus: '#6eb3ff', yellow_plus: '#e9c81a',
+    green_plus: '#34cc6e', purple_plus: '#c084fc',
+  };
+
+  let html = '';
+  if (active) {
+    const prog = active.progress || {};
+    let cur = 0;
+    let tgt = 10;
+    if (active.code === 'yellow_plus') {
+      cur = Number(prog.counter || 0);
+      tgt = Number(prog.target || 100);
+    } else {
+      cur = Number(prog.qualifying_runs || 0);
+      tgt = Number(prog.target_runs || 10);
+    }
+    const pct = tgt > 0 ? Math.min(100, (cur / tgt) * 100) : 0;
+    html += `<div class="profile-mission-active">
+      <div class="profile-mission-active__title">${active.title}</div>
+      <p class="profile-mission-active__meta">${active.description}</p>
+      <p class="profile-mission-active__meta">Ricompensa: ${active.reward_label}</p>
+      <div class="profile-mission-progress"><div class="profile-mission-progress__fill" style="width:${pct}%"></div></div>
+      <p class="profile-mission-active__meta">${active.progress_label} · tempo ${active.remaining_hhmmss}</p>
+      <div class="profile-btn-row">
+        <button type="button" class="home-btn home-btn--compact home-btn--small home-btn--danger js-mission-cancel">Annulla missione</button>
+      </div>
+    </div>`;
+  } else {
+    html += '<p class="profile-info profile-info--dim">Nessuna missione attiva. Attivane una dalla lista.</p>';
+  }
+
+  html += '<div class="profile-missions-list">';
+  for (const def of PROFILE_MISSION_DEFS) {
+    const n = Math.min(10, Math.max(0, Math.floor(Number(prizesMap[def.code] || 0))));
+    const cap = n >= 10;
+    const blocked = slotBusy;
+    const canActivate = !blocked && !cap;
+    let hint = '';
+    if (cap) hint = 'Hai già 10 premi di questo tipo.';
+    else if (blocked) hint = 'Hai già una missione attiva.';
+    html += `<div class="profile-mission-row ${blocked || cap ? 'profile-mission-row--blocked' : ''}">
+      <div class="profile-mission-row__top">
+        <span class="profile-mission-row__name">${def.title}</span>
+        <button type="button" class="home-btn home-btn--compact home-btn--small js-mission-activate"
+          data-code="${def.code}" ${canActivate ? '' : 'disabled'}>Attiva</button>
+      </div>
+      <p class="profile-mission-row__desc">${def.desc}</p>
+      <p class="profile-mission-row__desc">Ricompensa: ${def.reward}</p>
+      ${hint ? `<p class="profile-info--dim" style="font-size:0.6rem">${hint}</p>` : ''}
+    </div>`;
+  }
+  html += '</div>';
+  missionsRoot.innerHTML = html;
+
+  let phtml = '';
+  for (const def of PROFILE_MISSION_DEFS) {
+    const col = prizeColors[def.code];
+    const n = Math.min(10, Math.max(0, Math.floor(Number(prizesMap[def.code] || 0))));
+    phtml += `<div class="profile-prize-card" style="border-color:${col}55">
+      <div class="profile-prize-card__orbit">${prizeOrbitHtml(col)}</div>
+      <div class="profile-prize-card__name">${def.title}</div>
+      <div class="profile-prize-card__fx">${def.effect}</div>
+      <div class="profile-prize-card__count">${n}/10</div>
+    </div>`;
+  }
+  prizesRoot.innerHTML = phtml;
+
+  missionsRoot.querySelector('.js-mission-cancel')?.addEventListener('click', async () => {
+    if (!confirm('Sicuro? Perderai i progressi della missione attiva.')) return;
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await fetch('/api/missions/cancel', {
+        method: 'POST',
+        headers: {Authorization: `Bearer ${token}`},
+      });
+      await refreshProfileMissionsAndPrizes();
+    } catch (_) {}
+  });
+  missionsRoot.querySelectorAll('.js-mission-activate').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = btn.getAttribute('data-code');
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch('/api/missions/activate', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
+          body: JSON.stringify({mission_code: code}),
+        });
+        if (!res.ok) {
+          alert(res.status === 409 ? 'Non puoi attivare questa missione (slot occupato o cap premi).' : 'Errore attivazione.');
+          return;
+        }
+        await refreshProfileMissionsAndPrizes();
+      } catch (_) {
+        alert('Errore di rete.');
+      }
+    });
+  });
+}
+
 async function setupProfileView() {
   const viewProfile = document.getElementById('view-profile');
   const usernameEl = document.getElementById('profile-info-username');
@@ -530,6 +705,7 @@ async function setupProfileView() {
       displayInput.disabled = true;
     }
     if (msgEl) msgEl.textContent = '';
+    await refreshProfileMissionsAndPrizes().catch(() => {});
     return;
   }
 
@@ -579,6 +755,149 @@ async function setupProfileView() {
       if (colorMap.purple) colorMap.purple.textContent = String(Math.floor(Number(stats.purple_collected || 0)));
     }
   } catch (_) {}
+  await refreshProfileMissionsAndPrizes().catch(() => {});
+}
+
+let startGameSequenceBusy = false;
+
+async function postGameStartApi(prizeCode) {
+  currentRunPrize = prizeCode;
+  if (isGuestModeActive() || !auth.currentUser?.emailVerified) return;
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+    const token = await user.getIdToken();
+    const res = await fetch('/api/game/start', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
+      body: JSON.stringify({prize_code: prizeCode}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      currentRunPrize = data.prize_code ?? null;
+    } else {
+      currentRunPrize = null;
+    }
+  } catch (_) {
+    currentRunPrize = null;
+  }
+}
+
+function openPrizePicker(counts) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('prizePickOverlay');
+    const grid = document.getElementById('prizePickGrid');
+    const btnPure = document.getElementById('prizePickPure');
+    const btnGo = document.getElementById('prizePickConfirm');
+    if (!overlay || !grid || !btnPure || !btnGo) {
+      resolve(null);
+      return;
+    }
+    let selected = null;
+    const meta = {
+      red_plus: {color: '#ff6b6b', short: 'Ro'},
+      blue_plus: {color: '#6eb3ff', short: 'Bl'},
+      yellow_plus: {color: '#e9c81a', short: 'Gi'},
+      green_plus: {color: '#34cc6e', short: 'Ve'},
+      purple_plus: {color: '#c084fc', short: 'Vi'},
+    };
+    const cleanup = () => {
+      overlay.hidden = true;
+      overlay.setAttribute('aria-hidden', 'true');
+      grid.replaceChildren();
+      btnPure.onclick = null;
+      btnGo.onclick = null;
+    };
+    const finish = (code) => {
+      cleanup();
+      resolve(code);
+    };
+    grid.replaceChildren();
+    for (const code of RUN_PRIZE_CODES) {
+      const n = Math.max(0, Math.floor(Number(counts[code] || 0)));
+      const bt = document.createElement('button');
+      bt.type = 'button';
+      bt.className = 'prize-pick-slot';
+      bt.style.color = meta[code].color;
+      bt.disabled = n <= 0;
+      bt.innerHTML = `<span class="prize-pick-orbit"><span class="prize-pick-dot"></span></span><span>${meta[code].short}</span>`;
+      if (n > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'prize-pick-badge';
+        badge.textContent = `×${n}`;
+        bt.appendChild(badge);
+      }
+      bt.addEventListener('click', () => {
+        if (bt.disabled) return;
+        selected = code;
+        grid.querySelectorAll('.prize-pick-slot').forEach((el) => el.classList.remove('prize-pick-slot--selected'));
+        bt.classList.add('prize-pick-slot--selected');
+        btnGo.disabled = false;
+      });
+      grid.appendChild(bt);
+    }
+    btnPure.onclick = () => finish(null);
+    btnGo.onclick = () => finish(selected);
+    btnGo.disabled = true;
+    overlay.hidden = false;
+    overlay.removeAttribute('hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+  });
+}
+
+async function beginStartGameSequence() {
+  if (performance.now() < startGameUnlockAt) return;
+  if (startGameSequenceBusy) return;
+  startGameSequenceBusy = true;
+  try {
+    let chosen = null;
+    if (!isGuestModeActive() && currentUserId && auth.currentUser?.emailVerified) {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const pr = await fetch('/api/prizes', {headers: {Authorization: `Bearer ${token}`}});
+        const pj = await pr.json().catch(() => ({}));
+        const counts = pj.prizes || {};
+        let total = 0;
+        for (const k of RUN_PRIZE_CODES) total += Math.max(0, Math.floor(Number(counts[k] || 0)));
+        if (total > 0) {
+          chosen = await openPrizePicker(counts);
+        }
+        await postGameStartApi(chosen);
+      } catch (_) {
+        await postGameStartApi(null);
+      }
+    } else {
+      currentRunPrize = null;
+    }
+    applyRunPrizeConstants();
+    startGame();
+  } finally {
+    startGameSequenceBusy = false;
+  }
+}
+
+function syncRunPrizeHud() {
+  if (!runPrizeHudEl) return;
+  if (!running || !currentRunPrize) {
+    runPrizeHudEl.hidden = true;
+    runPrizeHudEl.setAttribute('aria-hidden', 'true');
+    return;
+  }
+  runPrizeHudEl.hidden = false;
+  runPrizeHudEl.removeAttribute('hidden');
+  runPrizeHudEl.setAttribute('aria-hidden', 'false');
+  const meta = {
+    red_plus: '#ff6b6b',
+    blue_plus: '#6eb3ff',
+    yellow_plus: '#e9c81a',
+    green_plus: '#34cc6e',
+    purple_plus: '#c084fc',
+  };
+  const col = meta[currentRunPrize] || '#fff';
+  if (runPrizeHudIconEl) {
+    runPrizeHudIconEl.innerHTML =
+      `<span class="prize-pick-orbit" style="color:${col}"><span class="prize-pick-dot" style="background:${col}"></span></span>`;
+  }
 }
 
 let _navBound = false;
@@ -589,7 +908,7 @@ function bindHomeNav() {
   // GIOCA
   document.getElementById('btn-play')?.addEventListener('click', e => {
     e.stopPropagation();
-    startGame();
+    void beginStartGameSequence();
   });
 
   const openLeaderboard = (e) => {
@@ -1499,7 +1818,7 @@ function finishIntroCountdown() {
 function syncPowerHud(now) {
   if (shieldActive) {
     shieldHud.style.display = 'flex';
-    sfill.style.height = Math.max(0, (shieldEnd - now) / SHIELD_DURATION_MS * 100) + '%';
+    sfill.style.height = Math.max(0, (shieldEnd - now) / runShieldDurationMs * 100) + '%';
   } else {
     shieldHud.style.display = 'none';
   }
@@ -1510,9 +1829,13 @@ function syncPowerHud(now) {
     slowHud.style.display = 'none';
   }
   if (greenModeHud && greenmodefill) {
-    if (greenModeActive && now < greenModeEnd) {
+    const greenBarActive =
+      (greenModeActive && now < greenModeEnd) ||
+      (greenPlusPlayerMode && now < greenPlusPlayerEnd);
+    const greenBarEnd = greenPlusPlayerMode && now < greenPlusPlayerEnd ? greenPlusPlayerEnd : greenModeEnd;
+    if (greenBarActive) {
       greenModeHud.style.display = 'block';
-      greenmodefill.style.width = Math.max(0, (greenModeEnd - now) / GREEN_MODE_DURATION_MS * 100) + '%';
+      greenmodefill.style.width = Math.max(0, (greenBarEnd - now) / GREEN_MODE_DURATION_MS * 100) + '%';
     } else {
       greenModeHud.style.display = 'none';
     }
@@ -1547,14 +1870,18 @@ function startGame() {
   baseSpeed = 2.2;
   shieldActive = false; slowActive = false;
   greenModeActive = false; greenModeEnd = 0;
+  greenPlusPlayerMode = false; greenPlusPlayerEnd = 0;
   hasExtraLife = 0;
   runBonusesCollected = { red: 0, blue: 0, yellow: 0, green: 0, purple: 0 };
   runExtraLivesUsed = 0;
   runShieldsConsumed = 0;
   runWhitesKilledByYellow = 0;
+  runGreenSkipped = 0;
+  runMaxExtraLivesSimultaneous = 0;
   yellowPopAuras = [];
   greenPopAuras = [];
   syncPowerHud(performance.now());
+  syncRunPrizeHud();
   lastLevelUp = 0;
   bgPhase = 0; flash = 0; flashCol = 'rgba(255,255,255,0.2)';
   const [cx, cy] = getPlayerSpawnXY();
@@ -1606,10 +1933,12 @@ function die(opts = {}) {
   shieldActive = false;
   slowActive = false;
   greenModeActive = false; greenModeEnd = 0;
+  greenPlusPlayerMode = false; greenPlusPlayerEnd = 0;
   hasExtraLife = 0;
   syncPowerHud(performance.now());
   stopMusic();
   running = false;
+  syncRunPrizeHud();
   fingerDown = false;
   paused = false;
   resumeCountdown = null;
@@ -1669,6 +1998,9 @@ function die(opts = {}) {
               extra_lives_used: runExtraLivesUsed,
               shields_consumed: runShieldsConsumed,
               whites_killed_by_yellow: runWhitesKilledByYellow,
+              prize_used: currentRunPrize,
+              green_skipped_this_run: runGreenSkipped,
+              max_extra_lives_simultaneous_this_run: runMaxExtraLivesSimultaneous,
             }),
           });
           const payload = await apiRes.json().catch(() => ({}));
@@ -1803,7 +2135,10 @@ window.addEventListener('mousedown', e=>{
   if (!running && e.target.closest('.js-no-start')) return;
   if (running && paused && !resumeCountdown) return;
   const [x,y]=getXY(e);
-  if(!running){ startGame(); }
+  if (!running) {
+    if (!startGameSequenceBusy) void beginStartGameSequence();
+    return;
+  }
   const [cx, cy] = clampPlayerTarget(x, y);
   // primo touch della partita: snap immediato
   if (px < -200) { px = cx; py = cy; }
@@ -1832,7 +2167,10 @@ window.addEventListener('touchstart', e=>{
   if (!running && e.target.closest('.js-no-start')) return;
   e.preventDefault();
   const [x,y]=getXY(e);
-  if(!running){ startGame(); }
+  if (!running) {
+    if (!startGameSequenceBusy) void beginStartGameSequence();
+    return;
+  }
   // primo touch: il giocatore parte al centro (mai sotto il dito); poi solo delta.
   if (px < -200) {
     const [sx, sy] = getPlayerSpawnXY();
@@ -1904,10 +2242,16 @@ function drawShape(b, x, y, r, alpha) {
 /** Raggio ?morso? del giocatore attorno a (px,py), come il vecchio hitR = b.r + 20 */
 const PLAYER_HIT_R = 20;
 
+function effectivePlayerHitR(now = performance.now()) {
+  if (greenPlusPlayerMode && now < greenPlusPlayerEnd) return PLAYER_HIT_R * 0.5;
+  return PLAYER_HIT_R;
+}
+
 function circleHitsPlayer(b, px, py) {
   const dx = b.x - px;
   const dy = b.y - py;
-  const rs = b.r + PLAYER_HIT_R;
+  const pr = effectivePlayerHitR();
+  const rs = b.r + pr;
   return dx * dx + dy * dy < rs * rs;
 }
 
@@ -1955,7 +2299,8 @@ function triangleHitsPlayer(b, px, py) {
   const y1 = h * 0.78;
   const x2 = -h * 0.65;
   const y2 = -h * 0.78;
-  const pr2 = PLAYER_HIT_R * PLAYER_HIT_R;
+  const phr = effectivePlayerHitR();
+  const pr2 = phr * phr;
   if (pointInTriangle(lx, ly, x0, y0, x1, y1, x2, y2)) return true;
   if (distSqPointSeg(lx, ly, x0, y0, x1, y1) < pr2) return true;
   if (distSqPointSeg(lx, ly, x1, y1, x2, y2) < pr2) return true;
@@ -2017,6 +2362,7 @@ function loop(now){
         if (shieldActive) shieldEnd += pauseDur;
         if (slowActive) slowEnd += pauseDur;
         if (greenModeActive) greenModeEnd += pauseDur;
+        if (greenPlusPlayerMode) greenPlusPlayerEnd += pauseDur;
         nextPurpleAt += pauseDur;
         yellowPopAuras.forEach((a) => { a.start += pauseDur; });
         greenPopAuras.forEach((a) => { a.start += pauseDur; });
@@ -2106,7 +2452,7 @@ function loop(now){
     firstBlueSpawned = true;
     lastBlue = now;
     spawnBall('blue');
-  } else if (firstBlueSpawned && now - lastBlue >= BLUE_BONUS_SPAWN_EVERY_MS) {
+  } else if (firstBlueSpawned && now - lastBlue >= runBlueSpawnEveryMs) {
     lastBlue = now;
     spawnBall('blue');
   }
@@ -2114,7 +2460,7 @@ function loop(now){
     firstYellowSpawned = true;
     lastYellow = now;
     spawnBall('yellow');
-  } else if (firstYellowSpawned && now - lastYellow >= YELLOW_BONUS_SPAWN_EVERY_MS) {
+  } else if (firstYellowSpawned && now - lastYellow >= runYellowSpawnEveryMs) {
     lastYellow = now;
     spawnBall('yellow');
   }
@@ -2130,11 +2476,14 @@ function loop(now){
   const purpleOnField = balls.some((b) => b.type === 'purple');
   if (hasExtraLife < 3 && !purpleOnField && now >= nextPurpleAt) {
     spawnBall('purple');
-    nextPurpleAt = now + PURPLE_BONUS_SPAWN_EVERY_MS;
+    nextPurpleAt = now + runPurpleSpawnEveryMs;
   }
 
   // timers
   if (shieldActive && now > shieldEnd) shieldActive = false;
+  if (greenPlusPlayerMode && now > greenPlusPlayerEnd) {
+    greenPlusPlayerMode = false;
+  }
   if (greenModeActive && now > greenModeEnd) {
     greenModeActive = false;
     applyGreenModeToWhites(false);
@@ -2171,6 +2520,7 @@ function loop(now){
     }
 
     if (isBonusCircle(b) && (b.bonusBounceCount || 0) >= BONUS_WALL_BOUNCES_MAX) {
+      if (b.type === 'green') runGreenSkipped++;
       burst(b.x, b.y, '#ff4444', 14);
       burst(b.x, b.y, '#ff8888', 8);
       balls.splice(i, 1);
@@ -2211,7 +2561,7 @@ function loop(now){
         }
         if(b.type==='red'){
           runBonusesCollected.red++;
-          shieldActive=true; shieldEnd=now+SHIELD_DURATION_MS;
+          shieldActive=true; shieldEnd=now+runShieldDurationMs;
           if (audioEnabled) playSoundBonus('red');
           spawnFloatingText(b.x, b.y, 'SCUDO', '#ff6b6b');
           burst(b.x,b.y,'#f44',22);
@@ -2258,6 +2608,7 @@ function loop(now){
         if (b.type === 'purple') {
           runBonusesCollected.purple++;
           hasExtraLife = Math.min(3, hasExtraLife + 1);
+          bumpRunMaxExtraLives();
           if (audioEnabled) playSoundBonus('purple');
           spawnFloatingText(b.x, b.y, 'VITA IN PI?', '#e9d5ff');
           burst(b.x, b.y, '#e9d5ff', 24);
@@ -2269,19 +2620,28 @@ function loop(now){
         }
         if (b.type === 'green') {
           runBonusesCollected.green++;
-          greenModeActive = true;
-          greenModeEnd = now + GREEN_MODE_DURATION_MS;
-          applyGreenModeToWhites(true);
-          for (let wi = 0; wi < balls.length; wi++) {
-            const wb = balls[wi];
-            if (wb.type !== 'white') continue;
-            greenPopAuras.push({ x: wb.x, y: wb.y, start: now });
+          if (currentRunPrize === 'green_plus') {
+            greenPlusPlayerMode = true;
+            greenPlusPlayerEnd = now + GREEN_MODE_DURATION_MS;
+            if (audioEnabled) playSoundBonus('green');
+            spawnFloatingText(b.x, b.y, 'CURSORE', '#7af5a8');
+            burst(b.x, b.y, '#34cc6e', 22);
+            flash = 0.32; flashCol = 'rgba(52,200,110,0.22)';
+          } else {
+            greenModeActive = true;
+            greenModeEnd = now + GREEN_MODE_DURATION_MS;
+            applyGreenModeToWhites(true);
+            for (let wi = 0; wi < balls.length; wi++) {
+              const wb = balls[wi];
+              if (wb.type !== 'white') continue;
+              greenPopAuras.push({ x: wb.x, y: wb.y, start: now });
+            }
+            burstPufWhitesGreen();
+            if (audioEnabled) playSoundBonus('green');
+            spawnFloatingText(b.x, b.y, 'RIMPICCIOLISCI', '#7af5a8');
+            burst(b.x, b.y, '#34cc6e', 22);
+            flash = 0.32; flashCol = 'rgba(52,200,110,0.22)';
           }
-          burstPufWhitesGreen();
-          if (audioEnabled) playSoundBonus('green');
-          spawnFloatingText(b.x, b.y, 'RIMPICCIOLISCI', '#7af5a8');
-          burst(b.x, b.y, '#34cc6e', 22);
-          flash = 0.32; flashCol = 'rgba(52,200,110,0.22)';
           balls.splice(i, 1);
           syncPowerHud(now);
           continue;
@@ -2419,8 +2779,12 @@ function loop(now){
   nbEl.textContent=balls.filter(b=>b.type==='white').length;
 }
 
+function getPlayerDrawR(nowMs) {
+  return 24 * (effectivePlayerHitR(nowMs) / PLAYER_HIT_R);
+}
+
 function getExtraLifeSatelliteState(index, nowMs) {
-  const rMain = 24;
+  const rMain = getPlayerDrawR(nowMs);
   const orbitR = rMain + 16;
   const omega = 0.002 + index * 0.00075;
   const phase = 1.1 + index * 1.6;
@@ -2436,7 +2800,7 @@ function getExtraLifeSatelliteState(index, nowMs) {
 function drawPlayer(now) {
   if (!running || introCountdown || px <= -200) return;
   const pulse = 0.55 + 0.45 * Math.sin(now * 0.005);
-  const rMain = 24;
+  const rMain = getPlayerDrawR(now);
   const dxT = tx - px, dyT = ty - py;
   const distSq = dxT * dxT + dyT * dyT;
   const velAng = Math.atan2(dyT, dxT);
