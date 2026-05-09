@@ -123,6 +123,10 @@ function safeNum(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function capCollected(val) {
+  return Math.min(Math.max(0, Math.floor(safeNum(val, 0))), 30);
+}
+
 function parsePositiveInt(v, fallback) {
   const n = Number.parseInt(String(v || ""), 10);
   if (!Number.isFinite(n) || n <= 0) return fallback;
@@ -544,6 +548,7 @@ app.post("/api/game/start", requireAuth, async (req, res) => {
         user_id: uid,
         prizes,
         pending_run_prize: prizeCode,
+        game_started_at: admin.firestore.FieldValue.serverTimestamp(),
         updated_at: nowTs(),
       }, {merge: true});
     });
@@ -566,11 +571,11 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
     const deathCause = body.death_cause === "square" ? "square" : "triangle";
     const bonusActive = body.bonus_active == null ? null : String(body.bonus_active);
     const collected = body.bonuses_collected || {};
-    const extraLivesUsed = Math.max(0, Math.floor(safeNum(body.extra_lives_used, 0)));
-    const shieldsConsumed = Math.max(0, Math.floor(safeNum(body.shields_consumed, 0)));
-    const whitesKilled = Math.max(0, Math.floor(safeNum(body.whites_killed_by_yellow, 0)));
-    const greenSkipped = Math.max(0, Math.floor(safeNum(body.green_skipped_this_run, 0)));
-    const maxExtraLivesSim = Math.max(0, Math.floor(safeNum(body.max_extra_lives_simultaneous_this_run, 0)));
+    const extraLivesUsed = Math.min(Math.max(0, Math.floor(safeNum(body.extra_lives_used, 0))), 20);
+    const shieldsConsumed = Math.min(Math.max(0, Math.floor(safeNum(body.shields_consumed, 0))), 20);
+    const whitesKilled = Math.min(Math.max(0, Math.floor(safeNum(body.whites_killed_by_yellow, 0))), 150);
+    const greenSkipped = Math.min(Math.max(0, Math.floor(safeNum(body.green_skipped_this_run, 0))), 15);
+    const maxExtraLivesSim = Math.min(Math.max(0, Math.floor(safeNum(body.max_extra_lives_simultaneous_this_run, 0))), 5);
 
     const uid = req.uid;
     const userRef = db.collection("users").doc(uid);
@@ -590,6 +595,18 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       const user = userSnap.data() || {};
       const s0 = statsSnap.exists ? (statsSnap.data() || {}) : {};
       displayName = String(user.displayName || user.username || "Player").slice(0, 24);
+
+      const gameStartedAt = s0.game_started_at;
+      if (gameStartedAt) {
+        const startMs = gameStartedAt.toMillis();
+        const elapsedSeconds = (Date.now() - startMs) / 1000;
+        const maxAllowed = elapsedSeconds * 1.15 + 5;
+        if (duration > maxAllowed) {
+          const err = new Error("invalid_duration");
+          err.code = "invalid_duration";
+          throw err;
+        }
+      }
 
       const nowMs = Date.now();
       const expired = shouldExpireMission(s0, nowMs);
@@ -616,11 +633,11 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         best_time_seconds: Math.max(safeNum(s0.best_time_seconds, 0), duration),
         deaths_by_triangle: safeNum(s0.deaths_by_triangle, 0) + (deathCause === "triangle" ? 1 : 0),
         deaths_by_square: safeNum(s0.deaths_by_square, 0) + (deathCause === "square" ? 1 : 0),
-        red_collected: safeNum(s0.red_collected, 0) + Math.max(0, Math.floor(safeNum(collected.red, 0))),
-        blue_collected: safeNum(s0.blue_collected, 0) + Math.max(0, Math.floor(safeNum(collected.blue, 0))),
-        yellow_collected: safeNum(s0.yellow_collected, 0) + Math.max(0, Math.floor(safeNum(collected.yellow, 0))),
-        green_collected: safeNum(s0.green_collected, 0) + Math.max(0, Math.floor(safeNum(collected.green, 0))),
-        purple_collected: safeNum(s0.purple_collected, 0) + Math.max(0, Math.floor(safeNum(collected.purple, 0))),
+        red_collected: safeNum(s0.red_collected, 0) + capCollected(collected.red),
+        blue_collected: safeNum(s0.blue_collected, 0) + capCollected(collected.blue),
+        yellow_collected: safeNum(s0.yellow_collected, 0) + capCollected(collected.yellow),
+        green_collected: safeNum(s0.green_collected, 0) + capCollected(collected.green),
+        purple_collected: safeNum(s0.purple_collected, 0) + capCollected(collected.purple),
         extra_lives_used: safeNum(s0.extra_lives_used, 0) + extraLivesUsed,
         shields_consumed: safeNum(s0.shields_consumed, 0) + shieldsConsumed,
         whites_killed_by_yellow: safeNum(s0.whites_killed_by_yellow, 0) + whitesKilled,
@@ -633,6 +650,7 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         current_streak_over_90s: duration >= 90 ? safeNum(s0.current_streak_over_90s, 0) + 1 : 0,
         current_streak_over_120s: duration >= 120 ? safeNum(s0.current_streak_over_120s, 0) + 1 : 0,
         current_streak_over_150s: duration >= 150 ? safeNum(s0.current_streak_over_150s, 0) + 1 : 0,
+        game_started_at: null,
         updated_at: nowTs(),
       };
 
@@ -657,7 +675,7 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
           let qualified = false;
           if (cfg && cfg.rule === "bonus_collected") {
             const col = String(cfg.bonus_color || "");
-            qualified = Math.floor(safeNum(collected[col], 0)) >= safeNum(cfg.min_same_run, 1);
+            qualified = capCollected(collected[col]) >= safeNum(cfg.min_same_run, 1);
           } else if (cfg && cfg.rule === "green_skipped") {
             qualified = greenSkipped >= safeNum(cfg.min_same_run, 1);
           } else if (cfg && cfg.rule === "max_extra_lives_simultaneous") {
@@ -799,6 +817,9 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       ...responseExtra,
     });
   } catch (e) {
+    if (e.code === "invalid_duration") {
+      return res.status(400).json({error: "invalid_duration"});
+    }
     logger.error("POST /api/game/end", e);
     if (String(e.message || "") === "no_profile") {
       return res.status(404).json({error: "no_profile"});

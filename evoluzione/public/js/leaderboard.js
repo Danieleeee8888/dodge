@@ -1,8 +1,7 @@
 import { db } from './firebase-init.js';
 import { resolveDisplayName } from './profile.js';
 import {
-  collection, addDoc, doc, setDoc, getDoc, updateDoc, query, orderBy, limit,
-  getDocs, serverTimestamp,
+  collection, doc, getDoc, updateDoc, query, orderBy, limit, getDocs,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 /** Lunghezza classifica globale (generale e pura). */
@@ -225,9 +224,6 @@ export async function saveScore(uid, ms) {
     const updates = { gamesPlayed: (data.gamesPlayed || 0) + 1 };
     if (improved) updates.bestTime = t;
     await updateDoc(userRef, updates);
-    await addDoc(collection(db, 'scores'), {
-      uid, displayName, ms: t, createdAt: serverTimestamp(),
-    });
 
     if (!improved) return { ok: true, improved: false };
 
@@ -238,13 +234,6 @@ export async function saveScore(uid, ms) {
 
     if (!inTop15) return { ok: true, improved: true, inTop15: false, inTop10: false };
 
-    try {
-      await setDoc(doc(db, 'leaderboard', uid), {
-        uid, displayName, ms: t, updatedAt: serverTimestamp(),
-      });
-    } catch (e) {
-      // ignore
-    }
     await fetchLeaderboard('general', LEADERBOARD_TOP_N);
     await fetchLeaderboard('pure', LEADERBOARD_TOP_N).catch(() => {});
     return { ok: true, improved: true, inTop15: true, inTop10: true };

@@ -44,6 +44,7 @@ service cloud.firestore {
                     && request.auth.uid == uid
                     && request.resource.data.username is string
                     && request.resource.data.email is string
+                    && request.resource.data.email == request.auth.token.email
                     && request.resource.data.role is string
                     && request.resource.data.role in ['user', 'admin']
                     && (
@@ -76,12 +77,10 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Statistiche aggregate (1 documento per utente)
+    // Statistiche aggregate (1 documento per utente): scrittura solo backend (Admin SDK).
     match /player_stats/{uid} {
       allow read: if canReadUser(uid);
-      allow create, update: if request.auth != null
-                            && (request.auth.uid == uid || isAdmin())
-                            && request.resource.data.user_id == uid;
+      allow create, update: if false;
       allow delete: if false;
     }
 
@@ -114,63 +113,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Punteggi storici: leggibili da tutti, scrivibili solo da utenti verificati,
-    // mai modificabili o cancellabili (anti-cheat)
+    // Punteggi storici: scrittura solo backend (Admin SDK), lettura pubblica,
+    // mai modificabili o cancellabili (anti-cheat).
     match /scores/{scoreId} {
       allow read: if true;
-      allow create: if request.auth != null
-                    && request.auth.token.email_verified == true
-                    && request.resource.data.uid == request.auth.uid
-                    && validDisplayNameReq()
-                    && request.resource.data.ms is int
-                    && request.resource.data.ms > 0
-                    && request.resource.data.ms <= 7200000
-                    && (
-                      !('prize_used' in request.resource.data)
-                      || request.resource.data.prize_used == null
-                      || (
-                        request.resource.data.prize_used is string
-                        && request.resource.data.prize_used.size() >= 3
-                        && request.resource.data.prize_used.size() <= 32
-                        && request.resource.data.prize_used.matches('^[a-z_]+$')
-                      )
-                    );
       allow update, delete: if false;
     }
 
-    // Classifica globale: un documento per utente (uid = chiave), solo il best time.
-    // Aggiornabile solo se il nuovo ms è strettamente maggiore del precedente (anti-cheat).
+    // Classifica globale: scrittura solo backend (Admin SDK), lettura pubblica.
     match /leaderboard/{uid} {
       allow read: if true;
-      allow create: if request.auth != null
-                    && request.auth.token.email_verified == true
-                    && request.auth.uid == uid
-                    && request.resource.data.uid == uid
-                    && validDisplayNameReq()
-                    && request.resource.data.ms is int
-                    && request.resource.data.ms > 0
-                    && request.resource.data.ms <= 7200000
-                    && leaderboardPrizeUsedOk();
-      allow update: if request.auth != null
-                    && request.auth.token.email_verified == true
-                    && request.auth.uid == uid
-                    && (
-                      (
-                        request.resource.data.ms > resource.data.ms
-                        && request.resource.data.uid == uid
-                        && validDisplayNameReq()
-                        && leaderboardPrizeUsedOk()
-                      )
-                      || (
-                        request.resource.data.ms == resource.data.ms
-                        && request.resource.data.uid == resource.data.uid
-                        && request.resource.data.uid == uid
-                        && validDisplayNameReq()
-                        && leaderboardPrizeUsedOk()
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['displayName', 'updatedAt', 'prize_used'])
-                      )
-                    );
       allow delete: if false;
     }
 
