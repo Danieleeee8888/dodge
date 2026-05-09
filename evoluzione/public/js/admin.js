@@ -265,13 +265,38 @@ async function loadPlayerDetail(id) {
   const detail = document.getElementById('admin-player-detail');
   detail.innerHTML = `
     <h3 class="admin-panel-title">Giocatore: ${escapeHtml(u.displayName || u.username || id)}</h3>
+    <p class="admin-list-row"><span>UID</span><strong>${escapeHtml(id)}</strong></p>
+    <p class="admin-list-row"><span>users.bestTime</span><strong>${escapeHtml(fmtMs(u.bestTime))} <span class="profile-info--dim">(${escapeHtml(String(Math.floor(Number(u.bestTime) || 0)))} ms)</span></strong></p>
     <p class="admin-list-row"><span>Email</span><strong>${escapeHtml(u.email || '-')}</strong></p>
     <p class="admin-list-row"><span>Ruolo</span><strong>${escapeHtml(u.role || 'user')}</strong></p>
     <p class="admin-list-row"><span>Premi posseduti</span><strong>${escapeHtml(ownedRewards)}</strong></p>
     <p class="admin-list-row"><span>Streak 60/90/120/150</span><strong>${escapeHtml(`${s.current_streak_over_60s || 0}/${s.current_streak_over_90s || 0}/${s.current_streak_over_120s || 0}/${s.current_streak_over_150s || 0}`)}</strong></p>
+    <p class="profile-info profile-info--dim admin-panel-hint">Allinea <code>leaderboard</code> / <code>leaderboard_pure</code> a questo bestTime; rimuove da <code>scores</code> le righe con tempo più alto (altrimenti la classifica in app prenderebbe ancora il max).</p>
+    <button id="btn-admin-sync-lb-from-profile" class="home-btn home-btn--compact js-no-start" type="button">Allinea classifiche al profilo (bestTime)</button>
     <h4 class="admin-subtitle">Tutte le statistiche (Firestore)</h4>
     <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Campo</th><th>Valore</th></tr></thead><tbody>${statsRows}</tbody></table></div>
   `;
+  document.getElementById('btn-admin-sync-lb-from-profile')?.addEventListener('click', async () => {
+    const bestMs = Math.floor(Number(u.bestTime) || 0);
+    if (!bestMs) {
+      setMsg('bestTime sul profilo è 0: non eseguito.');
+      return;
+    }
+    if (!window.confirm(`Allineare classifiche a users.bestTime = ${fmtMs(bestMs)}? Verranno eliminati gli score con tempo maggiore per questo uid.`)) return;
+    setMsg('');
+    try {
+      const out = await apiPost('/api/admin/sync-leaderboard-from-user-profile', {target_uid: id});
+      if (out?.ok) {
+        setMsg(`OK: leaderboard aggiornata a ${out.ms} ms. Score rimossi: ${out.deleted_scores ?? 0}. Ricarico dati…`);
+        await loadPlayerDetail(id);
+      } else setMsg('Risposta imprevista.');
+    } catch (e) {
+      const code = String(e.message || '');
+      if (code === 'HTTP_403') setMsg('Accesso negato.');
+      else if (code.startsWith('HTTP_')) setMsg(`Errore API (${code.replace('HTTP_', '')}).`);
+      else setMsg('Errore di rete.');
+    }
+  });
   const games = data?.recent_games || [];
   const body = games.map((g) => `
     <tr>

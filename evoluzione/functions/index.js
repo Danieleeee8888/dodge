@@ -990,6 +990,96 @@ app.post("/api/admin/migrate-missions-fields", requireAuth, requireAdmin, async 
 });
 
 /**
+ * Solo admin: usa users.bestTime (ms) come unico tempo ufficiale per target_uid:
+ * aggiorna leaderboard + leaderboard_pure, optional player_stats.best_time_seconds,
+ * rimuove da scores le righe con ms maggiore (il merge client prenderebbe ancora il max).
+ */
+app.post("/api/admin/sync-leaderboard-from-user-profile", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const targetUid = String((req.body || {}).target_uid || "").trim();
+    if (!targetUid) return res.status(400).json({error: "missing_target_uid"});
+
+    const userSnap = await db.collection("users").doc(targetUid).get();
+    if (!userSnap.exists) return res.status(404).json({error: "no_profile"});
+
+    const u = userSnap.data() || {};
+    const displayName = String(u.displayName || u.username || "Player").slice(0, 24);
+    const canonicalMs = Math.floor(safeNum(u.bestTime, 0));
+
+    if (canonicalMs < 1 || canonicalMs > 7200000) {
+      return res.status(400).json({error: "invalid_bestTime", bestTime: u.bestTime});
+    }
+
+    const lbRow = {
+      uid: targetUid,
+      displayName,
+      ms: canonicalMs,
+      updatedAt: nowTs(),
+      prize_used: admin.firestore.FieldValue.delete(),
+    };
+
+    await db.collection("leaderboard").doc(targetUid).set(lbRow, {merge: true});
+    await db.collection("leaderboard_pure").doc(targetUid).set({
+      uid: targetUid,
+      displayName,
+      ms: canonicalMs,
+      updatedAt: nowTs(),
+    }, {merge: true});
+
+    const statsRef = db.collection("player_stats").doc(targetUid);
+    const statsSnap = await statsRef.get();
+    let playerStatsUpdated = false;
+    if (statsSnap.exists) {
+      await statsRef.set({
+        best_time_seconds: canonicalMs / 1000,
+        updated_at: nowTs(),
+      }, {merge: true});
+      playerStatsUpdated = true;
+    }
+
+    const scoresSnap = await db.collection("scores").where("uid", "==", targetUid).get();
+    let deletedScores = 0;
+    let batch = db.batch();
+    let ops = 0;
+    const flushScores = async () => {
+      if (ops === 0) return;
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    };
+    for (const doc of scoresSnap.docs) {
+      const ms = safeNum(doc.data().ms, 0);
+      if (ms > canonicalMs) {
+        batch.delete(doc.ref);
+        ops++;
+        deletedScores++;
+        if (ops >= 450) await flushScores();
+      }
+    }
+    await flushScores();
+
+    logger.info("sync-leaderboard-from-user-profile", {
+      admin_uid: req.uid,
+      target_uid: targetUid,
+      canonical_ms: canonicalMs,
+      deleted_scores: deletedScores,
+    });
+
+    return res.json({
+      ok: true,
+      uid: targetUid,
+      ms: canonicalMs,
+      displayName,
+      player_stats_updated: playerStatsUpdated,
+      deleted_scores: deletedScores,
+    });
+  } catch (e) {
+    logger.error("POST /api/admin/sync-leaderboard-from-user-profile", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+/**
  * Solo admin: imposta sul proprio `player_stats` tutti i premi Plus a 10/10 (test in gioco / picker).
  * Nota: con 10/10 su un colore non puoi attivare la missione di quel colore (cap) finché non consumi premi.
  */
