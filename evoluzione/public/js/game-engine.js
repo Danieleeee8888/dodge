@@ -31,6 +31,11 @@ import {
   GREEN_MODE_DURATION_MS,
   INTRO_CD_MS,
   PLUS_PRIZE_EFFECT_LABEL,
+  PLUS_PRIZE_RED_SHIELD_DURATION_MS,
+  PLUS_PRIZE_BLUE_SPAWN_EVERY_MS,
+  PLUS_PRIZE_YELLOW_SPAWN_EVERY_MS,
+  PLUS_PRIZE_PURPLE_SPAWN_EVERY_MS,
+  PLUS_PRIZE_GREEN_PLAYER_DURATION_MS,
 } from './constants.js';
 import { auth, authPersistenceReady, rtdb } from './firebase-init.js';
 import { ref, push, onDisconnect, set } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
@@ -375,6 +380,7 @@ let runShieldDurationMs = SHIELD_DURATION_MS;
 let runBlueSpawnEveryMs = BLUE_BONUS_SPAWN_EVERY_MS;
 let runYellowSpawnEveryMs = YELLOW_BONUS_SPAWN_EVERY_MS;
 let runPurpleSpawnEveryMs = PURPLE_BONUS_SPAWN_EVERY_MS;
+let runGreenPlusPlayerDurationMs = GREEN_MODE_DURATION_MS;
 /** Contatori per una singola run (POST /api/game/end). */
 let runBonusesCollected = { red: 0, blue: 0, yellow: 0, green: 0, purple: 0 };
 let runExtraLivesUsed = 0;
@@ -396,10 +402,12 @@ function applyRunPrizeConstants() {
   runBlueSpawnEveryMs = BLUE_BONUS_SPAWN_EVERY_MS;
   runYellowSpawnEveryMs = YELLOW_BONUS_SPAWN_EVERY_MS;
   runPurpleSpawnEveryMs = PURPLE_BONUS_SPAWN_EVERY_MS;
-  if (currentRunPrize === 'red_plus') runShieldDurationMs = 13000;
-  if (currentRunPrize === 'blue_plus') runBlueSpawnEveryMs = 22000;
-  if (currentRunPrize === 'yellow_plus') runYellowSpawnEveryMs = 40000;
-  if (currentRunPrize === 'purple_plus') runPurpleSpawnEveryMs = 50000;
+  runGreenPlusPlayerDurationMs = GREEN_MODE_DURATION_MS;
+  if (currentRunPrize === 'red_plus') runShieldDurationMs = PLUS_PRIZE_RED_SHIELD_DURATION_MS;
+  if (currentRunPrize === 'blue_plus') runBlueSpawnEveryMs = PLUS_PRIZE_BLUE_SPAWN_EVERY_MS;
+  if (currentRunPrize === 'yellow_plus') runYellowSpawnEveryMs = PLUS_PRIZE_YELLOW_SPAWN_EVERY_MS;
+  if (currentRunPrize === 'purple_plus') runPurpleSpawnEveryMs = PLUS_PRIZE_PURPLE_SPAWN_EVERY_MS;
+  if (currentRunPrize === 'green_plus') runGreenPlusPlayerDurationMs = PLUS_PRIZE_GREEN_PLAYER_DURATION_MS;
 }
 
 function bumpRunMaxExtraLives() {
@@ -1869,7 +1877,9 @@ function syncPowerHud(now) {
     const greenBarEnd = greenPlusPlayerMode && now < greenPlusPlayerEnd ? greenPlusPlayerEnd : greenModeEnd;
     if (greenBarActive) {
       greenModeHud.style.display = 'block';
-      greenmodefill.style.width = Math.max(0, (greenBarEnd - now) / GREEN_MODE_DURATION_MS * 100) + '%';
+      const greenBarDenom =
+        greenPlusPlayerMode && now < greenPlusPlayerEnd ? runGreenPlusPlayerDurationMs : GREEN_MODE_DURATION_MS;
+      greenmodefill.style.width = Math.max(0, (greenBarEnd - now) / greenBarDenom * 100) + '%';
     } else {
       greenModeHud.style.display = 'none';
     }
@@ -2658,7 +2668,7 @@ function loop(now){
           runBonusesCollected.green++;
           if (currentRunPrize === 'green_plus') {
             greenPlusPlayerMode = true;
-            greenPlusPlayerEnd = now + GREEN_MODE_DURATION_MS;
+            greenPlusPlayerEnd = now + runGreenPlusPlayerDurationMs;
             greenPopAuras.push({ x: px, y: py, start: now });
             burst(px, py, '#d4ffe4', 8);
             burst(px, py, '#34cc6e', 12);

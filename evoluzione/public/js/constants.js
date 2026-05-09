@@ -41,8 +41,18 @@ export const GREEN_MODE_DURATION_MS = 10000;
 export const INTRO_CD_MS = 850;
 
 /**
- * Testi effetto dei premi Plus (profilo, griglia premi). Il comportamento effettivo in partita
- * (intervalli spawn, durata scudo, ecc.) è nel motore: aggiorna anche quelle costanti se cambi il significato.
+ * Numeri effettivi in partita quando è attivo un premio Plus (run corrente).
+ * Rosso: durata scudo al pickup. Blu/Giallo/Viola: intervallo tra uno spawn e il successivo (dopo il primo).
+ * Verde: durata «cursore piccolo» al pickup del bonus verde (effetto alternativo al verde classico).
+ */
+export const PLUS_PRIZE_RED_SHIELD_DURATION_MS = 13000;
+export const PLUS_PRIZE_BLUE_SPAWN_EVERY_MS = 22000;
+export const PLUS_PRIZE_YELLOW_SPAWN_EVERY_MS = 40000;
+export const PLUS_PRIZE_PURPLE_SPAWN_EVERY_MS = 50000;
+export const PLUS_PRIZE_GREEN_PLAYER_DURATION_MS = GREEN_MODE_DURATION_MS;
+
+/**
+ * Testi effetto dei premi Plus (profilo, griglia premi).
  */
 export const PLUS_PRIZE_EFFECT_LABEL = Object.freeze({
   red_plus: 'Scudo prolungato',
