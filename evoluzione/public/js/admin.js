@@ -186,7 +186,9 @@ async function loadOverview() {
     ['Iscritti totali', kpi.users_total ?? 0],
     ['Verificati', kpi.users_verified ?? 0],
     ['Partite 24h', kpi.games_last_24h ?? 0],
+    ['Tempo giocato 24h', fmtHhmmss(kpi.playtime_last_24h_seconds || 0)],
     ['Partite 7gg', kpi.games_last_7d ?? 0],
+    ['Tempo giocato 7gg', fmtHhmmss(kpi.playtime_last_7d_seconds || 0)],
     ['Partite totali', kpi.games_total ?? 0],
     ['Tempo medio run 7gg', `${avg.toFixed(1)}s`],
   ].map(([k, v]) => `<article class="admin-kpi"><h4>${escapeHtml(k)}</h4><p>${escapeHtml(v)}</p></article>`).join('');

@@ -805,6 +805,11 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       if (best >= 210) distPlayers.over210 += 1;
     });
 
+    let sum24 = 0;
+    recent24hSnap.docs.forEach((d) => {
+      sum24 += safeNum(d.data()?.duration_seconds, 0);
+    });
+
     let sum7 = 0;
     recent7dSnap.docs.forEach((d) => {
       sum7 += safeNum(d.data()?.duration_seconds, 0);
@@ -824,7 +829,9 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
         users_total: usersSnap.size,
         users_verified: verified,
         games_last_24h: recent24hSnap.size,
+        playtime_last_24h_seconds: Math.round(sum24),
         games_last_7d: recent7dSnap.size,
+        playtime_last_7d_seconds: Math.round(sum7),
         games_total: recentAllSnap.size,
       },
       connected_sessions_now,
