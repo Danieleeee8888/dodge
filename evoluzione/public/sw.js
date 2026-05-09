@@ -44,12 +44,12 @@ function isFirebaseOrCdn(url) {
   );
 }
 
-/** Stessa origine: pagine e bundle — sempre rete prima (poi cache). */
+/** Stessa origine: pagine, bundle e config — sempre rete prima (poi cache). */
 function isNetworkFirstAsset(url) {
   if (url.origin !== self.location.origin) return false;
   const p = url.pathname;
   if (p === '/' || p.endsWith('.html')) return true;
-  return /\.(js|css)$/i.test(p);
+  return /\.(js|css|json)$/i.test(p);
 }
 
 self.addEventListener('fetch', (e) => {

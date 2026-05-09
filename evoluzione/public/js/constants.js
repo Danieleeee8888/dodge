@@ -1,4 +1,10 @@
-import missionsConfigJson from './missions-config.json' assert { type: 'json' };
+async function loadMissionsConfig() {
+  const res = await fetch(new URL('./missions-config.json', import.meta.url));
+  if (!res.ok) throw new Error(`missions-config load failed: ${res.status}`);
+  return res.json();
+}
+
+const missionsConfigJson = await loadMissionsConfig();
 
 export const FIXED_GAME_W = 400;
 export const FIXED_GAME_H = 720;
