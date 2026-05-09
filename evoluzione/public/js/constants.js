@@ -39,3 +39,15 @@ export const SLOW_OMEGA_FACTOR = 0.6;
 export const GREEN_MODE_DURATION_MS = 10000;
 
 export const INTRO_CD_MS = 850;
+
+/**
+ * Testi effetto dei premi Plus (profilo, griglia premi). Il comportamento effettivo in partita
+ * (intervalli spawn, durata scudo, ecc.) è nel motore: aggiorna anche quelle costanti se cambi il significato.
+ */
+export const PLUS_PRIZE_EFFECT_LABEL = Object.freeze({
+  red_plus: 'Scudo prolungato',
+  blue_plus: 'Blu più frequente',
+  yellow_plus: 'Giallo più frequente',
+  green_plus: 'Cursore piccolo',
+  purple_plus: 'Viola più frequente',
+});
