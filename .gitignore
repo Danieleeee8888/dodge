@@ -4,9 +4,13 @@ open-phone-preview.ps1
 
 # Firebase CLI (cache deploy locale)
 .firebase/
+evoluzione/firebase-debug.log
 
 # Claude Code: worktree/checkout locale (non parte del gioco)
 .claude/
 
 evoluzione/functions/node_modules/
 evoluzione/backups/
+
+# Esperimento locale (non versionare)
+esperimento_verde_diverso/

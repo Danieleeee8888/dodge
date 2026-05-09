@@ -18,6 +18,85 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
+const MISSION_WINDOW_MS = 24 * 60 * 60 * 1000;
+const PRIZE_CODES = ["red_plus", "blue_plus", "yellow_plus", "green_plus", "purple_plus"];
+
+const MISSION_CATALOG = {
+  red_plus: {
+    title: "Rosso Plus",
+    description: "Raccogli almeno 6 bonus rossi nella stessa partita, in 10 partite diverse.",
+    reward_label: "3× Rosso Plus",
+  },
+  blue_plus: {
+    title: "Blu Plus",
+    description: "Raccogli almeno 5 bonus blu nella stessa partita, in 10 partite diverse.",
+    reward_label: "3× Blu Plus",
+  },
+  yellow_plus: {
+    title: "Giallo Plus",
+    description: "Conta le uccisioni di bianchi ottenute tramite il bonus giallo: accumula 100 in più partite.",
+    reward_label: "3× Giallo Plus",
+  },
+  green_plus: {
+    title: "Verde Plus",
+    description: "Lascia uscire dal campo almeno 2 bonus verdi senza raccoglierli (stessa partita), in 10 partite.",
+    reward_label: "3× Verde Plus",
+  },
+  purple_plus: {
+    title: "Viola Plus",
+    description: "Raggiungi almeno 2 vite extra contemporaneamente (massimo nella run), in 10 partite.",
+    reward_label: "3× Viola Plus",
+  },
+};
+
+function emptyPrizes() {
+  return {red_plus: 0, blue_plus: 0, yellow_plus: 0, green_plus: 0, purple_plus: 0};
+}
+
+function normalizePrizesObject(raw) {
+  const base = emptyPrizes();
+  if (!raw || typeof raw !== "object") return base;
+  for (const k of Object.keys(base)) {
+    base[k] = Math.max(0, Math.min(10, Math.floor(safeNum(raw[k], 0))));
+  }
+  return base;
+}
+
+function initialMissionProgress(code) {
+  if (code === "yellow_plus") return {counter: 0, target: 100};
+  return {qualifying_runs: 0, target_runs: 10};
+}
+
+function missionStartedToMillis(st) {
+  try {
+    if (!st || typeof st.toMillis !== "function") return null;
+    return st.toMillis();
+  } catch (_) {
+    return null;
+  }
+}
+
+function shouldExpireMission(s, nowMs) {
+  if (!s || !s.active_mission) return false;
+  const startMs = missionStartedToMillis(s.mission_started_at);
+  if (startMs == null) return false;
+  return nowMs - startMs > MISSION_WINDOW_MS;
+}
+
+function missionClearPatch() {
+  return {active_mission: null, mission_started_at: null, mission_progress: {}};
+}
+
+function defaultMissionPlayerStatsFields() {
+  return {
+    active_mission: null,
+    mission_started_at: null,
+    mission_progress: {},
+    prizes: emptyPrizes(),
+    pending_run_prize: null,
+  };
+}
+
 function nowTs() {
   return admin.firestore.FieldValue.serverTimestamp();
 }
@@ -220,6 +299,7 @@ async function upsertPlayerStatsIfMissing(uid) {
     has_purple_plus: false,
     has_purple_premium: false,
     premi_usati_count: 0,
+    ...defaultMissionPlayerStatsFields(),
     updated_at: nowTs(),
   }, {merge: true});
 }
@@ -261,6 +341,183 @@ app.get("/api/player/stats/:userId", async (req, res) => {
   }
 });
 
+app.get("/api/prizes", requireAuth, async (req, res) => {
+  try {
+    await upsertPlayerStatsIfMissing(req.uid);
+    const snap = await db.collection("player_stats").doc(req.uid).get();
+    const s = snap.data() || {};
+    return res.json({ok: true, prizes: normalizePrizesObject(s.prizes)});
+  } catch (e) {
+    logger.error("GET /api/prizes", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+app.get("/api/missions/current", requireAuth, async (req, res) => {
+  try {
+    await upsertPlayerStatsIfMissing(req.uid);
+    const ref = db.collection("player_stats").doc(req.uid);
+    const snap = await ref.get();
+    const s0 = snap.data() || {};
+    const nowMs = Date.now();
+    if (shouldExpireMission(s0, nowMs)) {
+      await ref.set({...missionClearPatch(), updated_at: nowTs()}, {merge: true});
+      return res.json({ok: true, active: null});
+    }
+    const code = s0.active_mission;
+    if (!code || !MISSION_CATALOG[code]) {
+      return res.json({ok: true, active: null});
+    }
+    const meta = MISSION_CATALOG[code];
+    const prog = s0.mission_progress || {};
+    const startMs = missionStartedToMillis(s0.mission_started_at) || nowMs;
+    const remainingMs = Math.max(0, MISSION_WINDOW_MS - (nowMs - startMs));
+    let progressLabel = "";
+    let progressCurrent = 0;
+    let progressTarget = 0;
+    if (code === "yellow_plus") {
+      progressCurrent = safeNum(prog.counter, 0);
+      progressTarget = safeNum(prog.target, 100);
+      progressLabel = `${progressCurrent}/${progressTarget}`;
+    } else {
+      progressCurrent = safeNum(prog.qualifying_runs, 0);
+      progressTarget = safeNum(prog.target_runs, 10);
+      progressLabel = `${progressCurrent}/${progressTarget}`;
+    }
+    return res.json({
+      ok: true,
+      active: {
+        code,
+        title: meta.title,
+        description: meta.description,
+        reward_label: meta.reward_label,
+        progress: {...prog},
+        progress_label: progressLabel,
+        remaining_ms: remainingMs,
+        remaining_hhmmss: hhmmss(remainingMs / 1000),
+      },
+    });
+  } catch (e) {
+    logger.error("GET /api/missions/current", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+app.post("/api/missions/activate", requireAuth, async (req, res) => {
+  try {
+    const code = String((req.body || {}).mission_code || "").trim();
+    if (!MISSION_CATALOG[code]) {
+      return res.status(400).json({error: "invalid_mission_code"});
+    }
+    const uid = req.uid;
+    const statsRef = db.collection("player_stats").doc(uid);
+    await db.runTransaction(async (tx) => {
+      const statsSnap = await tx.get(statsRef);
+      const s = statsSnap.exists ? (statsSnap.data() || {}) : {};
+      const nowMs = Date.now();
+      let base = {...s};
+      if (shouldExpireMission(base, nowMs)) {
+        base = {...base, ...missionClearPatch()};
+      }
+      if (base.active_mission) {
+        const err = new Error("mission_slot_busy");
+        err.code = "mission_slot_busy";
+        throw err;
+      }
+      const prizes = normalizePrizesObject(base.prizes);
+      if (safeNum(prizes[code], 0) >= 10) {
+        const err = new Error("prize_cap");
+        err.code = "prize_cap";
+        throw err;
+      }
+      tx.set(statsRef, {
+        user_id: uid,
+        active_mission: code,
+        mission_started_at: admin.firestore.Timestamp.now(),
+        mission_progress: initialMissionProgress(code),
+        prizes,
+        updated_at: nowTs(),
+      }, {merge: true});
+    });
+    const snap = await statsRef.get();
+    const s = snap.data() || {};
+    const startMs = missionStartedToMillis(s.mission_started_at) || Date.now();
+    const expiresAtMs = startMs + MISSION_WINDOW_MS;
+    return res.json({
+      ok: true,
+      mission: {
+        code,
+        started_at_ms: startMs,
+        expires_at_ms: expiresAtMs,
+      },
+    });
+  } catch (e) {
+    if (e.code === "mission_slot_busy") {
+      return res.status(409).json({error: "mission_slot_busy"});
+    }
+    if (e.code === "prize_cap") {
+      return res.status(409).json({error: "prize_cap"});
+    }
+    logger.error("POST /api/missions/activate", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+app.post("/api/missions/cancel", requireAuth, async (req, res) => {
+  try {
+    const uid = req.uid;
+    const statsRef = db.collection("player_stats").doc(uid);
+    await statsRef.set({
+      ...missionClearPatch(),
+      user_id: uid,
+      updated_at: nowTs(),
+    }, {merge: true});
+    return res.json({ok: true});
+  } catch (e) {
+    logger.error("POST /api/missions/cancel", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+app.post("/api/game/start", requireAuth, async (req, res) => {
+  try {
+    const raw = (req.body || {}).prize_code;
+    let prizeCode = null;
+    if (raw != null && raw !== "") {
+      const p = String(raw).trim();
+      if (!PRIZE_CODES.includes(p)) {
+        return res.status(400).json({error: "invalid_prize_code"});
+      }
+      prizeCode = p;
+    }
+    const uid = req.uid;
+    const statsRef = db.collection("player_stats").doc(uid);
+    await db.runTransaction(async (tx) => {
+      const statsSnap = await tx.get(statsRef);
+      const s = statsSnap.exists ? (statsSnap.data() || {}) : {};
+      const prizes = normalizePrizesObject(s.prizes);
+      if (prizeCode != null && safeNum(prizes[prizeCode], 0) < 1) {
+        const err = new Error("insufficient_prizes");
+        err.code = "insufficient_prizes";
+        throw err;
+      }
+      tx.set(statsRef, {
+        user_id: uid,
+        prizes,
+        pending_run_prize: prizeCode,
+        updated_at: nowTs(),
+      }, {merge: true});
+    });
+    return res.json({ok: true, prize_code: prizeCode});
+  } catch (e) {
+    if (e.code === "insufficient_prizes") {
+      return res.status(409).json({error: "insufficient_prizes"});
+    }
+    logger.error("POST /api/game/start", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
 app.post("/api/game/end", requireAuth, async (req, res) => {
   try {
     const body = req.body || {};
@@ -273,6 +530,8 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
     const extraLivesUsed = Math.max(0, Math.floor(safeNum(body.extra_lives_used, 0)));
     const shieldsConsumed = Math.max(0, Math.floor(safeNum(body.shields_consumed, 0)));
     const whitesKilled = Math.max(0, Math.floor(safeNum(body.whites_killed_by_yellow, 0)));
+    const greenSkipped = Math.max(0, Math.floor(safeNum(body.green_skipped_this_run, 0)));
+    const maxExtraLivesSim = Math.max(0, Math.floor(safeNum(body.max_extra_lives_simultaneous_this_run, 0)));
 
     const uid = req.uid;
     const userRef = db.collection("users").doc(uid);
@@ -281,40 +540,119 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
     let shouldUpdateLeaderboard = false;
     let userBestMs = 0;
     let displayName = "";
+    /** @type {{ mission_warning?: string, mission_completed?: boolean }} */
+    const responseExtra = {};
 
     await db.runTransaction(async (tx) => {
       const [userSnap, statsSnap] = await Promise.all([tx.get(userRef), tx.get(statsRef)]);
       if (!userSnap.exists) throw new Error("no_profile");
       const user = userSnap.data() || {};
-      const s = statsSnap.exists ? (statsSnap.data() || {}) : {};
+      const s0 = statsSnap.exists ? (statsSnap.data() || {}) : {};
       displayName = String(user.displayName || user.username || "Player").slice(0, 24);
+
+      const nowMs = Date.now();
+      const expired = shouldExpireMission(s0, nowMs);
+      const hadActiveMission = !!s0.active_mission && !expired;
+
+      let prizeUsedEffective = null;
+      const pend = s0.pending_run_prize;
+      if (pend != null && pend !== "") {
+        const p = String(pend);
+        if (PRIZE_CODES.includes(p)) prizeUsedEffective = p;
+      }
+
+      const clientPrize = body.prize_used == null || body.prize_used === "" ? null : String(body.prize_used);
+      if (clientPrize && prizeUsedEffective && clientPrize !== prizeUsedEffective) {
+        logger.warn("POST /api/game/end prize mismatch", {uid, clientPrize, prizeUsedEffective});
+      }
 
       const next = {
         user_id: uid,
-        total_games: safeNum(s.total_games, 0) + 1,
-        total_playtime_seconds: safeNum(s.total_playtime_seconds, 0) + duration,
-        best_time_seconds: Math.max(safeNum(s.best_time_seconds, 0), duration),
-        deaths_by_triangle: safeNum(s.deaths_by_triangle, 0) + (deathCause === "triangle" ? 1 : 0),
-        deaths_by_square: safeNum(s.deaths_by_square, 0) + (deathCause === "square" ? 1 : 0),
-        red_collected: safeNum(s.red_collected, 0) + Math.max(0, Math.floor(safeNum(collected.red, 0))),
-        blue_collected: safeNum(s.blue_collected, 0) + Math.max(0, Math.floor(safeNum(collected.blue, 0))),
-        yellow_collected: safeNum(s.yellow_collected, 0) + Math.max(0, Math.floor(safeNum(collected.yellow, 0))),
-        green_collected: safeNum(s.green_collected, 0) + Math.max(0, Math.floor(safeNum(collected.green, 0))),
-        purple_collected: safeNum(s.purple_collected, 0) + Math.max(0, Math.floor(safeNum(collected.purple, 0))),
-        extra_lives_used: safeNum(s.extra_lives_used, 0) + extraLivesUsed,
-        shields_consumed: safeNum(s.shields_consumed, 0) + shieldsConsumed,
-        whites_killed_by_yellow: safeNum(s.whites_killed_by_yellow, 0) + whitesKilled,
-        runs_over_60s: safeNum(s.runs_over_60s, 0) + (duration >= 60 ? 1 : 0),
-        runs_over_90s: safeNum(s.runs_over_90s, 0) + (duration >= 90 ? 1 : 0),
-        runs_over_120s: safeNum(s.runs_over_120s, 0) + (duration >= 120 ? 1 : 0),
-        runs_over_150s: safeNum(s.runs_over_150s, 0) + (duration >= 150 ? 1 : 0),
-        runs_over_180s: safeNum(s.runs_over_180s, 0) + (duration >= 180 ? 1 : 0),
-        current_streak_over_60s: duration >= 60 ? safeNum(s.current_streak_over_60s, 0) + 1 : 0,
-        current_streak_over_90s: duration >= 90 ? safeNum(s.current_streak_over_90s, 0) + 1 : 0,
-        current_streak_over_120s: duration >= 120 ? safeNum(s.current_streak_over_120s, 0) + 1 : 0,
-        current_streak_over_150s: duration >= 150 ? safeNum(s.current_streak_over_150s, 0) + 1 : 0,
+        total_games: safeNum(s0.total_games, 0) + 1,
+        total_playtime_seconds: safeNum(s0.total_playtime_seconds, 0) + duration,
+        best_time_seconds: Math.max(safeNum(s0.best_time_seconds, 0), duration),
+        deaths_by_triangle: safeNum(s0.deaths_by_triangle, 0) + (deathCause === "triangle" ? 1 : 0),
+        deaths_by_square: safeNum(s0.deaths_by_square, 0) + (deathCause === "square" ? 1 : 0),
+        red_collected: safeNum(s0.red_collected, 0) + Math.max(0, Math.floor(safeNum(collected.red, 0))),
+        blue_collected: safeNum(s0.blue_collected, 0) + Math.max(0, Math.floor(safeNum(collected.blue, 0))),
+        yellow_collected: safeNum(s0.yellow_collected, 0) + Math.max(0, Math.floor(safeNum(collected.yellow, 0))),
+        green_collected: safeNum(s0.green_collected, 0) + Math.max(0, Math.floor(safeNum(collected.green, 0))),
+        purple_collected: safeNum(s0.purple_collected, 0) + Math.max(0, Math.floor(safeNum(collected.purple, 0))),
+        extra_lives_used: safeNum(s0.extra_lives_used, 0) + extraLivesUsed,
+        shields_consumed: safeNum(s0.shields_consumed, 0) + shieldsConsumed,
+        whites_killed_by_yellow: safeNum(s0.whites_killed_by_yellow, 0) + whitesKilled,
+        runs_over_60s: safeNum(s0.runs_over_60s, 0) + (duration >= 60 ? 1 : 0),
+        runs_over_90s: safeNum(s0.runs_over_90s, 0) + (duration >= 90 ? 1 : 0),
+        runs_over_120s: safeNum(s0.runs_over_120s, 0) + (duration >= 120 ? 1 : 0),
+        runs_over_150s: safeNum(s0.runs_over_150s, 0) + (duration >= 150 ? 1 : 0),
+        runs_over_180s: safeNum(s0.runs_over_180s, 0) + (duration >= 180 ? 1 : 0),
+        current_streak_over_60s: duration >= 60 ? safeNum(s0.current_streak_over_60s, 0) + 1 : 0,
+        current_streak_over_90s: duration >= 90 ? safeNum(s0.current_streak_over_90s, 0) + 1 : 0,
+        current_streak_over_120s: duration >= 120 ? safeNum(s0.current_streak_over_120s, 0) + 1 : 0,
+        current_streak_over_150s: duration >= 150 ? safeNum(s0.current_streak_over_150s, 0) + 1 : 0,
         updated_at: nowTs(),
       };
+
+      if (expired) Object.assign(next, missionClearPatch());
+
+      const prizesBase = normalizePrizesObject(s0.prizes);
+
+      if (prizeUsedEffective) {
+        const prizes = {...prizesBase};
+        prizes[prizeUsedEffective] = Math.max(0, prizes[prizeUsedEffective] - 1);
+        next.prizes = prizes;
+        next.pending_run_prize = null;
+      } else {
+        if (pend != null && pend !== "") next.pending_run_prize = null;
+        if (hadActiveMission) {
+          const code = String(s0.active_mission);
+          if (!MISSION_CATALOG[code]) {
+            Object.assign(next, missionClearPatch());
+          } else {
+          const prog = {...(s0.mission_progress || {})};
+          let qualified = false;
+          if (code === "red_plus") {
+            qualified = Math.floor(safeNum(collected.red, 0)) >= 6;
+          } else if (code === "blue_plus") {
+            qualified = Math.floor(safeNum(collected.blue, 0)) >= 5;
+          } else if (code === "green_plus") {
+            qualified = greenSkipped >= 2;
+          } else if (code === "purple_plus") {
+            qualified = maxExtraLivesSim >= 2;
+          } else if (code === "yellow_plus") {
+            const tgt = safeNum(prog.target, 100);
+            prog.target = tgt;
+            prog.counter = safeNum(prog.counter, 0) + whitesKilled;
+            qualified = false;
+          }
+          if (code !== "yellow_plus" && qualified) {
+            prog.qualifying_runs = safeNum(prog.qualifying_runs, 0) + 1;
+            const tgt = safeNum(prog.target_runs, 10);
+            prog.target_runs = tgt;
+          }
+          let completed = false;
+          if (code === "yellow_plus") {
+            completed = safeNum(prog.counter, 0) >= safeNum(prog.target, 100);
+          } else {
+            completed = safeNum(prog.qualifying_runs, 0) >= safeNum(prog.target_runs, 10);
+          }
+          if (completed) {
+            const cur = prizesBase[code] != null ? safeNum(prizesBase[code], 0) : 0;
+            const room = Math.max(0, 10 - cur);
+            const award = Math.min(3, room);
+            if (award < 3) responseExtra.mission_warning = "partial_award_cap";
+            const prizes = {...prizesBase};
+            prizes[code] = Math.min(10, cur + award);
+            next.prizes = prizes;
+            Object.assign(next, missionClearPatch());
+            responseExtra.mission_completed = true;
+          } else {
+            next.mission_progress = prog;
+          }
+          }
+        }
+      }
+
       tx.set(statsRef, next, {merge: true});
       tx.set(recentRef, {
         user_id: uid,
@@ -323,6 +661,7 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         whites_on_screen_at_death: whitesAtDeath,
         death_cause: deathCause,
         bonus_active: bonusActive,
+        prize_used: prizeUsedEffective,
         played_at: nowTs(),
       });
 
@@ -381,7 +720,12 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       await batch.commit();
     }
 
-    return res.json({ok: true, improved: shouldUpdateLeaderboard, inTop10: inTop10Result});
+    return res.json({
+      ok: true,
+      improved: shouldUpdateLeaderboard,
+      inTop10: inTop10Result,
+      ...responseExtra,
+    });
   } catch (e) {
     logger.error("POST /api/game/end", e);
     if (String(e.message || "") === "no_profile") {
@@ -534,6 +878,81 @@ app.post("/api/admin/backfill-stats-from-history", requireAuth, requireAdmin, as
     });
   } catch (e) {
     logger.error("POST /api/admin/backfill-stats-from-history", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+/**
+ * Idempotente: aggiunge campi missioni/premi mancanti su ogni player_stats.
+ */
+app.post("/api/admin/migrate-missions-fields", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const snap = await db.collection("player_stats").get();
+    const def = defaultMissionPlayerStatsFields();
+    let batch = db.batch();
+    let ops = 0;
+    let patched = 0;
+    const flush = async () => {
+      if (ops === 0) return;
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    };
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data() || {};
+      const patch = {};
+      if (!("active_mission" in data)) patch.active_mission = def.active_mission;
+      if (!("mission_started_at" in data)) patch.mission_started_at = def.mission_started_at;
+      if (!("mission_progress" in data)) patch.mission_progress = def.mission_progress;
+      if (!("pending_run_prize" in data)) patch.pending_run_prize = def.pending_run_prize;
+      if (!("prizes" in data)) {
+        patch.prizes = def.prizes;
+      } else {
+        const merged = normalizePrizesObject(data.prizes);
+        let need = false;
+        for (const k of Object.keys(emptyPrizes())) {
+          if (!(k in (data.prizes || {}))) need = true;
+        }
+        if (need) patch.prizes = merged;
+      }
+      if (Object.keys(patch).length > 0) {
+        patch.updated_at = nowTs();
+        batch.set(docSnap.ref, patch, {merge: true});
+        ops += 1;
+        patched += 1;
+        if (ops >= 400) await flush();
+      }
+    }
+    await flush();
+    return res.json({
+      ok: true,
+      player_stats_total: snap.size,
+      player_stats_patched: patched,
+    });
+  } catch (e) {
+    logger.error("POST /api/admin/migrate-missions-fields", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+/**
+ * Solo admin: imposta sul proprio `player_stats` tutti i premi Plus a 10/10 (test in gioco / picker).
+ * Nota: con 10/10 su un colore non puoi attivare la missione di quel colore (cap) finché non consumi premi.
+ */
+app.post("/api/admin/grant-self-test-plus-prizes", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const uid = req.uid;
+    await upsertPlayerStatsIfMissing(uid);
+    const full = {red_plus: 10, blue_plus: 10, yellow_plus: 10, green_plus: 10, purple_plus: 10};
+    const prizes = normalizePrizesObject(full);
+    await db.collection("player_stats").doc(uid).set({
+      user_id: uid,
+      prizes,
+      updated_at: nowTs(),
+    }, {merge: true});
+    return res.json({ok: true, prizes});
+  } catch (e) {
+    logger.error("POST /api/admin/grant-self-test-plus-prizes", e);
     return res.status(500).json({error: "internal_error"});
   }
 });
@@ -709,9 +1128,10 @@ app.get("/api/admin/export", requireAuth, requireAdmin, async (req, res) => {
           whites_on_screen_at_death: safeNum(g.whites_on_screen_at_death, 0),
           death_cause: g.death_cause || "",
           bonus_active: g.bonus_active || "",
+          prize_used: g.prize_used == null ? "" : String(g.prize_used),
         };
       });
-      const headers = ["played_at", "username", "user_id", "duration_seconds", "level_reached", "whites_on_screen_at_death", "death_cause", "bonus_active"];
+      const headers = ["played_at", "username", "user_id", "duration_seconds", "level_reached", "whites_on_screen_at_death", "death_cause", "bonus_active", "prize_used"];
       const csv = csvFromRows(headers, rows);
       const suffix = daysRaw === "all" ? "all" : `${days}days`;
       const filename = `games_last${suffix}_${toIsoDatePart()}.csv`;

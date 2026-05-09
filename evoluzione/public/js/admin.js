@@ -97,6 +97,19 @@ async function apiGet(path) {
   return r.json();
 }
 
+async function apiPost(path, body = {}) {
+  const r = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`HTTP_${r.status}`);
+  return r.json();
+}
+
 async function apiDownload(path) {
   const r = await fetch(path, {
     headers: { Authorization: `Bearer ${state.token}` },
@@ -322,6 +335,19 @@ function bindEvents() {
       await apiDownload(`/api/admin/export?type=games&days=${days}`);
     } catch (_) {
       setMsg('Export games non disponibile.');
+    }
+  });
+  document.getElementById('btn-admin-grant-plus-prizes')?.addEventListener('click', async () => {
+    setMsg('');
+    try {
+      const data = await apiPost('/api/admin/grant-self-test-plus-prizes', {});
+      const p = data?.prizes || {};
+      setMsg(`Premi Plus aggiornati: ro ${p.red_plus ?? '?'} · bl ${p.blue_plus ?? '?'} · gi ${p.yellow_plus ?? '?'} · ve ${p.green_plus ?? '?'} · vi ${p.purple_plus ?? '?'}.`);
+    } catch (e) {
+      const code = String(e.message || '');
+      if (code === 'HTTP_403') setMsg('Accesso negato.');
+      else if (code.startsWith('HTTP_')) setMsg(`Errore API (${code.replace('HTTP_', '')}).`);
+      else setMsg('Errore di rete.');
     }
   });
   window.addEventListener('popstate', () => {
