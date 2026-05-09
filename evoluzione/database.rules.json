@@ -2,6 +2,14 @@
   "rules": {
     ".read": false,
     ".write": false,
+    "app_presence": {
+      "sessions": {
+        "$sessionId": {
+          ".read": false,
+          ".write": "(!data.exists() && newData.isBoolean() && newData.val() === true) || (data.exists() && !newData.exists())"
+        }
+      }
+    },
     "rooms": {
       "$roomId": {
         ".read": "auth != null",

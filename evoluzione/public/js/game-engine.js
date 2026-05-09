@@ -31,7 +31,8 @@ import {
   GREEN_MODE_DURATION_MS,
   INTRO_CD_MS,
 } from './constants.js';
-import { auth, authPersistenceReady } from './firebase-init.js';
+import { auth, authPersistenceReady, rtdb } from './firebase-init.js';
+import { ref, push, onDisconnect, set } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 import {
   onAuthStateChanged,
   reload,
@@ -55,6 +56,18 @@ let guestModeEnabled = false;
 
 function isGuestModeActive() {
   return guestModeEnabled || !currentUserId;
+}
+
+let appPresenceStarted = false;
+/** Una sessione RTDB per tab (logout/chiusura rimuove la chiave via onDisconnect). */
+function startAppSessionPresence() {
+  if (appPresenceStarted || !rtdb) return;
+  appPresenceStarted = true;
+  try {
+    const sessRef = push(ref(rtdb, 'app_presence/sessions'));
+    void set(sessRef, true);
+    void onDisconnect(sessRef).remove();
+  } catch (_) {}
 }
 
 function hasPasswordProvider(user) {
@@ -3033,6 +3046,8 @@ onAuthStateChanged(auth, async (user) => {
     loader.style.display = 'none';
     loader.removeAttribute('aria-busy');
   }
+
+  startAppSessionPresence();
 
   scheduleViewportSync();
 

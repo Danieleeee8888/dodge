@@ -5,7 +5,9 @@ const {onRequest} = require("firebase-functions/v2/https");
 const {setGlobalOptions} = require("firebase-functions/v2");
 const logger = require("firebase-functions/logger");
 
-admin.initializeApp();
+admin.initializeApp({
+  databaseURL: "https://dodge-84439-default-rtdb.europe-west1.firebasedatabase.app",
+});
 setGlobalOptions({region: "europe-west1", maxInstances: 10});
 
 const db = admin.firestore();
@@ -778,6 +780,13 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
     });
 
     const top10 = leaderboardSnap.docs.map((d) => d.data());
+    let connected_sessions_now = 0;
+    try {
+      const presSnap = await admin.database().ref("app_presence/sessions").get();
+      connected_sessions_now = typeof presSnap.numChildren === "function" ? presSnap.numChildren() : 0;
+    } catch (e) {
+      logger.warn("admin overview: app_presence read failed", e);
+    }
     return res.json({
       ok: true,
       totals: {
@@ -787,6 +796,7 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
         games_last_7d: recent7dSnap.size,
         games_total: recentAllSnap.size,
       },
+      connected_sessions_now,
       avg_run_seconds_last_7d: recent7dSnap.size ? (sum7 / recent7dSnap.size) : 0,
       duration_distribution: distPlayers,
       top10,

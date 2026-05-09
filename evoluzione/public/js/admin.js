@@ -180,7 +180,9 @@ async function loadOverview() {
   const kpi = data?.totals || {};
   const avg = Number(data?.avg_run_seconds_last_7d || 0);
   const grid = document.getElementById('admin-kpi-grid');
+  const live = data?.connected_sessions_now;
   grid.innerHTML = [
+    ['Sessioni app aperte ora', typeof live === 'number' ? live : '—'],
     ['Iscritti totali', kpi.users_total ?? 0],
     ['Verificati', kpi.users_verified ?? 0],
     ['Partite 24h', kpi.games_last_24h ?? 0],

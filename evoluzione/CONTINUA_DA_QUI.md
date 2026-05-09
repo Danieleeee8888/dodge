@@ -14,7 +14,7 @@ Path assoluti consigliati per strumenti che accettano path completi: prefisso `C
 - **Project ID:** `dodge-84439`
 - **Hosting URL:** `https://dodge-84439.web.app`
 - **Piano:** Blaze (pay-as-you-go; quote no-cost generose per traffico basso)
-- **Servizi attivi:** Authentication (email+password), Firestore, Realtime Database, Hosting, **Cloud Functions v2** (`api`, region `europe-west1`)
+- **Servizi attivi:** Authentication (email+password), Firestore, Realtime Database, Hosting, **Cloud Functions v2** (`api`, region `europe-west1`). **Presenza affluenza:** `app_presence/sessions` su RTDB (write da `game-engine.js`, conteggio in **GET /api/admin/overview** → KPI «Sessioni app aperte ora»); regole in `database.rules.json`.
 - **API HTTP:** rewrite Hosting `/api/**` → function `api`; es. `GET /api/player/stats` (Bearer token). Fine partita: `POST /api/game/end` (stats + storico + classifica). **Missioni e premi Plus:** `GET /api/missions/current`, `POST /api/missions/activate`, `POST /api/missions/cancel`, `GET /api/prizes`, `POST /api/game/start` (imposta `pending_run_prize` su `player_stats`), poi `POST /api/game/end` con `prize_used` (server usa `pending_run_prize`), contatori missione (`green_skipped_this_run`, `max_extra_lives_simultaneous_this_run`, ecc.). **`recent_games`** include `prize_used`.
 - **Firestore `player_stats` (oltre ai campi stats esistenti):** `active_mission`, `mission_started_at`, `mission_progress`, `prizes` (map 5 tipi 0–10), `pending_run_prize`. Nuovi utenti: default anche in `claimUsername` (`profile.js`) e in `upsertPlayerStatsIfMissing` (functions).
 - **Migrazione campi missioni/premi:** `POST /api/admin/migrate-missions-fields` (Bearer admin), idempotente, dopo backup se in produzione.
