@@ -3,7 +3,7 @@
  * si vede subito (fallback su cache se offline).
  * Bump CACHE quando vuoi uno svuotamento duro su tutti i client.
  */
-const CACHE = 'dodge-v29';
+const CACHE = 'dodge-v30';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -48,7 +48,7 @@ function isFirebaseOrCdn(url) {
 function isNetworkFirstAsset(url) {
   if (url.origin !== self.location.origin) return false;
   const p = url.pathname;
-  if (p === '/' || p.endsWith('.html')) return true;
+  if (p === '/' || p.endsWith('.html') || p.startsWith('/admin') || p.startsWith('/profile')) return true;
   return /\.(js|css|json)$/i.test(p);
 }
 
