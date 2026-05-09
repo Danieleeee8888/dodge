@@ -352,6 +352,22 @@ function bindEvents() {
       else setMsg('Errore di rete.');
     }
   });
+  document.getElementById('btn-admin-grant-plus-launch-all')?.addEventListener('click', async () => {
+    setMsg('');
+    if (!window.confirm('Concedere a tutti gli account registrati +1 Premio Plus per ogni colore (tetto 10 per colore)? Chi ha già ricevuto il «regalo lancio» viene saltato.')) return;
+    try {
+      const data = await apiPost('/api/admin/grant-plus-launch-gift', {});
+      const g = data?.gift_granted ?? '?';
+      const s = data?.already_had_gift ?? '?';
+      const t = data?.users_total ?? '?';
+      setMsg(`Regalo lancio: aggiornati ${g} utenti; già con regalo ${s}; utenti totali in lista ${t}.`);
+    } catch (e) {
+      const code = String(e.message || '');
+      if (code === 'HTTP_403') setMsg('Accesso negato.');
+      else if (code.startsWith('HTTP_')) setMsg(`Errore API (${code.replace('HTTP_', '')}).`);
+      else setMsg('Errore di rete.');
+    }
+  });
   window.addEventListener('popstate', () => {
     void routeLoad();
   });
