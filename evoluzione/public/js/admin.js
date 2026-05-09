@@ -271,23 +271,42 @@ async function loadPlayerDetail(id) {
     <p class="admin-list-row"><span>Ruolo</span><strong>${escapeHtml(u.role || 'user')}</strong></p>
     <p class="admin-list-row"><span>Premi posseduti</span><strong>${escapeHtml(ownedRewards)}</strong></p>
     <p class="admin-list-row"><span>Streak 60/90/120/150</span><strong>${escapeHtml(`${s.current_streak_over_60s || 0}/${s.current_streak_over_90s || 0}/${s.current_streak_over_120s || 0}/${s.current_streak_over_150s || 0}`)}</strong></p>
-    <p class="profile-info profile-info--dim admin-panel-hint">Allinea <code>leaderboard</code> / <code>leaderboard_pure</code> a questo bestTime; rimuove da <code>scores</code> le righe con tempo più alto (altrimenti la classifica in app prenderebbe ancora il max).</p>
-    <button id="btn-admin-sync-lb-from-profile" class="home-btn home-btn--compact js-no-start" type="button">Allinea classifiche al profilo (bestTime)</button>
+    <p class="profile-info profile-info--dim admin-panel-hint">Allinea profilo + classifiche; puoi forzare i ms (aggiorna anche <code>users.bestTime</code>). Rimuove gli <code>scores</code> con tempo più alto.</p>
+    <button id="btn-admin-sync-lb-from-profile" class="home-btn home-btn--compact js-no-start" type="button">Allinea classifiche / profilo</button>
     <h4 class="admin-subtitle">Tutte le statistiche (Firestore)</h4>
     <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Campo</th><th>Valore</th></tr></thead><tbody>${statsRows}</tbody></table></div>
   `;
   document.getElementById('btn-admin-sync-lb-from-profile')?.addEventListener('click', async () => {
-    const bestMs = Math.floor(Number(u.bestTime) || 0);
-    if (!bestMs) {
-      setMsg('bestTime sul profilo è 0: non eseguito.');
-      return;
+    const rawMs = window.prompt(
+      'Ms canonico (vuoto = usa solo il bestTime già sul profilo).\nEsempio 118156 = 01:58:156',
+      '',
+    );
+    if (rawMs === null) return;
+    const body = {target_uid: id};
+    let labelMs;
+    const trimmed = String(rawMs).trim();
+    if (trimmed !== '') {
+      const n = parseInt(trimmed, 10);
+      if (!Number.isFinite(n) || n < 1) {
+        setMsg('Ms non valido.');
+        return;
+      }
+      body.force_ms = n;
+      labelMs = n;
+    } else {
+      const bestMs = Math.floor(Number(u.bestTime) || 0);
+      if (!bestMs) {
+        setMsg('bestTime sul profilo è 0: inserisci i ms nel prompt oppure aggiorna il profilo.');
+        return;
+      }
+      labelMs = bestMs;
     }
-    if (!window.confirm(`Allineare classifiche a users.bestTime = ${fmtMs(bestMs)}? Verranno eliminati gli score con tempo maggiore per questo uid.`)) return;
+    if (!window.confirm(`Allineare profilo e classifiche a ${fmtMs(labelMs)} (${labelMs} ms)? Verranno eliminati gli score con tempo maggiore.`)) return;
     setMsg('');
     try {
-      const out = await apiPost('/api/admin/sync-leaderboard-from-user-profile', {target_uid: id});
+      const out = await apiPost('/api/admin/sync-leaderboard-from-user-profile', body);
       if (out?.ok) {
-        setMsg(`OK: leaderboard aggiornata a ${out.ms} ms. Score rimossi: ${out.deleted_scores ?? 0}. Ricarico dati…`);
+        setMsg(`OK: tempo canonico ${out.ms} ms${out.forced_ms ? ' (forzato)' : ''}. Score rimossi: ${out.deleted_scores ?? 0}. Ricarico dati…`);
         await loadPlayerDetail(id);
       } else setMsg('Risposta imprevista.');
     } catch (e) {

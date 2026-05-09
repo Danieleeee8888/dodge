@@ -990,13 +990,15 @@ app.post("/api/admin/migrate-missions-fields", requireAuth, requireAdmin, async 
 });
 
 /**
- * Solo admin: usa users.bestTime (ms) come unico tempo ufficiale per target_uid:
- * aggiorna leaderboard + leaderboard_pure, optional player_stats.best_time_seconds,
- * rimuove da scores le righe con ms maggiore (il merge client prenderebbe ancora il max).
+ * Solo admin: tempo canonico ms per target_uid — aggiorna users.bestTime (se force_ms),
+ * leaderboard + leaderboard_pure, player_stats.best_time_seconds se esiste,
+ * rimuove scores con ms maggiore (merge client = max).
+ * Body: { target_uid, force_ms? } — senza force_ms usa users.bestTime come prima.
  */
 app.post("/api/admin/sync-leaderboard-from-user-profile", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const targetUid = String((req.body || {}).target_uid || "").trim();
+    const body = req.body || {};
+    const targetUid = String(body.target_uid || "").trim();
     if (!targetUid) return res.status(400).json({error: "missing_target_uid"});
 
     const userSnap = await db.collection("users").doc(targetUid).get();
@@ -1004,10 +1006,25 @@ app.post("/api/admin/sync-leaderboard-from-user-profile", requireAuth, requireAd
 
     const u = userSnap.data() || {};
     const displayName = String(u.displayName || u.username || "Player").slice(0, 24);
-    const canonicalMs = Math.floor(safeNum(u.bestTime, 0));
+
+    let canonicalMs;
+    let usedForceMs = false;
+    if (body.force_ms != null && body.force_ms !== "") {
+      canonicalMs = Math.floor(safeNum(body.force_ms, 0));
+      usedForceMs = true;
+    } else {
+      canonicalMs = Math.floor(safeNum(u.bestTime, 0));
+    }
 
     if (canonicalMs < 1 || canonicalMs > 7200000) {
-      return res.status(400).json({error: "invalid_bestTime", bestTime: u.bestTime});
+      return res.status(400).json({
+        error: usedForceMs ? "invalid_force_ms" : "invalid_bestTime",
+        bestTime: u.bestTime,
+      });
+    }
+
+    if (usedForceMs) {
+      await db.collection("users").doc(targetUid).set({bestTime: canonicalMs}, {merge: true});
     }
 
     const lbRow = {
@@ -1063,6 +1080,7 @@ app.post("/api/admin/sync-leaderboard-from-user-profile", requireAuth, requireAd
       target_uid: targetUid,
       canonical_ms: canonicalMs,
       deleted_scores: deletedScores,
+      force_ms: usedForceMs,
     });
 
     return res.json({
@@ -1072,6 +1090,7 @@ app.post("/api/admin/sync-leaderboard-from-user-profile", requireAuth, requireAd
       displayName,
       player_stats_updated: playerStatsUpdated,
       deleted_scores: deletedScores,
+      forced_ms: usedForceMs,
     });
   } catch (e) {
     logger.error("POST /api/admin/sync-leaderboard-from-user-profile", e);
