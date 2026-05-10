@@ -123,6 +123,18 @@ function safeNum(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Millisecondi da `createdAt` su un documento `scores` (timestamp Firestore o compat). */
+function scoreCreatedAtMillis(data) {
+  try {
+    const ca = data?.createdAt ?? data?.created_at;
+    if (!ca) return null;
+    if (typeof ca.toMillis === "function") return ca.toMillis();
+    const sec = ca.seconds ?? ca._seconds;
+    if (sec != null) return Number(sec) * 1000;
+  } catch (_) {}
+  return null;
+}
+
 const RUN_ID_REGEX = /^[a-zA-Z0-9-]{1,64}$/;
 
 /**
@@ -923,46 +935,27 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
 app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
   try {
     const now = Date.now();
-    const dayAgo = admin.firestore.Timestamp.fromMillis(now - 24 * 3600 * 1000);
-    const weekAgo = admin.firestore.Timestamp.fromMillis(now - 7 * 24 * 3600 * 1000);
+    const dayAgoMs = now - 24 * 3600 * 1000;
+    const weekAgoMs = now - 7 * 24 * 3600 * 1000;
 
-    const [usersSnap, recent24hSnap, recent7dSnap, recentAllSnap, leaderboardSnap, statsSnap, scoresSnap] = await Promise.all([
-      db.collection("users").get(),
-      db.collection("recent_games").where("played_at", ">=", dayAgo).get(),
-      db.collection("recent_games").where("played_at", ">=", weekAgo).get(),
-      db.collection("recent_games").get(),
+    const [leaderboardSnap, scoresSnap] = await Promise.all([
       db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N).get(),
-      db.collection("player_stats").get(),
       db.collection("scores").get(),
     ]);
 
-    const verifiedFlags = await Promise.all(usersSnap.docs.map(async (d) => {
-      try {
-        const au = await admin.auth().getUser(d.id);
-        return au.emailVerified === true;
-      } catch (_) {
-        return false;
-      }
-    }));
-    const verified = verifiedFlags.filter(Boolean).length;
-
-    /** Giocatori con tempo migliore (secondi) ≥ soglia — utile per calibrare missioni. */
-    const distPlayers = {over60: 0, over90: 0, over120: 0, over150: 0, over180: 0, over210: 0};
-    statsSnap.docs.forEach((d) => {
-      const best = safeNum(d.data()?.best_time_seconds, 0);
-      if (best >= 60) distPlayers.over60 += 1;
-      if (best >= 90) distPlayers.over90 += 1;
-      if (best >= 120) distPlayers.over120 += 1;
-      if (best >= 150) distPlayers.over150 += 1;
-      if (best >= 180) distPlayers.over180 += 1;
-      if (best >= 210) distPlayers.over210 += 1;
-    });
-
-    /** Partite (run) con durata in secondi ≥ soglia — storico canonico da `scores` (campo `ms`). */
+    /** Archivio partite: una voce per documento `scores` con `ms` > 0. */
     const distGames = {over60: 0, over90: 0, over120: 0, over150: 0, over180: 0, over210: 0};
+    let gamesTotal = 0;
+    let sum24 = 0;
+    let count24 = 0;
+    let sum7 = 0;
+    let count7 = 0;
+
     scoresSnap.docs.forEach((d) => {
-      const ms = safeNum(d.data()?.ms, 0);
+      const data = d.data() || {};
+      const ms = safeNum(data.ms, 0);
       if (ms <= 0) return;
+      gamesTotal += 1;
       const duration = ms / 1000;
       if (duration >= 60) distGames.over60 += 1;
       if (duration >= 90) distGames.over90 += 1;
@@ -970,40 +963,30 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       if (duration >= 150) distGames.over150 += 1;
       if (duration >= 180) distGames.over180 += 1;
       if (duration >= 210) distGames.over210 += 1;
-    });
 
-    let sum24 = 0;
-    recent24hSnap.docs.forEach((d) => {
-      sum24 += safeNum(d.data()?.duration_seconds, 0);
-    });
-
-    let sum7 = 0;
-    recent7dSnap.docs.forEach((d) => {
-      sum7 += safeNum(d.data()?.duration_seconds, 0);
+      const t = scoreCreatedAtMillis(data);
+      if (t == null) return;
+      if (t >= dayAgoMs) {
+        count24 += 1;
+        sum24 += duration;
+      }
+      if (t >= weekAgoMs) {
+        count7 += 1;
+        sum7 += duration;
+      }
     });
 
     const top15 = leaderboardSnap.docs.map((d) => d.data());
-    let connected_sessions_now = 0;
-    try {
-      const presSnap = await admin.database().ref("app_presence/sessions").get();
-      connected_sessions_now = typeof presSnap.numChildren === "function" ? presSnap.numChildren() : 0;
-    } catch (e) {
-      logger.warn("admin overview: app_presence read failed", e);
-    }
     return res.json({
       ok: true,
       totals: {
-        users_total: usersSnap.size,
-        users_verified: verified,
-        games_last_24h: recent24hSnap.size,
+        games_last_24h: count24,
         playtime_last_24h_seconds: Math.round(sum24),
-        games_last_7d: recent7dSnap.size,
+        games_last_7d: count7,
         playtime_last_7d_seconds: Math.round(sum7),
-        games_total: recentAllSnap.size,
+        games_total: gamesTotal,
       },
-      connected_sessions_now,
-      avg_run_seconds_last_7d: recent7dSnap.size ? (sum7 / recent7dSnap.size) : 0,
-      duration_distribution: distPlayers,
+      avg_run_seconds_last_7d: count7 ? (sum7 / count7) : 0,
       games_duration_distribution: distGames,
       top15,
       top10: top15,

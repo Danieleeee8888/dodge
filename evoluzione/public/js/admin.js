@@ -193,28 +193,14 @@ async function loadOverview() {
   const kpi = data?.totals || {};
   const avg = Number(data?.avg_run_seconds_last_7d || 0);
   const grid = document.getElementById('admin-kpi-grid');
-  const live = data?.connected_sessions_now;
   grid.innerHTML = [
-    ['Sessioni app aperte ora', typeof live === 'number' ? live : '—'],
-    ['Iscritti totali', kpi.users_total ?? 0],
-    ['Verificati', kpi.users_verified ?? 0],
-    ['Partite 24h', kpi.games_last_24h ?? 0],
+    ['Partite totali (archivio)', kpi.games_total ?? 0],
+    ['Partite ultime 24h', kpi.games_last_24h ?? 0],
     ['Tempo giocato 24h', fmtHhmmss(kpi.playtime_last_24h_seconds || 0)],
-    ['Partite 7gg', kpi.games_last_7d ?? 0],
-    ['Tempo giocato 7gg', fmtHhmmss(kpi.playtime_last_7d_seconds || 0)],
-    ['Partite totali', kpi.games_total ?? 0],
-    ['Tempo medio run 7gg', `${avg.toFixed(1)}s`],
+    ['Partite ultimi 7 giorni', kpi.games_last_7d ?? 0],
+    ['Tempo giocato 7 giorni', fmtHhmmss(kpi.playtime_last_7d_seconds || 0)],
+    ['Tempo medio run (7gg)', `${avg.toFixed(1)}s`],
   ].map(([k, v]) => `<article class="admin-kpi"><h4>${escapeHtml(k)}</h4><p>${escapeHtml(v)}</p></article>`).join('');
-
-  const dist = data?.duration_distribution || {};
-  document.getElementById('admin-distribution').innerHTML = [
-    ['≥60s', dist.over60 || 0],
-    ['≥90s', dist.over90 || 0],
-    ['≥120s', dist.over120 || 0],
-    ['≥150s', dist.over150 || 0],
-    ['≥180s', dist.over180 || 0],
-    ['≥210s', dist.over210 || 0],
-  ].map(([k, v]) => `<p class="admin-list-row"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></p>`).join('');
 
   const gamesDist = data?.games_duration_distribution || {};
   document.getElementById('admin-games-distribution').innerHTML = [
