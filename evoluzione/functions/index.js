@@ -311,6 +311,24 @@ function statsIso(ts) {
   }
 }
 
+function normalizeRecentGameRow(docId, row) {
+  const x = row || {};
+  const playedAt = statsIso(x.played_at || x.playedAt || x.created_at || x.createdAt);
+  const bonusRaw = x.bonus_active ?? x.bonusActive ?? x.prize_used ?? x.prizeUsed ?? null;
+  const bonus = bonusRaw == null ? "" : String(bonusRaw).trim();
+  return {
+    id: docId,
+    user_id: x.user_id || x.userId || "",
+    duration_seconds: safeNum(x.duration_seconds ?? x.durationSeconds, 0),
+    level_reached: Math.floor(safeNum(x.level_reached ?? x.levelReached, 0)),
+    whites_on_screen_at_death: Math.floor(safeNum(x.whites_on_screen_at_death ?? x.whitesOnScreenAtDeath, 0)),
+    death_cause: x.death_cause === "square" ? "square" : "triangle",
+    bonus_active: bonus,
+    prize_used: x.prize_used == null ? "" : String(x.prize_used).trim(),
+    played_at: playedAt,
+  };
+}
+
 async function upsertPlayerStatsIfMissing(uid) {
   const ref = db.collection("player_stats").doc(uid);
   const snap = await ref.get();
@@ -1388,7 +1406,7 @@ app.get("/api/admin/players/:id", requireAuth, requireAdmin, async (req, res) =>
       ok: true,
       user: {id, ...(userSnap.data() || {})},
       stats: statsSnap.exists ? statsSnap.data() : {},
-      recent_games: gamesSnap.docs.map((d) => ({id: d.id, ...(d.data() || {})})),
+      recent_games: gamesSnap.docs.map((d) => normalizeRecentGameRow(d.id, d.data())),
     });
   } catch (e) {
     logger.error("GET /api/admin/players/:id", e);

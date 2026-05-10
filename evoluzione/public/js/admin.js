@@ -65,12 +65,25 @@ function setMsg(text) {
 function fmtDate(ts) {
   try {
     if (!ts) return '-';
-    if (typeof ts === 'string') return ts;
-    if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleString('it-IT');
+    if (typeof ts === 'string') {
+      const d = new Date(ts);
+      if (Number.isFinite(d.getTime())) return d.toLocaleString('it-IT');
+      return ts;
+    }
+    if (typeof ts === 'number') return new Date(ts).toLocaleString('it-IT');
+    const sec = ts.seconds ?? ts._seconds;
+    if (sec != null) return new Date(Number(sec) * 1000).toLocaleString('it-IT');
+    if (typeof ts.toDate === 'function') return ts.toDate().toLocaleString('it-IT');
     return '-';
   } catch (_) {
     return '-';
   }
+}
+
+function pickRecentGameBonus(g) {
+  const raw = g?.bonus_active ?? g?.bonusActive ?? g?.prize_used ?? g?.prizeUsed ?? null;
+  const out = raw == null ? '' : String(raw).trim();
+  return out || '-';
 }
 
 function fmtMs(ms) {
@@ -325,7 +338,7 @@ async function loadPlayerDetail(id) {
       <td>${escapeHtml(Number(g.duration_seconds || 0).toFixed(1))}s</td>
       <td>${escapeHtml(g.level_reached || 0)}</td>
       <td>${escapeHtml(g.death_cause || '-')}</td>
-      <td>${escapeHtml(g.bonus_active || '-')}</td>
+      <td>${escapeHtml(pickRecentGameBonus(g))}</td>
     </tr>`).join('');
   document.getElementById('admin-player-recent-games').innerHTML =
     `<table class="admin-table"><thead><tr><th>Data</th><th>Tempo</th><th>Livello</th><th>Morte</th><th>Bonus</th></tr></thead><tbody>${body}</tbody></table>`;
