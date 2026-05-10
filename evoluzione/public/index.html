@@ -144,49 +144,69 @@
     <h2 class="view-title">PROFILO</h2>
 
     <div class="profile-layout profile-account-only">
-      <section class="profile-panel" aria-labelledby="profile-heading-personal">
-        <h3 id="profile-heading-personal" class="profile-panel-title">Dati personali</h3>
-        <p class="profile-info profile-info--dim"><span class="profile-label">Username</span> <span id="profile-info-username" class="profile-mono"></span></p>
-        <label for="profile-display-name" class="profile-label-row">Nome visualizzato</label>
-        <div class="profile-display-row">
-          <input type="text" id="profile-display-name" class="profile-display-input js-no-start" maxlength="24" autocomplete="nickname" enterkeyhint="done" />
-          <button type="button" id="btn-save-display" class="home-btn home-btn--compact js-no-start">Salva</button>
-        </div>
-        <p class="profile-hint profile-info--dim">Compare in classifica; l’username account resta quello scelto alla registrazione.</p>
-        <p id="profile-info-email" class="profile-info profile-info--dim"></p>
-        <div class="profile-account-actions">
-          <button type="button" id="btn-open-admin" class="home-btn home-btn--compact home-btn--ghost js-no-start" hidden>Pannello admin</button>
-          <button type="button" id="btn-reset-pw" class="home-btn home-btn--compact home-btn--ghost js-no-start">Reset password</button>
-          <button type="button" id="btn-logout" class="home-btn home-btn--compact home-btn--danger js-no-start">Esci</button>
-        </div>
-      </section>
+      <div class="leaderboard-tab-strip profile-tab-strip" role="tablist" aria-label="Sezioni profilo">
+        <button type="button" id="profile-tab-personal" class="leaderboard-tab leaderboard-tab--active js-no-start" role="tab" aria-selected="true" aria-controls="profile-panel-personal" title="Dati personali">Dati</button>
+        <button type="button" id="profile-tab-stats" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" aria-controls="profile-panel-stats">Stats</button>
+        <button type="button" id="profile-tab-mix" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" aria-controls="profile-panel-mix">Mix</button>
+        <button type="button" id="profile-tab-prizes" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" aria-controls="profile-panel-prizes">Premi</button>
+      </div>
 
-      <section class="profile-panel" aria-labelledby="profile-heading-stats">
-        <h3 id="profile-heading-stats" class="profile-panel-title">Statistiche</h3>
-        <p id="profile-best-main" class="profile-info"></p>
-        <p id="profile-best-pure" class="profile-info profile-info--dim" hidden></p>
-        <p id="profile-info-total-games" class="profile-info"></p>
-        <p id="profile-info-total-playtime" class="profile-info"></p>
-        <div class="profile-color-stats">
-          <div class="profile-color-stat profile-color-stat--red"><span class="profile-color-dot"></span><span id="profile-stat-red">0</span></div>
-          <div class="profile-color-stat profile-color-stat--blue"><span class="profile-color-dot"></span><span id="profile-stat-blue">0</span></div>
-          <div class="profile-color-stat profile-color-stat--yellow"><span class="profile-color-dot"></span><span id="profile-stat-yellow">0</span></div>
-          <div class="profile-color-stat profile-color-stat--green"><span class="profile-color-dot"></span><span id="profile-stat-green">0</span></div>
-          <div class="profile-color-stat profile-color-stat--purple"><span class="profile-color-dot"></span><span id="profile-stat-purple">0</span></div>
-        </div>
-      </section>
+      <div id="profile-panel-personal" class="profile-tab-panel" role="tabpanel" aria-labelledby="profile-tab-personal">
+        <section class="profile-panel" aria-labelledby="profile-heading-personal">
+          <h3 id="profile-heading-personal" class="profile-panel-title">Dati personali</h3>
+          <p class="profile-info profile-info--dim"><span class="profile-label">Username</span> <span id="profile-info-username" class="profile-mono"></span></p>
+          <label for="profile-display-name" class="profile-label-row">Nome visualizzato</label>
+          <div class="profile-display-row">
+            <input type="text" id="profile-display-name" class="profile-display-input js-no-start" maxlength="24" autocomplete="nickname" enterkeyhint="done" />
+            <button type="button" id="btn-save-display" class="home-btn home-btn--compact js-no-start">Salva</button>
+          </div>
+          <p class="profile-hint profile-info--dim">Compare in classifica; l’username account resta quello scelto alla registrazione.</p>
+          <p id="profile-info-email" class="profile-info profile-info--dim"></p>
+          <div class="profile-account-actions">
+            <button type="button" id="btn-open-admin" class="home-btn home-btn--compact home-btn--ghost js-no-start" hidden>Pannello admin</button>
+            <button type="button" id="btn-reset-pw" class="home-btn home-btn--compact home-btn--ghost js-no-start">Reset password</button>
+            <button type="button" id="btn-logout" class="home-btn home-btn--compact home-btn--danger js-no-start">Esci</button>
+          </div>
+        </section>
+      </div>
 
-      <section class="profile-panel" aria-labelledby="profile-heading-missions">
-        <h3 id="profile-heading-missions" class="profile-panel-title">Missioni</h3>
-        <p class="profile-panel-note profile-info--dim">Le run con un premio Plus attivo non contano per il progresso delle missioni; usa «Gioca puro» per farle avanzare.</p>
-        <div id="profile-missions-root" class="profile-missions-root"></div>
-      </section>
+      <div id="profile-panel-stats" class="profile-tab-panel" role="tabpanel" aria-labelledby="profile-tab-stats" hidden>
+        <section class="profile-panel" aria-labelledby="profile-heading-stats">
+          <h3 id="profile-heading-stats" class="profile-panel-title">Statistiche</h3>
+          <p id="profile-best-main" class="profile-info"></p>
+          <p id="profile-best-pure" class="profile-info profile-info--dim" hidden></p>
+          <p id="profile-info-total-games" class="profile-info"></p>
+          <p id="profile-info-total-playtime" class="profile-info"></p>
+          <p class="profile-panel-note profile-info--dim profile-stats-subhead">Altri numeri</p>
+          <div id="profile-stats-extra-root" class="profile-stats-extra-root"></div>
+          <p class="profile-panel-note profile-info--dim profile-stats-subhead">Bonus raccolti (totale)</p>
+          <div class="profile-color-stats">
+            <div class="profile-color-stat profile-color-stat--red"><span class="profile-color-dot"></span><span id="profile-stat-red">0</span></div>
+            <div class="profile-color-stat profile-color-stat--blue"><span class="profile-color-dot"></span><span id="profile-stat-blue">0</span></div>
+            <div class="profile-color-stat profile-color-stat--yellow"><span class="profile-color-dot"></span><span id="profile-stat-yellow">0</span></div>
+            <div class="profile-color-stat profile-color-stat--green"><span class="profile-color-dot"></span><span id="profile-stat-green">0</span></div>
+            <div class="profile-color-stat profile-color-stat--purple"><span class="profile-color-dot"></span><span id="profile-stat-purple">0</span></div>
+          </div>
+          <p class="profile-panel-note profile-info--dim profile-stats-subhead">Ultime 10 partite</p>
+          <div id="profile-recent-games-root" class="profile-recent-games-root"></div>
+        </section>
+      </div>
 
-      <section class="profile-panel" aria-labelledby="profile-heading-rewards">
-        <h3 id="profile-heading-rewards" class="profile-panel-title">Premi Plus</h3>
-        <p class="profile-panel-note profile-info--dim">Potrai scegliere un premio all’inizio di ogni partita se ne hai almeno uno in tasca.</p>
-        <div id="profile-prizes-grid" class="profile-prizes-grid"></div>
-      </section>
+      <div id="profile-panel-mix" class="profile-tab-panel" role="tabpanel" aria-labelledby="profile-tab-mix" hidden>
+        <section class="profile-panel" aria-labelledby="profile-heading-missions">
+          <h3 id="profile-heading-missions" class="profile-panel-title">Missioni</h3>
+          <p class="profile-panel-note profile-info--dim">Le run con un premio Plus attivo non contano per il progresso delle missioni; usa «Gioca puro» per farle avanzare.</p>
+          <div id="profile-missions-root" class="profile-missions-root"></div>
+        </section>
+      </div>
+
+      <div id="profile-panel-prizes" class="profile-tab-panel" role="tabpanel" aria-labelledby="profile-tab-prizes" hidden>
+        <section class="profile-panel" aria-labelledby="profile-heading-rewards">
+          <h3 id="profile-heading-rewards" class="profile-panel-title">Premi Plus</h3>
+          <p class="profile-panel-note profile-info--dim">Potrai scegliere un premio all’inizio di ogni partita se ne hai almeno uno in tasca.</p>
+          <div id="profile-prizes-grid" class="profile-prizes-grid"></div>
+        </section>
+      </div>
     </div>
 
     <div class="profile-guest-stack">

@@ -1402,6 +1402,38 @@ canvas {
 }
 .leaderboard-tab:active { opacity: 0.88; }
 
+/* Tab profilo (4 voci; riusa .leaderboard-tab) */
+.profile-tab-strip {
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  row-gap: 0.35rem;
+}
+.profile-tab-strip .leaderboard-tab {
+  flex: 1 1 calc(50% - 0.2rem);
+  min-width: 4.5rem;
+  max-width: calc(50% - 0.15rem);
+  font-size: 0.56rem;
+  padding: 0.42rem 0.35rem;
+  letter-spacing: 0.1em;
+}
+@media (min-width: 26rem) {
+  .profile-tab-strip {
+    flex-wrap: nowrap;
+  }
+  .profile-tab-strip .leaderboard-tab {
+    flex: 1;
+    max-width: none;
+    min-width: 0;
+  }
+}
+.profile-tab-panel {
+  width: 100%;
+  box-sizing: border-box;
+}
+.profile-tab-panel[hidden] {
+  display: none !important;
+}
+
 /* Profilo */
 .profile-info { font-size:0.88rem; letter-spacing:0.06em; color:#fff; text-align:center; }
 .profile-info--dim { color:rgba(255,255,255,0.45); font-size:0.75rem; }
@@ -1530,6 +1562,98 @@ canvas {
 .profile-color-stat--yellow .profile-color-dot { background: #e9c81a; }
 .profile-color-stat--green .profile-color-dot { background: #34cc6e; }
 .profile-color-stat--purple .profile-color-dot { background: #a855f7; }
+
+.profile-stats-subhead {
+  margin-top: 0.65rem !important;
+}
+.profile-stats-kpi-line {
+  font-size: 0.72rem !important;
+  letter-spacing: 0.05em !important;
+  text-align: center;
+  max-width: 20rem;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.profile-recent-games-root {
+  width: 100%;
+}
+.profile-recent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+}
+.profile-recent-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 0.45rem;
+  row-gap: 0.22rem;
+  padding: 0.42rem 0.5rem;
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  color: rgba(235, 240, 255, 0.88);
+}
+.profile-recent-prize {
+  grid-column: 1;
+  grid-row: 1;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  align-self: center;
+}
+.profile-recent-dur {
+  grid-column: 2;
+  grid-row: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.profile-recent-when {
+  grid-column: 3;
+  grid-row: 1;
+  font-size: 0.58rem;
+  color: rgba(255, 255, 255, 0.42);
+  text-align: right;
+  white-space: nowrap;
+}
+.profile-recent-meta {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+.profile-recent-prize--pure {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.15);
+}
+.profile-recent-prize--red_plus {
+  background: #ff6b6b;
+  box-shadow: 0 0 8px rgba(255, 107, 107, 0.45);
+}
+.profile-recent-prize--blue_plus {
+  background: #6eb3ff;
+  box-shadow: 0 0 8px rgba(110, 179, 255, 0.45);
+}
+.profile-recent-prize--yellow_plus {
+  background: #e9c81a;
+  box-shadow: 0 0 8px rgba(233, 200, 26, 0.45);
+}
+.profile-recent-prize--green_plus {
+  background: #5ee9a0;
+  box-shadow: 0 0 8px rgba(94, 233, 160, 0.4);
+}
+.profile-recent-prize--purple_plus {
+  background: #d8b4fe;
+  box-shadow: 0 0 8px rgba(216, 180, 254, 0.45);
+}
 
 .profile-best-time-plus--red { color: #ff4444; font-weight: 600; }
 .profile-best-time-plus--blue { color: #4488ff; font-weight: 600; }

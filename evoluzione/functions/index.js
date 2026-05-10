@@ -343,12 +343,31 @@ async function upsertPlayerStatsIfMissing(uid) {
 app.get("/api/player/stats", requireAuth, async (req, res) => {
   try {
     await upsertPlayerStatsIfMissing(req.uid);
-    const [snap, bests] = await Promise.all([
-      db.collection("player_stats").doc(req.uid).get(),
-      profileBestFieldsForUid(req.uid),
+    const uid = req.uid;
+    const [snap, bests, recentSnap] = await Promise.all([
+      db.collection("player_stats").doc(uid).get(),
+      profileBestFieldsForUid(uid),
+      db.collection("recent_games")
+          .where("user_id", "==", uid)
+          .orderBy("played_at", "desc")
+          .limit(10)
+          .get(),
     ]);
     const base = snap.exists ? snap.data() || {} : {};
-    return res.json({ok: true, uid: req.uid, stats: {...base, ...bests}});
+    const recent_games = recentSnap.docs.map((d) => {
+      const x = d.data() || {};
+      const pu = x.prize_used;
+      const prizeUsed = pu == null || pu === "" ? null : String(pu).trim();
+      return {
+        id: d.id,
+        duration_seconds: safeNum(x.duration_seconds, 0),
+        level_reached: Math.floor(safeNum(x.level_reached, 0)),
+        death_cause: x.death_cause === "square" ? "square" : "triangle",
+        prize_used: prizeUsed,
+        played_at: statsIso(x.played_at),
+      };
+    });
+    return res.json({ok: true, uid, stats: {...base, ...bests}, recent_games});
   } catch (e) {
     logger.error("GET /api/player/stats", e);
     return res.status(500).json({error: "internal_error"});

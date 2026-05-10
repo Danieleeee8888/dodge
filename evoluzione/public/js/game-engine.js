@@ -516,6 +516,45 @@ function bindLeaderboardTabs() {
   });
 }
 
+/** Tab attiva sulla vista profilo (`#view-profile`). */
+let profileViewTab = 'personal';
+
+const PROFILE_TAB_MAP = {
+  personal: { tab: 'profile-tab-personal', panel: 'profile-panel-personal' },
+  stats: { tab: 'profile-tab-stats', panel: 'profile-panel-stats' },
+  mix: { tab: 'profile-tab-mix', panel: 'profile-panel-mix' },
+  prizes: { tab: 'profile-tab-prizes', panel: 'profile-panel-prizes' },
+};
+
+function syncProfileTabUi() {
+  for (const key of Object.keys(PROFILE_TAB_MAP)) {
+    const { tab, panel } = PROFILE_TAB_MAP[key];
+    const tabEl = document.getElementById(tab);
+    const panelEl = document.getElementById(panel);
+    const active = profileViewTab === key;
+    tabEl?.classList.toggle('leaderboard-tab--active', active);
+    tabEl?.setAttribute('aria-selected', active ? 'true' : 'false');
+    if (panelEl) panelEl.hidden = !active;
+  }
+}
+
+function bindProfileTabs() {
+  const root = document.getElementById('view-profile');
+  if (!root || root.dataset.profileTabsBound === '1') return;
+  root.dataset.profileTabsBound = '1';
+  const wire = (tabId, key) => {
+    document.getElementById(tabId)?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      profileViewTab = key;
+      syncProfileTabUi();
+    });
+  };
+  wire('profile-tab-personal', 'personal');
+  wire('profile-tab-stats', 'stats');
+  wire('profile-tab-mix', 'mix');
+  wire('profile-tab-prizes', 'prizes');
+}
+
 function renderRecordsInto(el) {
   if (!el) return;
   const isLbPage = el.id === 'records-block-lb';
@@ -839,7 +878,101 @@ function maybeShowPlusLaunchNotice(user) {
   overlay.setAttribute('aria-hidden', 'false');
 }
 
+function clearProfileStatsTabExtras() {
+  document.getElementById('profile-stats-extra-root')?.replaceChildren();
+  document.getElementById('profile-recent-games-root')?.replaceChildren();
+}
+
+function formatProfileRunDurationSeconds(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const hh = Math.floor(s / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  if (hh > 0) return `${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+function formatProfilePlayedAtIso(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function profileRecentPrizeClass(code) {
+  const c = String(code || '').trim();
+  return /^[a-z_]+$/.test(c) ? c : '';
+}
+
+function fillProfileStatsExtraLines(container, stats) {
+  if (!container) return;
+  container.replaceChildren();
+  const deathsTri = Math.floor(Number(stats.deaths_by_triangle || 0));
+  const deathsSq = Math.floor(Number(stats.deaths_by_square || 0));
+  const streak60 = Math.floor(Number(stats.current_streak_over_60s || 0));
+  const extras = Math.floor(Number(stats.extra_lives_used || 0));
+  const shields = Math.floor(Number(stats.shields_consumed || 0));
+  const whites = Math.floor(Number(stats.whites_killed_by_yellow || 0));
+  const over60 = Math.floor(Number(stats.runs_over_60s || 0));
+  const lines = [
+    `Morti: triangoli ${deathsTri} · quadrati ${deathsSq}`,
+    `Serie attuale ≥60s: ${streak60} · Partite ≥60s (totale): ${over60}`,
+    `Vite extra usate: ${extras} · Scudi: ${shields} · Bianchi eliminati (giallo): ${whites}`,
+  ];
+  for (const text of lines) {
+    const p = document.createElement('p');
+    p.className = 'profile-info profile-info--dim profile-stats-kpi-line';
+    p.textContent = text;
+    container.appendChild(p);
+  }
+}
+
+function renderProfileRecentGamesList(container, rows) {
+  if (!container) return;
+  container.replaceChildren();
+  if (rows === undefined) {
+    const p = document.createElement('p');
+    p.className = 'profile-info profile-info--dim profile-stats-kpi-line';
+    p.textContent = 'Ultime partite: serve deploy delle Functions (GET /api/player/stats con recent_games).';
+    container.appendChild(p);
+    return;
+  }
+  if (!rows.length) {
+    const p = document.createElement('p');
+    p.className = 'profile-info profile-info--dim profile-stats-kpi-line';
+    p.textContent = 'Nessuna partita registrata di recente.';
+    container.appendChild(p);
+    return;
+  }
+  const ul = document.createElement('ul');
+  ul.className = 'profile-recent-list';
+  for (const g of rows) {
+    const li = document.createElement('li');
+    li.className = 'profile-recent-row';
+    const dot = document.createElement('span');
+    const pc = profileRecentPrizeClass(g.prize_used);
+    dot.className = pc ? `profile-recent-prize profile-recent-prize--${pc}` : 'profile-recent-prize profile-recent-prize--pure';
+    dot.title = pc ? 'Run con premio Plus' : 'Run pura';
+    const durEl = document.createElement('span');
+    durEl.className = 'profile-recent-dur';
+    durEl.textContent = formatProfileRunDurationSeconds(g.duration_seconds);
+    const meta = document.createElement('span');
+    meta.className = 'profile-recent-meta';
+    const sq = g.death_cause === 'square';
+    meta.textContent = `${sq ? 'Quadrato' : 'Triangolo'} · liv. ${Math.floor(Number(g.level_reached) || 0)}`;
+    const whenEl = document.createElement('span');
+    whenEl.className = 'profile-recent-when';
+    whenEl.textContent = formatProfilePlayedAtIso(g.played_at);
+    li.append(dot, durEl, meta, whenEl);
+    ul.appendChild(li);
+  }
+  container.appendChild(ul);
+}
+
 async function setupProfileView() {
+  profileViewTab = 'personal';
+  syncProfileTabUi();
+
   const viewProfile = document.getElementById('view-profile');
   const usernameEl = document.getElementById('profile-info-username');
   const bestMainEl = document.getElementById('profile-best-main');
@@ -857,6 +990,8 @@ async function setupProfileView() {
     green: document.getElementById('profile-stat-green'),
     purple: document.getElementById('profile-stat-purple'),
   };
+  const statsExtraRoot = document.getElementById('profile-stats-extra-root');
+  const recentGamesRoot = document.getElementById('profile-recent-games-root');
   const guest = isGuestModeActive();
 
   viewProfile?.classList.toggle('view-profile--guest', guest);
@@ -864,11 +999,12 @@ async function setupProfileView() {
   document.querySelector('.profile-account-only')?.setAttribute('aria-hidden', guest ? 'true' : 'false');
 
   if (guest) {
+    clearProfileStatsTabExtras();
     if (usernameEl) usernameEl.textContent = 'Ospite (offline)';
     if (emailEl) emailEl.textContent = '';
     fillProfileBestStatRows(bestMainEl, bestPureEl, { generalMs: 0, pureMs: 0, prizeUsed: '', fmt });
     if (totalGamesEl) totalGamesEl.textContent = 'Partite giocate: -';
-    if (totalPlaytimeEl) totalPlaytimeEl.textContent = 'Tempo totale di gioco: -';
+    if (totalPlaytimeEl) totalPlaytimeEl.textContent = 'Tempo totale in partita: -';
     Object.values(colorMap).forEach((el) => { if (el) el.textContent = '0'; });
     if (displayInput) {
       displayInput.value = '';
@@ -879,7 +1015,10 @@ async function setupProfileView() {
     return;
   }
 
-  if (!currentUserId) return;
+  if (!currentUserId) {
+    clearProfileStatsTabExtras();
+    return;
+  }
   if (displayInput) displayInput.disabled = false;
   const profile = await getProfile(currentUserId).catch(() => null);
   if (usernameEl) usernameEl.textContent = profile?.username || currentUsername || '???';
@@ -913,14 +1052,18 @@ async function setupProfileView() {
         const hh = Math.floor(totalPlay / 3600);
         const mm = Math.floor((totalPlay % 3600) / 60);
         const ss = Math.floor(totalPlay % 60);
-        totalPlaytimeEl.textContent = `Tempo totale di gioco: ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+        totalPlaytimeEl.textContent = `Tempo totale in partita: ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
       }
       if (colorMap.red) colorMap.red.textContent = String(Math.floor(Number(stats.red_collected || 0)));
       if (colorMap.blue) colorMap.blue.textContent = String(Math.floor(Number(stats.blue_collected || 0)));
       if (colorMap.yellow) colorMap.yellow.textContent = String(Math.floor(Number(stats.yellow_collected || 0)));
       if (colorMap.green) colorMap.green.textContent = String(Math.floor(Number(stats.green_collected || 0)));
       if (colorMap.purple) colorMap.purple.textContent = String(Math.floor(Number(stats.purple_collected || 0)));
+      fillProfileStatsExtraLines(statsExtraRoot, stats);
+      const rawRecent = payload?.recent_games;
+      renderProfileRecentGamesList(recentGamesRoot, Array.isArray(rawRecent) ? rawRecent : undefined);
     } else {
+      clearProfileStatsTabExtras();
       fillProfileBestStatRows(bestMainEl, bestPureEl, {
         generalMs: Math.floor(Math.max(0, Number(profile?.bestTime) || 0)),
         pureMs: 0,
@@ -929,6 +1072,7 @@ async function setupProfileView() {
       });
     }
   } catch (_) {
+    clearProfileStatsTabExtras();
     fillProfileBestStatRows(bestMainEl, bestPureEl, {
       generalMs: Math.floor(Math.max(0, Number(profile?.bestTime) || 0)),
       pureMs: 0,
@@ -1080,6 +1224,7 @@ function bindHomeNav() {
   _navBound = true;
 
   bindLeaderboardTabs();
+  bindProfileTabs();
 
   // GIOCA
   document.getElementById('btn-play')?.addEventListener('click', e => {
