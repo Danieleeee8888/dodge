@@ -957,6 +957,18 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       if (best >= 210) distPlayers.over210 += 1;
     });
 
+    /** Partite (run) con durata in secondi ≥ soglia. */
+    const distGames = {over60: 0, over90: 0, over120: 0, over150: 0, over180: 0, over210: 0};
+    recentAllSnap.docs.forEach((d) => {
+      const duration = safeNum(d.data()?.duration_seconds, 0);
+      if (duration >= 60) distGames.over60 += 1;
+      if (duration >= 90) distGames.over90 += 1;
+      if (duration >= 120) distGames.over120 += 1;
+      if (duration >= 150) distGames.over150 += 1;
+      if (duration >= 180) distGames.over180 += 1;
+      if (duration >= 210) distGames.over210 += 1;
+    });
+
     let sum24 = 0;
     recent24hSnap.docs.forEach((d) => {
       sum24 += safeNum(d.data()?.duration_seconds, 0);
@@ -989,6 +1001,7 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       connected_sessions_now,
       avg_run_seconds_last_7d: recent7dSnap.size ? (sum7 / recent7dSnap.size) : 0,
       duration_distribution: distPlayers,
+      games_duration_distribution: distGames,
       top15,
       top10: top15,
     });

@@ -216,6 +216,16 @@ async function loadOverview() {
     ['≥210s', dist.over210 || 0],
   ].map(([k, v]) => `<p class="admin-list-row"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></p>`).join('');
 
+  const gamesDist = data?.games_duration_distribution || {};
+  document.getElementById('admin-games-distribution').innerHTML = [
+    ['≥60s', gamesDist.over60 || 0],
+    ['≥90s', gamesDist.over90 || 0],
+    ['≥120s', gamesDist.over120 || 0],
+    ['≥150s', gamesDist.over150 || 0],
+    ['≥180s', gamesDist.over180 || 0],
+    ['≥210s', gamesDist.over210 || 0],
+  ].map(([k, v]) => `<p class="admin-list-row"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></p>`).join('');
+
   const top = data?.top15 || data?.top10 || [];
   document.getElementById('admin-top10').innerHTML = top.map((r, i) =>
     `<p class="admin-list-row"><span>${i + 1}. ${escapeHtml(r.displayName || r.username || 'Player')}</span><strong>${fmtMs(Number(r.ms || 0))}</strong></p>`).join('');
