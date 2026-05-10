@@ -55,7 +55,6 @@ import {
   saveScore, fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
   invalidateLeaderboardUsernameMap,
 } from './leaderboard.js';
-import { fillProfileBestStatRows } from './profile-best-display.js';
 
 let currentUserId = null;
 /** Username account (fisso, registrazione). */
@@ -879,7 +878,8 @@ function maybeShowPlusLaunchNotice(user) {
 }
 
 function clearProfileStatsTabExtras() {
-  document.getElementById('profile-stats-extra-root')?.replaceChildren();
+  document.getElementById('profile-stats-best-card')?.replaceChildren();
+  document.getElementById('profile-stats-grid')?.replaceChildren();
   document.getElementById('profile-recent-games-root')?.replaceChildren();
 }
 
@@ -904,27 +904,91 @@ function profileRecentPrizeClass(code) {
   return /^[a-z_]+$/.test(c) ? c : '';
 }
 
-function fillProfileStatsExtraLines(container, stats) {
+/** Mappa codice Premio Plus → classe colore per il valore PB. */
+const PROFILE_BEST_PRIZE_COLOR_CLASS = Object.freeze({
+  red_plus: 'profile-best-time-plus--red',
+  blue_plus: 'profile-best-time-plus--blue',
+  yellow_plus: 'profile-best-time-plus--yellow',
+  green_plus: 'profile-best-time-plus--green',
+  purple_plus: 'profile-best-time-plus--purple',
+});
+
+function renderProfileBestCard(container, opts) {
   if (!container) return;
   container.replaceChildren();
-  const deathsTri = Math.floor(Number(stats.deaths_by_triangle || 0));
-  const deathsSq = Math.floor(Number(stats.deaths_by_square || 0));
-  const streak60 = Math.floor(Number(stats.current_streak_over_60s || 0));
-  const extras = Math.floor(Number(stats.extra_lives_used || 0));
-  const shields = Math.floor(Number(stats.shields_consumed || 0));
-  const whites = Math.floor(Number(stats.whites_killed_by_yellow || 0));
-  const over60 = Math.floor(Number(stats.runs_over_60s || 0));
-  const lines = [
-    `Morti: triangoli ${deathsTri} · quadrati ${deathsSq}`,
-    `Serie attuale ≥60s: ${streak60} · Partite ≥60s (totale): ${over60}`,
-    `Vite extra usate: ${extras} · Scudi: ${shields} · Bianchi eliminati (giallo): ${whites}`,
-  ];
-  for (const text of lines) {
-    const p = document.createElement('p');
-    p.className = 'profile-info profile-info--dim profile-stats-kpi-line';
-    p.textContent = text;
-    container.appendChild(p);
+  const generalMs = Math.floor(Math.max(0, Number(opts?.generalMs) || 0));
+  const pureMs = Math.floor(Math.max(0, Number(opts?.pureMs) || 0));
+  const prizeUsed = opts?.prizeUsed ? String(opts.prizeUsed).trim() : '';
+  const fmtFn = typeof opts?.fmt === 'function' ? opts.fmt : (v) => String(v);
+
+  const label = document.createElement('span');
+  label.className = 'profile-stats-best-label';
+  label.textContent = 'Miglior tempo';
+
+  const value = document.createElement('span');
+  value.className = 'profile-stats-best-value';
+  if (generalMs < 1) {
+    value.textContent = '—';
+  } else {
+    value.textContent = fmtFn(generalMs);
+    const prizeClass = PROFILE_BEST_PRIZE_COLOR_CLASS[prizeUsed];
+    if (prizeClass) value.classList.add(prizeClass);
   }
+
+  container.appendChild(label);
+  container.appendChild(value);
+
+  const showPure = generalMs >= 1 && pureMs >= 1 && pureMs !== generalMs;
+  if (showPure || (generalMs >= 1 && pureMs < 1)) {
+    const pure = document.createElement('span');
+    pure.className = 'profile-stats-best-pure';
+    pure.textContent = `Puro: ${pureMs >= 1 ? fmtFn(pureMs) : '—'}`;
+    container.appendChild(pure);
+  }
+}
+
+function formatStatsPlaytime(totalSeconds) {
+  const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const hh = Math.floor(s / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+function appendProfileStatsKpiCard(container, label, value, opts = {}) {
+  const article = document.createElement('article');
+  article.className = 'profile-stats-kpi';
+  if (opts.wide) article.classList.add('profile-stats-kpi--wide');
+  const h = document.createElement('h4');
+  h.textContent = label;
+  const p = document.createElement('p');
+  p.textContent = String(value);
+  article.append(h, p);
+  container.appendChild(article);
+}
+
+function renderProfileStatsKpiGrid(container, stats) {
+  if (!container) return;
+  container.replaceChildren();
+  const totalGames = Math.floor(Number(stats?.total_games || 0));
+  const totalPlay = Number(stats?.total_playtime_seconds || 0);
+  const deathsTri = Math.floor(Number(stats?.deaths_by_triangle || 0));
+  const deathsSq = Math.floor(Number(stats?.deaths_by_square || 0));
+  const streak60 = Math.floor(Number(stats?.current_streak_over_60s || 0));
+  const over60 = Math.floor(Number(stats?.runs_over_60s || 0));
+  const extras = Math.floor(Number(stats?.extra_lives_used || 0));
+  const shields = Math.floor(Number(stats?.shields_consumed || 0));
+  const whites = Math.floor(Number(stats?.whites_killed_by_yellow || 0));
+
+  appendProfileStatsKpiCard(container, 'Partite giocate', totalGames);
+  appendProfileStatsKpiCard(container, 'Tempo totale', formatStatsPlaytime(totalPlay));
+  appendProfileStatsKpiCard(container, 'Morti triangoli', deathsTri);
+  appendProfileStatsKpiCard(container, 'Morti quadrati', deathsSq);
+  appendProfileStatsKpiCard(container, 'Serie attuale ≥60s', streak60);
+  appendProfileStatsKpiCard(container, 'Partite ≥60s', over60);
+  appendProfileStatsKpiCard(container, 'Vite extra usate', extras);
+  appendProfileStatsKpiCard(container, 'Scudi consumati', shields);
+  appendProfileStatsKpiCard(container, 'Bianchi eliminati (giallo)', whites, { wide: true });
 }
 
 function renderProfileRecentGamesList(container, rows) {
@@ -975,14 +1039,12 @@ async function setupProfileView() {
 
   const viewProfile = document.getElementById('view-profile');
   const usernameEl = document.getElementById('profile-info-username');
-  const bestMainEl = document.getElementById('profile-best-main');
-  const bestPureEl = document.getElementById('profile-best-pure');
+  const bestCardEl = document.getElementById('profile-stats-best-card');
+  const statsGridEl = document.getElementById('profile-stats-grid');
   const displayInput = document.getElementById('profile-display-name');
   const emailEl = document.getElementById('profile-info-email');
   const msgEl = document.getElementById('profile-msg');
   const openAdminBtn = document.getElementById('btn-open-admin');
-  const totalGamesEl = document.getElementById('profile-info-total-games');
-  const totalPlaytimeEl = document.getElementById('profile-info-total-playtime');
   const colorMap = {
     red: document.getElementById('profile-stat-red'),
     blue: document.getElementById('profile-stat-blue'),
@@ -990,7 +1052,6 @@ async function setupProfileView() {
     green: document.getElementById('profile-stat-green'),
     purple: document.getElementById('profile-stat-purple'),
   };
-  const statsExtraRoot = document.getElementById('profile-stats-extra-root');
   const recentGamesRoot = document.getElementById('profile-recent-games-root');
   const guest = isGuestModeActive();
 
@@ -1002,9 +1063,8 @@ async function setupProfileView() {
     clearProfileStatsTabExtras();
     if (usernameEl) usernameEl.textContent = 'Ospite (offline)';
     if (emailEl) emailEl.textContent = '';
-    fillProfileBestStatRows(bestMainEl, bestPureEl, { generalMs: 0, pureMs: 0, prizeUsed: '', fmt });
-    if (totalGamesEl) totalGamesEl.textContent = 'Partite giocate: -';
-    if (totalPlaytimeEl) totalPlaytimeEl.textContent = 'Tempo totale in partita: -';
+    renderProfileBestCard(bestCardEl, { generalMs: 0, pureMs: 0, prizeUsed: '', fmt });
+    renderProfileStatsKpiGrid(statsGridEl, {});
     Object.values(colorMap).forEach((el) => { if (el) el.textContent = '0'; });
     if (displayInput) {
       displayInput.value = '';
@@ -1044,41 +1104,34 @@ async function setupProfileView() {
       if (generalMs < 1) generalMs = Math.floor(Math.max(0, Number(profile?.bestTime) || 0));
       const pureMs = Math.floor(Number(stats.best_pure_ms || 0));
       const prizeUsed = String(stats.best_general_prize_used || '').trim();
-      fillProfileBestStatRows(bestMainEl, bestPureEl, { generalMs, pureMs, prizeUsed, fmt });
-      const totalGames = Number(stats.total_games || 0);
-      const totalPlay = Number(stats.total_playtime_seconds || 0);
-      if (totalGamesEl) totalGamesEl.textContent = `Partite giocate: ${totalGames}`;
-      if (totalPlaytimeEl) {
-        const hh = Math.floor(totalPlay / 3600);
-        const mm = Math.floor((totalPlay % 3600) / 60);
-        const ss = Math.floor(totalPlay % 60);
-        totalPlaytimeEl.textContent = `Tempo totale in partita: ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-      }
+      renderProfileBestCard(bestCardEl, { generalMs, pureMs, prizeUsed, fmt });
+      renderProfileStatsKpiGrid(statsGridEl, stats);
       if (colorMap.red) colorMap.red.textContent = String(Math.floor(Number(stats.red_collected || 0)));
       if (colorMap.blue) colorMap.blue.textContent = String(Math.floor(Number(stats.blue_collected || 0)));
       if (colorMap.yellow) colorMap.yellow.textContent = String(Math.floor(Number(stats.yellow_collected || 0)));
       if (colorMap.green) colorMap.green.textContent = String(Math.floor(Number(stats.green_collected || 0)));
       if (colorMap.purple) colorMap.purple.textContent = String(Math.floor(Number(stats.purple_collected || 0)));
-      fillProfileStatsExtraLines(statsExtraRoot, stats);
       const rawRecent = payload?.recent_games;
       renderProfileRecentGamesList(recentGamesRoot, Array.isArray(rawRecent) ? rawRecent : undefined);
     } else {
       clearProfileStatsTabExtras();
-      fillProfileBestStatRows(bestMainEl, bestPureEl, {
+      renderProfileBestCard(bestCardEl, {
         generalMs: Math.floor(Math.max(0, Number(profile?.bestTime) || 0)),
         pureMs: 0,
         prizeUsed: '',
         fmt,
       });
+      renderProfileStatsKpiGrid(statsGridEl, {});
     }
   } catch (_) {
     clearProfileStatsTabExtras();
-    fillProfileBestStatRows(bestMainEl, bestPureEl, {
+    renderProfileBestCard(bestCardEl, {
       generalMs: Math.floor(Math.max(0, Number(profile?.bestTime) || 0)),
       pureMs: 0,
       prizeUsed: '',
       fmt,
     });
+    renderProfileStatsKpiGrid(statsGridEl, {});
   }
   await refreshProfileMissionsAndPrizes().catch(() => {});
 }
