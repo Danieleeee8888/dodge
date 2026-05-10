@@ -1,7 +1,7 @@
-import { db } from './firebase-init.js';
+import { db, auth } from './firebase-init.js';
 import { resolveDisplayName } from './profile.js';
 import {
-  collection, doc, getDoc, updateDoc, query, orderBy, limit, getDocs,
+  collection, doc, getDoc, updateDoc, query, orderBy, limit, getDocs, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 /** Lunghezza classifica globale (generale e pura). */
@@ -201,10 +201,38 @@ export function applyOptimisticScore(uid, displayName, ms, prizeUsed = null) {
   _cacheGeneral = _cacheGeneral.sort((a, b) => b.ms - a.ms).slice(0, LEADERBOARD_TOP_N);
 }
 
+async function publishBestFromProfileWithRetry(maxAttempts = 4) {
+  const user = auth.currentUser;
+  if (!user) return { ok: false, reason: 'no_auth' };
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/game/publish-best-from-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: '{}',
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (res.ok && payload.ok) {
+        return {
+          ok: true,
+          inTop15: !!(payload.inTop15 ?? payload.inTop10),
+        };
+      }
+    } catch (_) {}
+    await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+  }
+  return { ok: false, reason: 'publish_failed' };
+}
+
 /**
- * Salva il punteggio (fallback se /api/game/end non disponibile): trattato come run pura.
+ * Fallback se `/api/game/end` fallisce: aggiorna il profilo e pubblica su classifica via API backend.
+ * `runPrizeUsed`: codice Premio Plus della run (come `pending_run_prize`), altrimenti null per run pura.
  */
-export async function saveScore(uid, ms) {
+export async function saveScore(uid, ms, runPrizeUsed = null) {
   const t = Math.floor(ms);
   if (!isValidMs(t)) return { ok: false, reason: 'invalid' };
 
@@ -222,21 +250,30 @@ export async function saveScore(uid, ms) {
     const improved = t > currentBest;
 
     const updates = { gamesPlayed: (data.gamesPlayed || 0) + 1 };
-    if (improved) updates.bestTime = t;
+    if (improved) {
+      updates.bestTime = t;
+      const p = runPrizeUsed == null || runPrizeUsed === ''
+        ? null
+        : String(runPrizeUsed).trim();
+      if (p) updates.bestTime_prize_used = p;
+      else updates.bestTime_prize_used = deleteField();
+    }
     await updateDoc(userRef, updates);
 
     if (!improved) return { ok: true, improved: false };
 
-    const lb = await fetchLeaderboard('general', LEADERBOARD_TOP_N);
-    const myEntry = lb.find(r => r.uid === uid);
-    const worstMs = lb.length > 0 ? lb[lb.length - 1].ms : 0;
-    const inTop15 = lb.length < LEADERBOARD_TOP_N || myEntry !== undefined || t > worstMs;
+    const pub = await publishBestFromProfileWithRetry();
+    await fetchBothLeaderboards().catch(() => {});
+    if (!pub.ok) {
+      return { ok: false, improved: true, reason: pub.reason || 'publish_failed' };
+    }
 
-    if (!inTop15) return { ok: true, improved: true, inTop15: false, inTop10: false };
-
-    await fetchLeaderboard('general', LEADERBOARD_TOP_N);
-    await fetchLeaderboard('pure', LEADERBOARD_TOP_N).catch(() => {});
-    return { ok: true, improved: true, inTop15: true, inTop10: true };
+    return {
+      ok: true,
+      improved: true,
+      inTop15: !!pub.inTop15,
+      inTop10: !!pub.inTop15,
+    };
 
   } catch (e) {
     const reason = e.code === 'permission-denied' ? 'permission' : 'network';

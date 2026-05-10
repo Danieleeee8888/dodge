@@ -562,6 +562,98 @@ app.post("/api/game/start", requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * Dopo fallback client su `users` (bestTime): pubblica su scores + leaderboard coerenti col profilo.
+ * Fonte di verità: solo dati letti da `users/{uid}` lato server.
+ */
+app.post("/api/game/publish-best-from-profile", requireAuth, async (req, res) => {
+  try {
+    const uid = req.uid;
+    const userSnap = await db.collection("users").doc(uid).get();
+    if (!userSnap.exists) return res.status(404).json({error: "no_profile"});
+    const u = userSnap.data() || {};
+    const runMs = Math.floor(safeNum(u.bestTime, 0));
+    if (runMs < 1 || runMs > 7200000) {
+      return res.status(400).json({error: "invalid_bestTime", bestTime: u.bestTime});
+    }
+
+    const displayName = String(u.displayName || u.username || "Player").slice(0, 24);
+    let prizeUsedForLeaderboards = null;
+    const raw = u.bestTime_prize_used;
+    if (raw != null && raw !== "") {
+      const ps = String(raw).trim();
+      if (PRIZE_CODES.includes(ps)) prizeUsedForLeaderboards = ps;
+    }
+
+    let inTop15Result = false;
+
+    await db.runTransaction(async (tx) => {
+      const pureLbRef = db.collection("leaderboard_pure").doc(uid);
+      let pureLbSnap = null;
+      if (!prizeUsedForLeaderboards) {
+        pureLbSnap = await tx.get(pureLbRef);
+      }
+
+      const lbQuery = db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N);
+      const lbSnap = await tx.get(lbQuery);
+
+      const rows = lbSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const myEntry = rows.find((r) => r.uid === uid || r.id === uid);
+      const worstMs = rows.length > 0 ? rows[rows.length - 1].ms : 0;
+      const inTop15 = rows.length < LEADERBOARD_TOP_N || myEntry !== undefined || runMs > worstMs;
+
+      const scoreRef = db.collection("scores").doc();
+      const scorePayload = {
+        uid,
+        displayName,
+        ms: runMs,
+        createdAt: nowTs(),
+      };
+      if (prizeUsedForLeaderboards) {
+        scorePayload.prize_used = prizeUsedForLeaderboards;
+      }
+
+      const lbRow = {
+        uid,
+        displayName,
+        ms: runMs,
+        updatedAt: nowTs(),
+        prize_used: prizeUsedForLeaderboards
+          ? prizeUsedForLeaderboards
+          : admin.firestore.FieldValue.delete(),
+      };
+
+      tx.set(scoreRef, scorePayload);
+
+      if (inTop15) {
+        tx.set(db.collection("leaderboard").doc(uid), lbRow, {merge: true});
+        inTop15Result = true;
+      }
+
+      if (!prizeUsedForLeaderboards && pureLbSnap) {
+        const pureBestMs = pureLbSnap.exists ? safeNum(pureLbSnap.data().ms, 0) : 0;
+        if (runMs > pureBestMs) {
+          tx.set(pureLbRef, {
+            uid,
+            displayName,
+            ms: runMs,
+            updatedAt: nowTs(),
+          }, {merge: true});
+        }
+      }
+    });
+
+    return res.json({
+      ok: true,
+      inTop15: inTop15Result,
+      inTop10: inTop15Result,
+    });
+  } catch (e) {
+    logger.error("POST /api/game/publish-best-from-profile", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
 app.post("/api/game/end", requireAuth, async (req, res) => {
   try {
     const body = req.body || {};
@@ -582,10 +674,10 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
     const statsRef = db.collection("player_stats").doc(uid);
     const recentRef = db.collection("recent_games").doc();
     let shouldUpdateLeaderboard = false;
-    let userBestMs = 0;
     let displayName = "";
     /** Impostato nella transaction: premio Plus effettivo per questa run (per score/classifica generale). */
     let prizeUsedForLeaderboards = null;
+    let inTop15Result = false;
     /** @type {{ mission_warning?: string, mission_completed?: boolean }} */
     const responseExtra = {};
 
@@ -712,6 +804,46 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         }
       }
 
+      const userBestMs = safeNum(user.bestTime, 0);
+      const runMsTx = Math.floor(duration * 1000);
+      const newBestMs = Math.max(userBestMs, runMsTx);
+      shouldUpdateLeaderboard = newBestMs > userBestMs;
+
+      const pureLbRef = db.collection("leaderboard_pure").doc(uid);
+      let pureLbSnap = null;
+      if (!prizeUsedEffective) {
+        pureLbSnap = await tx.get(pureLbRef);
+      }
+
+      const lbQuery = db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N);
+      const lbSnap = await tx.get(lbQuery);
+
+      const rows = lbSnap.docs.map((d) => ({id: d.id, ...d.data()}));
+      const myEntry = rows.find((r) => r.uid === uid || r.id === uid);
+      const worstMs = rows.length > 0 ? rows[rows.length - 1].ms : 0;
+      const inTop15 = rows.length < LEADERBOARD_TOP_N || myEntry !== undefined || runMsTx > worstMs;
+
+      const scoreRef = db.collection("scores").doc();
+      const scorePayload = {
+        uid,
+        displayName,
+        ms: runMsTx,
+        createdAt: nowTs(),
+      };
+      if (prizeUsedForLeaderboards) {
+        scorePayload.prize_used = prizeUsedForLeaderboards;
+      }
+
+      const lbRow = {
+        uid,
+        displayName,
+        ms: runMsTx,
+        updatedAt: nowTs(),
+        prize_used: prizeUsedForLeaderboards
+          ? prizeUsedForLeaderboards
+          : admin.firestore.FieldValue.delete(),
+      };
+
       tx.set(statsRef, next, {merge: true});
       tx.set(recentRef, {
         user_id: uid,
@@ -724,11 +856,7 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         played_at: nowTs(),
       });
 
-      userBestMs = safeNum(user.bestTime, 0);
-      const runMsTx = Math.floor(duration * 1000);
-      const newBestMs = Math.max(userBestMs, runMsTx);
       if (newBestMs > userBestMs) {
-        shouldUpdateLeaderboard = true;
         const userPbPatch = {
           bestTime: newBestMs,
           gamesPlayed: safeNum(user.gamesPlayed, 0) + 1,
@@ -748,10 +876,8 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       }
 
       // Classifica «pura»: solo run senza Premio Plus attivo.
-      if (!prizeUsedEffective) {
-        const pureLbRef = db.collection("leaderboard_pure").doc(uid);
-        const pureSnap = await tx.get(pureLbRef);
-        const pureBestMs = pureSnap.exists ? safeNum(pureSnap.data().ms, 0) : 0;
+      if (!prizeUsedEffective && pureLbSnap) {
+        const pureBestMs = pureLbSnap.exists ? safeNum(pureLbSnap.data().ms, 0) : 0;
         if (runMsTx > pureBestMs) {
           tx.set(pureLbRef, {
             uid,
@@ -761,41 +887,14 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
           }, {merge: true});
         }
       }
-    });
 
-    const runMs = Math.floor(duration * 1000);
-    const scorePayload = {
-      uid,
-      displayName,
-      ms: runMs,
-      createdAt: nowTs(),
-    };
-    if (prizeUsedForLeaderboards) {
-      scorePayload.prize_used = prizeUsedForLeaderboards;
-    }
-    await db.collection("scores").add(scorePayload);
+      tx.set(scoreRef, scorePayload);
 
-    let inTop15Result = false;
-    if (shouldUpdateLeaderboard) {
-      const lbSnap = await db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N).get();
-      const rows = lbSnap.docs.map((d) => ({id: d.id, ...d.data()}));
-      const myEntry = rows.find((r) => r.uid === uid || r.id === uid);
-      const worstMs = rows.length > 0 ? rows[rows.length - 1].ms : 0;
-      const inTop15 = rows.length < LEADERBOARD_TOP_N || myEntry !== undefined || runMs > worstMs;
-      if (inTop15) {
-        const lbRow = {
-          uid,
-          displayName,
-          ms: runMs,
-          updatedAt: nowTs(),
-          prize_used: prizeUsedForLeaderboards
-            ? prizeUsedForLeaderboards
-            : admin.firestore.FieldValue.delete(),
-        };
-        await db.collection("leaderboard").doc(uid).set(lbRow, {merge: true});
+      if (shouldUpdateLeaderboard && inTop15) {
+        tx.set(db.collection("leaderboard").doc(uid), lbRow, {merge: true});
         inTop15Result = true;
       }
-    }
+    });
 
     const overflow = await db.collection("recent_games")
         .where("user_id", "==", uid)

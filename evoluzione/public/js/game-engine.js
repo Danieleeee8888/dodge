@@ -2204,10 +2204,14 @@ function die(opts = {}) {
           apiOk = false;
         }
         if (!apiOk) {
-          const result = await saveScore(currentUserId, diedElapsed);
+          const result = await saveScore(currentUserId, diedElapsed, currentRunPrize || null);
           if (!result || !result.ok) {
             const msg = result?.reason === 'permission'
               ? 'verifica l\'email per salvare i record'
+              : result?.reason === 'publish_failed'
+              ? 'record sul profilo ok — se la classifica non si aggiorna, riaprila tra qualche secondo o riprova'
+              : result?.reason === 'no_auth'
+              ? 'sessione non valida — effettua di nuovo l\'accesso'
               : 'errore di rete ? punteggio non salvato';
             if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
           } else {
