@@ -974,21 +974,19 @@ function renderProfileStatsKpiGrid(container, stats) {
   const totalPlay = Number(stats?.total_playtime_seconds || 0);
   const deathsTri = Math.floor(Number(stats?.deaths_by_triangle || 0));
   const deathsSq = Math.floor(Number(stats?.deaths_by_square || 0));
-  const streak60 = Math.floor(Number(stats?.current_streak_over_60s || 0));
   const over60 = Math.floor(Number(stats?.runs_over_60s || 0));
-  const extras = Math.floor(Number(stats?.extra_lives_used || 0));
-  const shields = Math.floor(Number(stats?.shields_consumed || 0));
-  const whites = Math.floor(Number(stats?.whites_killed_by_yellow || 0));
+  const over90 = Math.floor(Number(stats?.runs_over_90s || 0));
+  const over120 = Math.floor(Number(stats?.runs_over_120s || 0));
+  const over180 = Math.floor(Number(stats?.runs_over_180s || 0));
 
   appendProfileStatsKpiCard(container, 'Partite giocate', totalGames);
   appendProfileStatsKpiCard(container, 'Tempo totale', formatStatsPlaytime(totalPlay));
   appendProfileStatsKpiCard(container, 'Morti triangoli', deathsTri);
   appendProfileStatsKpiCard(container, 'Morti quadrati', deathsSq);
-  appendProfileStatsKpiCard(container, 'Serie attuale ≥60s', streak60);
-  appendProfileStatsKpiCard(container, 'Partite ≥60s', over60);
-  appendProfileStatsKpiCard(container, 'Vite extra usate', extras);
-  appendProfileStatsKpiCard(container, 'Scudi consumati', shields);
-  appendProfileStatsKpiCard(container, 'Bianchi eliminati (giallo)', whites, { wide: true });
+  appendProfileStatsKpiCard(container, '≥ 1 min', over60);
+  appendProfileStatsKpiCard(container, '≥ 1 min 30s', over90);
+  appendProfileStatsKpiCard(container, '≥ 2 min', over120);
+  appendProfileStatsKpiCard(container, '≥ 3 min', over180);
 }
 
 function renderProfileRecentGamesList(container, rows) {
