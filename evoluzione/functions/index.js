@@ -123,6 +123,21 @@ function safeNum(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+const RUN_ID_REGEX = /^[a-zA-Z0-9-]{1,64}$/;
+
+/**
+ * Estrae e valida `run_id` da un body request.
+ * - assente/vuoto → {ok:true, value:null} (fase di transizione: client vecchi senza run_id)
+ * - presente e con formato valido → {ok:true, value:'<run_id>'}
+ * - presente ma formato invalido → {ok:false}
+ */
+function parseRunId(raw) {
+  if (raw == null || raw === "") return {ok: true, value: null};
+  const s = String(raw);
+  if (!RUN_ID_REGEX.test(s)) return {ok: false};
+  return {ok: true, value: s};
+}
+
 function capCollected(val) {
   return Math.min(Math.max(0, Math.floor(safeNum(val, 0))), 30);
 }
@@ -543,7 +558,8 @@ app.post("/api/missions/cancel", requireAuth, async (req, res) => {
 
 app.post("/api/game/start", requireAuth, async (req, res) => {
   try {
-    const raw = (req.body || {}).prize_code;
+    const body = req.body || {};
+    const raw = body.prize_code;
     let prizeCode = null;
     if (raw != null && raw !== "") {
       const p = String(raw).trim();
@@ -552,6 +568,11 @@ app.post("/api/game/start", requireAuth, async (req, res) => {
       }
       prizeCode = p;
     }
+    const runIdParsed = parseRunId(body.run_id);
+    if (!runIdParsed.ok) return res.status(400).json({error: "invalid_run_id"});
+    const runId = runIdParsed.value;
+    if (runId == null) return res.status(400).json({error: "run_id_required"});
+
     const uid = req.uid;
     const statsRef = db.collection("player_stats").doc(uid);
     await db.runTransaction(async (tx) => {
@@ -567,6 +588,7 @@ app.post("/api/game/start", requireAuth, async (req, res) => {
         user_id: uid,
         prizes,
         pending_run_prize: prizeCode,
+        pending_run_id: runId,
         game_started_at: admin.firestore.FieldValue.serverTimestamp(),
         updated_at: nowTs(),
       }, {merge: true});
@@ -581,101 +603,14 @@ app.post("/api/game/start", requireAuth, async (req, res) => {
   }
 });
 
-/**
- * Dopo fallback client su `users` (bestTime): pubblica su scores + leaderboard coerenti col profilo.
- * Fonte di verità: solo dati letti da `users/{uid}` lato server.
- */
-app.post("/api/game/publish-best-from-profile", requireAuth, async (req, res) => {
-  try {
-    const uid = req.uid;
-    const userSnap = await db.collection("users").doc(uid).get();
-    if (!userSnap.exists) return res.status(404).json({error: "no_profile"});
-    const u = userSnap.data() || {};
-    const runMs = Math.floor(safeNum(u.bestTime, 0));
-    if (runMs < 1 || runMs > 7200000) {
-      return res.status(400).json({error: "invalid_bestTime", bestTime: u.bestTime});
-    }
-
-    const displayName = String(u.displayName || u.username || "Player").slice(0, 24);
-    let prizeUsedForLeaderboards = null;
-    const raw = u.bestTime_prize_used;
-    if (raw != null && raw !== "") {
-      const ps = String(raw).trim();
-      if (PRIZE_CODES.includes(ps)) prizeUsedForLeaderboards = ps;
-    }
-
-    let inTop15Result = false;
-
-    await db.runTransaction(async (tx) => {
-      const pureLbRef = db.collection("leaderboard_pure").doc(uid);
-      let pureLbSnap = null;
-      if (!prizeUsedForLeaderboards) {
-        pureLbSnap = await tx.get(pureLbRef);
-      }
-
-      const lbQuery = db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N);
-      const lbSnap = await tx.get(lbQuery);
-
-      const rows = lbSnap.docs.map((d) => ({id: d.id, ...d.data()}));
-      const myEntry = rows.find((r) => r.uid === uid || r.id === uid);
-      const worstMs = rows.length > 0 ? rows[rows.length - 1].ms : 0;
-      const inTop15 = rows.length < LEADERBOARD_TOP_N || myEntry !== undefined || runMs > worstMs;
-
-      const scoreRef = db.collection("scores").doc();
-      const scorePayload = {
-        uid,
-        displayName,
-        ms: runMs,
-        createdAt: nowTs(),
-      };
-      if (prizeUsedForLeaderboards) {
-        scorePayload.prize_used = prizeUsedForLeaderboards;
-      }
-
-      const lbRow = {
-        uid,
-        displayName,
-        ms: runMs,
-        updatedAt: nowTs(),
-        prize_used: prizeUsedForLeaderboards
-          ? prizeUsedForLeaderboards
-          : admin.firestore.FieldValue.delete(),
-      };
-
-      tx.set(scoreRef, scorePayload);
-
-      if (inTop15) {
-        tx.set(db.collection("leaderboard").doc(uid), lbRow, {merge: true});
-        inTop15Result = true;
-      }
-
-      if (!prizeUsedForLeaderboards && pureLbSnap) {
-        const pureBestMs = pureLbSnap.exists ? safeNum(pureLbSnap.data().ms, 0) : 0;
-        if (runMs > pureBestMs) {
-          tx.set(pureLbRef, {
-            uid,
-            displayName,
-            ms: runMs,
-            updatedAt: nowTs(),
-          }, {merge: true});
-        }
-      }
-    });
-
-    return res.json({
-      ok: true,
-      inTop15: inTop15Result,
-      inTop10: inTop15Result,
-    });
-  } catch (e) {
-    logger.error("POST /api/game/publish-best-from-profile", e);
-    return res.status(500).json({error: "internal_error"});
-  }
-});
-
 app.post("/api/game/end", requireAuth, async (req, res) => {
   try {
     const body = req.body || {};
+    const runIdParsed = parseRunId(body.run_id);
+    if (!runIdParsed.ok) return res.status(400).json({error: "invalid_run_id"});
+    const runId = runIdParsed.value;
+    if (runId == null) return res.status(400).json({error: "run_id_required"});
+
     const duration = Math.max(0, safeNum(body.duration_seconds, 0));
     const levelReached = Math.max(0, Math.floor(safeNum(body.level_reached, 0)));
     const whitesAtDeath = Math.max(0, Math.floor(safeNum(body.whites_on_screen_at_death, 0)));
@@ -706,6 +641,18 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       const user = userSnap.data() || {};
       const s0 = statsSnap.exists ? (statsSnap.data() || {}) : {};
       displayName = String(user.displayName || user.username || "Player").slice(0, 24);
+
+      // Idempotenza + accoppiamento con la run aperta da game/start.
+      if (s0.last_completed_run_id && String(s0.last_completed_run_id) === runId) {
+        const err = new Error("duplicate");
+        err.code = "duplicate";
+        throw err;
+      }
+      if (!s0.pending_run_id || String(s0.pending_run_id) !== runId) {
+        const err = new Error("run_id_mismatch");
+        err.code = "run_id_mismatch";
+        throw err;
+      }
 
       const gameStartedAt = s0.game_started_at;
       if (gameStartedAt) {
@@ -764,6 +711,9 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         game_started_at: null,
         updated_at: nowTs(),
       };
+
+      next.last_completed_run_id = runId;
+      next.pending_run_id = null;
 
       if (expired) Object.assign(next, missionClearPatch());
 
@@ -935,6 +885,12 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       ...responseExtra,
     });
   } catch (e) {
+    if (e.code === "duplicate") {
+      return res.json({ok: true, duplicate: true});
+    }
+    if (e.code === "run_id_mismatch") {
+      return res.status(409).json({error: "run_id_mismatch"});
+    }
     if (e.code === "invalid_duration") {
       return res.status(400).json({error: "invalid_duration"});
     }

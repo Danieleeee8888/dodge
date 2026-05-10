@@ -61,6 +61,8 @@ service cloud.firestore {
                     && !('username' in request.resource.data.diff(resource.data).affectedKeys())
                     && !('email' in request.resource.data.diff(resource.data).affectedKeys())
                     && !('createdAt' in request.resource.data.diff(resource.data).affectedKeys())
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['bestTime', 'bestTime_prize_used', 'gamesPlayed'])
                     && (
                       !('role' in request.resource.data.diff(resource.data).affectedKeys())
                       || (

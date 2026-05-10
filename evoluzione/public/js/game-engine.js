@@ -52,7 +52,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getProfile, resolveDisplayName, updateDisplayName } from './profile.js';
 import {
-  saveScore, fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
+  fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
   invalidateLeaderboardUsernameMap,
 } from './leaderboard.js';
 
@@ -389,6 +389,8 @@ let greenPlusPlayerMode = false, greenPlusPlayerEnd = 0;
 let hasExtraLife = 0;
 /** Premio Plus attivo per questa run (dopo POST /api/game/start). */
 let currentRunPrize = null;
+/** UUID generato dal client per accoppiare game/start e game/end (idempotenza, anti-duplicati). */
+let currentRunId = null;
 /** Override numerici solo per la run corrente. */
 let runShieldDurationMs = SHIELD_DURATION_MS;
 let runBlueSpawnEveryMs = BLUE_BONUS_SPAWN_EVERY_MS;
@@ -1136,7 +1138,47 @@ async function setupProfileView() {
 
 let startGameSequenceBusy = false;
 
+/**
+ * Chiamata a /api/game/end con retry su errori di rete o 5xx.
+ * - 200 ok → ritorna il payload (eventualmente con `duplicate: true`).
+ * - 409 → ritorna { ok:false, error:'run_id_mismatch' } SENZA retry (race multi-tab).
+ * - altri 4xx → ritorna { ok:false, error:'client_error' } SENZA retry.
+ * - 5xx / errori di rete → retry fino a `maxAttempts` (delay 500/1000/2000ms).
+ */
+async function callGameEnd(payload, token, maxAttempts = 3) {
+  const delays = [500, 1000, 2000];
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch('/api/game/end', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ...payload, run_id: currentRunId }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data && data.ok) return data;
+      } else if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, error: data.error || 'run_id_mismatch' };
+      } else if (res.status >= 400 && res.status < 500) {
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, error: data.error || 'client_error' };
+      }
+    } catch (_) { /* errore di rete → retry */ }
+    if (i < maxAttempts - 1) {
+      await new Promise((r) => setTimeout(r, delays[i]));
+    }
+  }
+  return { ok: false, error: 'network' };
+}
+
 async function postGameStartApi(prizeCode) {
+  currentRunId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
   currentRunPrize = prizeCode;
   if (isGuestModeActive() || !auth.currentUser?.emailVerified) return;
   try {
@@ -1146,7 +1188,7 @@ async function postGameStartApi(prizeCode) {
     const res = await fetch('/api/game/start', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
-      body: JSON.stringify({prize_code: prizeCode}),
+      body: JSON.stringify({prize_code: prizeCode, run_id: currentRunId}),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.ok) {
@@ -2355,75 +2397,51 @@ function die(opts = {}) {
         if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio???</p>';
         applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed, currentRunPrize || null);
         renderRecordsInto(recEl);
-        let apiOk = false;
-        try {
-          const token = await user.getIdToken();
-          const apiRes = await fetch('/api/game/end', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              duration_seconds: diedElapsed / 1000,
-              level_reached: diedLevel,
-              whites_on_screen_at_death: diedNb,
-              death_cause: deathCause,
-              bonus_active: null,
-              bonuses_collected: { ...runBonusesCollected },
-              extra_lives_used: runExtraLivesUsed,
-              shields_consumed: runShieldsConsumed,
-              whites_killed_by_yellow: runWhitesKilledByYellow,
-              prize_used: currentRunPrize,
-              green_skipped_this_run: runGreenSkipped,
-              max_extra_lives_simultaneous_this_run: runMaxExtraLivesSimultaneous,
-            }),
-          });
-          const payload = await apiRes.json().catch(() => ({}));
-          if (apiRes.ok && payload.ok) {
-            apiOk = true;
-            await fetchBothLeaderboards().catch(() => {});
-            if (payload.improved && (payload.inTop15 || payload.inTop10)) {
-              const badge = document.createElement('p');
-              badge.className = 'rec-saving rec-saving--highlight';
-              badge.textContent = 'nuovo record in classifica!';
-              if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
-            } else if (payload.improved) {
-              const badge = document.createElement('p');
-              badge.className = 'rec-saving';
-              badge.textContent = 'record personale!';
-              if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
-            }
-            renderRecordsInto(recEl);
+        const token = await user.getIdToken();
+        const payload = await callGameEnd({
+          duration_seconds: diedElapsed / 1000,
+          level_reached: diedLevel,
+          whites_on_screen_at_death: diedNb,
+          death_cause: deathCause,
+          bonus_active: null,
+          bonuses_collected: { ...runBonusesCollected },
+          extra_lives_used: runExtraLivesUsed,
+          shields_consumed: runShieldsConsumed,
+          whites_killed_by_yellow: runWhitesKilledByYellow,
+          prize_used: currentRunPrize,
+          green_skipped_this_run: runGreenSkipped,
+          max_extra_lives_simultaneous_this_run: runMaxExtraLivesSimultaneous,
+        }, token);
+        if (payload && payload.ok && payload.duplicate) {
+          // Idempotente: la run era già stata salvata da un tentativo precedente. Refresh classifica, niente badge.
+          await fetchBothLeaderboards().catch(() => {});
+          renderRecordsInto(recEl);
+        } else if (payload && payload.ok) {
+          await fetchBothLeaderboards().catch(() => {});
+          if (payload.improved && (payload.inTop15 || payload.inTop10)) {
+            const badge = document.createElement('p');
+            badge.className = 'rec-saving rec-saving--highlight';
+            badge.textContent = 'nuovo record in classifica!';
+            if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
+          } else if (payload.improved) {
+            const badge = document.createElement('p');
+            badge.className = 'rec-saving';
+            badge.textContent = 'record personale!';
+            if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
           }
-        } catch (_) {
-          apiOk = false;
-        }
-        if (!apiOk) {
-          const result = await saveScore(currentUserId, diedElapsed, currentRunPrize || null);
-          if (!result || !result.ok) {
-            const msg = result?.reason === 'permission'
-              ? 'verifica l\'email per salvare i record'
-              : result?.reason === 'publish_failed'
-              ? 'record sul profilo ok — se la classifica non si aggiorna, riaprila tra qualche secondo o riprova'
-              : result?.reason === 'no_auth'
-              ? 'sessione non valida — effettua di nuovo l\'accesso'
-              : 'errore di rete ? punteggio non salvato';
-            if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
-          } else {
-            if (result.improved && (result.inTop15 || result.inTop10)) {
-              const badge = document.createElement('p');
-              badge.className = 'rec-saving rec-saving--highlight';
-              badge.textContent = 'nuovo record in classifica!';
-              if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
-            } else if (result.improved) {
-              const badge = document.createElement('p');
-              badge.className = 'rec-saving';
-              badge.textContent = 'record personale!';
-              if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
-            }
-            renderRecordsInto(recEl);
-          }
+          renderRecordsInto(recEl);
+        } else {
+          const err = payload && payload.error;
+          const msg = err === 'run_id_mismatch'
+            ? 'partita non salvata: un\'altra sessione \u00e8 attiva'
+            : err === 'invalid_duration'
+            ? 'partita non salvata: durata non valida'
+            : err === 'no_profile'
+            ? 'profilo non trovato \u2014 effettua di nuovo l\'accesso'
+            : err === 'client_error'
+            ? 'partita non salvata (richiesta non valida)'
+            : 'errore di rete ? punteggio non salvato';
+          if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
         }
       }
     } else {
