@@ -180,23 +180,52 @@ export function getCachedLeaderboard(kind = 'general') {
 }
 
 /**
- * Aggiorna la cache della classifica generale in modo ottimistico.
+ * Aggiorna la cache della classifica generale in modo ottimistico;
+ * se la run è pura (`prizeUsed` assente), aggiorna anche `_cachePure`.
  * prizeUsed: codice premio Plus (es. red_plus) o null se run pura.
  */
 export function applyOptimisticScore(uid, displayName, ms, prizeUsed = null) {
   const t = Math.floor(ms);
   if (!isValidMs(t)) return;
-  const idx = _cacheGeneral.findIndex(r => r.uid === uid);
+
   const row = { id: uid, uid, displayName, ms: t };
   if (prizeUsed) row.prize_used = prizeUsed;
+
+  const idx = _cacheGeneral.findIndex(r => r.uid === uid);
+  let improvedGeneral = false;
   if (idx >= 0) {
-    if (t <= _cacheGeneral[idx].ms) return;
-    const merged = { ..._cacheGeneral[idx], ...row };
-    if (!prizeUsed) delete merged.prize_used;
-    _cacheGeneral[idx] = merged;
+    if (t > _cacheGeneral[idx].ms) {
+      improvedGeneral = true;
+      const merged = { ..._cacheGeneral[idx], ...row };
+      if (!prizeUsed) delete merged.prize_used;
+      _cacheGeneral[idx] = merged;
+    }
   } else {
-    _cacheGeneral.push(row);
+    improvedGeneral = true;
+    _cacheGeneral.push({ ...row });
   }
-  _cacheGeneral = _cacheGeneral.sort((a, b) => b.ms - a.ms).slice(0, LEADERBOARD_TOP_N);
+  if (improvedGeneral) {
+    _cacheGeneral = _cacheGeneral.sort((a, b) => b.ms - a.ms).slice(0, LEADERBOARD_TOP_N);
+  }
+
+  if (!prizeUsed) {
+    const idxP = _cachePure.findIndex(r => r.uid === uid);
+    const rowP = { id: uid, uid, displayName, ms: t };
+    let improvedPure = false;
+    if (idxP >= 0) {
+      if (t > _cachePure[idxP].ms) {
+        improvedPure = true;
+        const merged = { ..._cachePure[idxP], ...rowP };
+        delete merged.prize_used;
+        _cachePure[idxP] = merged;
+      }
+    } else {
+      improvedPure = true;
+      _cachePure.push(rowP);
+    }
+    if (improvedPure) {
+      _cachePure = _cachePure.sort((a, b) => b.ms - a.ms).slice(0, LEADERBOARD_TOP_N);
+    }
+  }
 }
 

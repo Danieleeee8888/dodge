@@ -487,6 +487,8 @@ let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
 /** Tab attiva sulla vista classifica (`records-block-lb`). */
 let leaderboardViewTab = 'general';
+/** Classifica mostrata in `#records-block` (schermata morte / refresh menu): segue l’ultima run pura vs Plus. */
+let deathRecordsLeaderboardKind = 'general';
 
 function syncLeaderboardTabButtons() {
   const g = document.getElementById('lb-tab-general');
@@ -556,10 +558,10 @@ function bindProfileTabs() {
   wire('profile-tab-prizes', 'prizes');
 }
 
-function renderRecordsInto(el) {
+function renderRecordsInto(el, opts = {}) {
   if (!el) return;
   const isLbPage = el.id === 'records-block-lb';
-  const kind = isLbPage ? leaderboardViewTab : 'general';
+  const kind = isLbPage ? leaderboardViewTab : (opts.leaderboardKind ?? 'general');
   const rec = getCachedLeaderboard(kind);
   el.textContent = '';
 
@@ -1441,7 +1443,7 @@ function setupMenuUI() {
   } else {
     if (lbBtn) lbBtn.hidden = false;
     if (profileBtn) profileBtn.hidden = false;
-    renderRecordsInto(recEl);
+    renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind });
     renderRecordsInto(lbEl);
   }
 }
@@ -2386,6 +2388,7 @@ function die(opts = {}) {
     const deathTimeEl = document.getElementById('death-time');
     if (deathTimeEl) deathTimeEl.textContent = `sopravvissuto ${fmt(diedElapsed)}`;
     const recEl = document.getElementById('records-block');
+    deathRecordsLeaderboardKind = currentRunPrize ? 'general' : 'pure';
     showScreenView('death');
 
     if (!isGuestModeActive() && currentUserId) {
@@ -2396,7 +2399,7 @@ function die(opts = {}) {
       } else {
         if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio???</p>';
         applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed, currentRunPrize || null);
-        renderRecordsInto(recEl);
+        renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind });
         const token = await user.getIdToken();
         const payload = await callGameEnd({
           duration_seconds: diedElapsed / 1000,
@@ -2415,7 +2418,7 @@ function die(opts = {}) {
         if (payload && payload.ok && payload.duplicate) {
           // Idempotente: la run era già stata salvata da un tentativo precedente. Refresh classifica, niente badge.
           await fetchBothLeaderboards().catch(() => {});
-          renderRecordsInto(recEl);
+          renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind });
         } else if (payload && payload.ok) {
           await fetchBothLeaderboards().catch(() => {});
           if (payload.improved && (payload.inTop15 || payload.inTop10)) {
@@ -2429,7 +2432,7 @@ function die(opts = {}) {
             badge.textContent = 'record personale!';
             if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
           }
-          renderRecordsInto(recEl);
+          renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind });
         } else {
           const err = payload && payload.error;
           const msg = err === 'run_id_mismatch'
