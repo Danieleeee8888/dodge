@@ -926,13 +926,14 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
     const dayAgo = admin.firestore.Timestamp.fromMillis(now - 24 * 3600 * 1000);
     const weekAgo = admin.firestore.Timestamp.fromMillis(now - 7 * 24 * 3600 * 1000);
 
-    const [usersSnap, recent24hSnap, recent7dSnap, recentAllSnap, leaderboardSnap, statsSnap] = await Promise.all([
+    const [usersSnap, recent24hSnap, recent7dSnap, recentAllSnap, leaderboardSnap, statsSnap, scoresSnap] = await Promise.all([
       db.collection("users").get(),
       db.collection("recent_games").where("played_at", ">=", dayAgo).get(),
       db.collection("recent_games").where("played_at", ">=", weekAgo).get(),
       db.collection("recent_games").get(),
       db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N).get(),
       db.collection("player_stats").get(),
+      db.collection("scores").get(),
     ]);
 
     const verifiedFlags = await Promise.all(usersSnap.docs.map(async (d) => {
@@ -957,10 +958,12 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       if (best >= 210) distPlayers.over210 += 1;
     });
 
-    /** Partite (run) con durata in secondi ≥ soglia. */
+    /** Partite (run) con durata in secondi ≥ soglia — storico canonico da `scores` (campo `ms`). */
     const distGames = {over60: 0, over90: 0, over120: 0, over150: 0, over180: 0, over210: 0};
-    recentAllSnap.docs.forEach((d) => {
-      const duration = safeNum(d.data()?.duration_seconds, 0);
+    scoresSnap.docs.forEach((d) => {
+      const ms = safeNum(d.data()?.ms, 0);
+      if (ms <= 0) return;
+      const duration = ms / 1000;
       if (duration >= 60) distGames.over60 += 1;
       if (duration >= 90) distGames.over90 += 1;
       if (duration >= 120) distGames.over120 += 1;
