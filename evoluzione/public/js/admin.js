@@ -166,6 +166,15 @@ function escapeHtml(s) {
     .replaceAll("'", '&#39;');
 }
 
+/** Conteggio soglia + percentuale sul totale partite archivio (`scores`). */
+function fmtThresholdCountWithPct(count, gamesTotal) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  const tot = Math.max(0, Math.floor(Number(gamesTotal) || 0));
+  if (tot <= 0) return `${n} (—)`;
+  const pct = Math.round((n / tot) * 100);
+  return `${n} (${pct}%)`;
+}
+
 function fmtStatCell(val) {
   if (val == null) return '';
   if (typeof val === 'boolean') return val ? 'true' : 'false';
@@ -203,6 +212,7 @@ async function loadOverview() {
   ].map(([k, v]) => `<article class="admin-kpi"><h4>${escapeHtml(k)}</h4><p>${escapeHtml(v)}</p></article>`).join('');
 
   const gamesDist = data?.games_duration_distribution || {};
+  const gamesTotal = Number(kpi.games_total) || 0;
   document.getElementById('admin-games-distribution').innerHTML = [
     ['≥60s', gamesDist.over60 || 0],
     ['≥90s', gamesDist.over90 || 0],
@@ -210,11 +220,8 @@ async function loadOverview() {
     ['≥150s', gamesDist.over150 || 0],
     ['≥180s', gamesDist.over180 || 0],
     ['≥210s', gamesDist.over210 || 0],
-  ].map(([k, v]) => `<p class="admin-list-row"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></p>`).join('');
-
-  const top = data?.top15 || data?.top10 || [];
-  document.getElementById('admin-top10').innerHTML = top.map((r, i) =>
-    `<p class="admin-list-row"><span>${i + 1}. ${escapeHtml(r.displayName || r.username || 'Player')}</span><strong>${fmtMs(Number(r.ms || 0))}</strong></p>`).join('');
+  ].map(([k, v]) =>
+    `<p class="admin-list-row"><span>${escapeHtml(k)}</span><strong>${escapeHtml(fmtThresholdCountWithPct(v, gamesTotal))}</strong></p>`).join('');
 }
 
 async function loadPlayers() {

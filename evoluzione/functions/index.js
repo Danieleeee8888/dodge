@@ -938,10 +938,7 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
     const dayAgoMs = now - 24 * 3600 * 1000;
     const weekAgoMs = now - 7 * 24 * 3600 * 1000;
 
-    const [leaderboardSnap, scoresSnap] = await Promise.all([
-      db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N).get(),
-      db.collection("scores").get(),
-    ]);
+    const scoresSnap = await db.collection("scores").get();
 
     /** Archivio partite: una voce per documento `scores` con `ms` > 0. */
     const distGames = {over60: 0, over90: 0, over120: 0, over150: 0, over180: 0, over210: 0};
@@ -976,7 +973,6 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       }
     });
 
-    const top15 = leaderboardSnap.docs.map((d) => d.data());
     return res.json({
       ok: true,
       totals: {
@@ -988,8 +984,6 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
       },
       avg_run_seconds_last_7d: count7 ? (sum7 / count7) : 0,
       games_duration_distribution: distGames,
-      top15,
-      top10: top15,
     });
   } catch (e) {
     logger.error("GET /api/admin/overview", e);
