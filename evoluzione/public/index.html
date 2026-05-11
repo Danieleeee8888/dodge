@@ -55,12 +55,12 @@
 <div id="prizePickOverlay" class="prize-pick-overlay" hidden aria-hidden="true">
   <div class="prize-pick-panel">
     <div class="prize-pick-actions prize-pick-actions--primary">
-      <button type="button" id="prizePickPure" class="prize-pick-btn prize-pick-btn--pure">Gioca puro</button>
+      <button type="button" id="prizePickConfirm" class="prize-pick-btn prize-pick-btn--go" disabled aria-disabled="true">Tenta col premio</button>
     </div>
     <h2 class="prize-pick-title">Vuoi attivare un premio per questa run?</h2>
     <div class="prize-pick-grid" id="prizePickGrid" role="group" aria-label="Premi disponibili"></div>
     <div class="prize-pick-actions">
-      <button type="button" id="prizePickConfirm" class="prize-pick-btn prize-pick-btn--go" disabled aria-disabled="true">Tenta col premio</button>
+      <button type="button" id="prizePickPure" class="prize-pick-btn prize-pick-btn--pure">Gioca puro</button>
     </div>
     <p class="prize-pick-mission-note">Le run con un premio Plus attivo non contano per il progresso delle missioni.</p>
     <button type="button" id="prizePickBack" class="prize-pick-btn prize-pick-btn--back">Indietro</button>
@@ -239,7 +239,7 @@
     <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
     <h2 class="view-title">COME SI GIOCA</h2>
     <div class="howto-body">
-      <p>Muovi il dito per spostare il cursore bianco.</p>
+      <p>Muovi il dito ovunque sul display per spostare il cursore bianco.</p>
       <p>Schiva i <b>triangoli</b> e <b>quadrati</b> bianchi.</p>
       <p>Raccogli i bonus colorati:</p>
       <ul class="howto-list">
