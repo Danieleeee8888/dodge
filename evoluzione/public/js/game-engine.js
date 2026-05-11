@@ -488,6 +488,7 @@ let resumeCountdown = null;
 let deathUiTimeoutId = null;
 /** Scena congelata sul canvas prima del reveal della schermata morte. */
 const DEATH_FINALE_MS = 1000;
+const DEATH_CURSOR_POP_MS = 155;
 let deathFinale = null;
 let deathRevealToken = 0;
 
@@ -951,6 +952,7 @@ function drawDeathFreezeFrame(now) {
   }
   ctx.globalAlpha = 1;
   drawPlayer(frameNow);
+  drawDeathCursorPopAura(finale, now);
   if (finale.flash > 0) {
     ctx.fillStyle = finale.flashCol;
     ctx.globalAlpha = finale.flash;
@@ -962,6 +964,27 @@ function drawDeathFreezeFrame(now) {
   py = savedPy;
   tx = savedTx;
   ty = savedTy;
+}
+
+function drawDeathCursorPopAura(finale, now) {
+  const u = (now - finale.frozenAt) / DEATH_CURSOR_POP_MS;
+  if (u >= 1) return;
+  const ease = 1 - u;
+  const playerR = 24 * (effectivePlayerHitR(finale.frozenAt) / PLAYER_HIT_R);
+  const R = playerR * 0.7 + u * playerR * 3.1;
+  ctx.save();
+  ctx.globalAlpha = ease * 0.92;
+  ctx.beginPath();
+  ctx.arc(finale.px, finale.py, R, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255, 140, 140, ${0.68 * ease})`;
+  ctx.lineWidth = 2.6 * (0.35 + ease * 0.65);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(finale.px, finale.py, R * 0.55, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255, 68, 68, ${0.42 * ease})`;
+  ctx.lineWidth = 1.35 * ease;
+  ctx.stroke();
+  ctx.restore();
 }
 
 async function fetchDeathStatsForDeathScreen(token, userId) {
@@ -2755,7 +2778,8 @@ function die(opts = {}) {
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
   const deathCause = opts.deathCause === 'square' ? 'square' : 'triangle';
-  burst(px, py, '#fff', 40);
+  burst(px, py, '#ffc8c8', 7);
+  burst(px, py, '#ff4444', 12);
   startDeathFinale(diedLevel, px, py);
   running = false;
   startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
