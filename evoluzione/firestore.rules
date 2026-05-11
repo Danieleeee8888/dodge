@@ -126,6 +126,15 @@ service cloud.firestore {
     match /leaderboard/{uid} {
       allow read: if true;
       allow delete: if false;
+      allow update: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && request.auth.uid == uid
+                    && resource.data.uid == uid
+                    && request.resource.data.uid == uid
+                    && request.resource.data.ms == resource.data.ms
+                    && validDisplayNameReq()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['displayName', 'updatedAt']);
     }
 
     // Classifica globale «pura»: scrittura solo backend; solo nome aggiornabile dal client (come leaderboard).

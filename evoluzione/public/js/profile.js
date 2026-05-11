@@ -121,15 +121,13 @@ export async function updateDisplayName(uid, displayName) {
   const name = v.value;
   await updateDoc(doc(db, 'users', uid), { displayName: name });
   const lbRef = doc(db, 'leaderboard', uid);
-  const lbSnap = await getDoc(lbRef);
-  if (lbSnap.exists()) {
-    await updateDoc(lbRef, { displayName: name, updatedAt: serverTimestamp() });
-  }
   const lbPureRef = doc(db, 'leaderboard_pure', uid);
-  const lbPureSnap = await getDoc(lbPureRef);
-  if (lbPureSnap.exists()) {
-    await updateDoc(lbPureRef, { displayName: name, updatedAt: serverTimestamp() });
-  }
+  const [lbSnap, lbPureSnap] = await Promise.all([getDoc(lbRef), getDoc(lbPureRef)]);
+  const patch = { displayName: name, updatedAt: serverTimestamp() };
+  await Promise.all([
+    lbSnap.exists() ? updateDoc(lbRef, patch).catch(() => {}) : Promise.resolve(),
+    lbPureSnap.exists() ? updateDoc(lbPureRef, patch).catch(() => {}) : Promise.resolve(),
+  ]);
 }
 
 export async function getProfile(uid) {
