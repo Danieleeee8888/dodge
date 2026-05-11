@@ -487,8 +487,10 @@ let resumeCountdown = null;
 /** Timeout UI game over: va cancellato se si riparte prima che scada. */
 let deathUiTimeoutId = null;
 /** Scena congelata sul canvas prima del reveal della schermata morte. */
-const DEATH_FINALE_MS = 1000;
-const DEATH_CURSOR_POP_MS = 155;
+const DEATH_FINALE_MS = 1100;
+const DEATH_CURSOR_POP_MS = 950;
+const DEATH_CURSOR_FADE_DELAY_MS = 0;
+const DEATH_CURSOR_FADE_DUR_MS = 80;
 let deathFinale = null;
 let deathRevealToken = 0;
 
@@ -874,8 +876,51 @@ function snapshotBallsForDeathFinale() {
   return balls.map(snapshotDeathFinaleBall);
 }
 
+function buildDeathCursorPop(baseR) {
+  const cloudPalette = [
+    { core: '#ff6a6a', glow: '#ffd2d2' },
+    { core: '#e9c81a', glow: '#fff4a8' },
+    { core: '#34cc6e', glow: '#c4f5d6' },
+  ];
+  const cloud = [];
+  for (let i = 0; i < 24; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const palette = cloudPalette[i % cloudPalette.length];
+    cloud.push({
+      ang,
+      sp: rand(52, 96),
+      lifeMs: rand(620, 900),
+      r: rand(2.6, 4.4),
+      col: i % 4 === 0 ? palette.glow : palette.core,
+      ofs: rand(0, baseR * 0.6),
+    });
+  }
+  const sparklePalette = ['#ffe4e4', '#fff4a8', '#c4f5d6', '#ffb0b0', '#f5e6a0', '#7af5a8'];
+  const sparkles = [];
+  for (let i = 0; i < 18; i++) {
+    const ang = (i / 18) * Math.PI * 2 + rand(-0.18, 0.18);
+    sparkles.push({
+      ang,
+      sp: rand(22, 42),
+      lifeMs: rand(520, 860),
+      r: rand(1.0, 2.1),
+      col: sparklePalette[i % sparklePalette.length],
+      ofs: rand(baseR * 0.55, baseR * 1.15),
+      spin: rand(-2.2, 2.2),
+      tw: rand(0, Math.PI * 2),
+    });
+  }
+  const rings = [
+    { delayMs: 0,   durMs: 460, startMul: 0.65, endMul: 4.0, mainCol: '255,150,150', innerCol: '255, 80, 80', lineMul: 1.0 },
+    { delayMs: 140, durMs: 440, startMul: 0.55, endMul: 3.4, mainCol: '255, 220, 80', innerCol: '233, 200, 26', lineMul: 0.85 },
+    { delayMs: 280, durMs: 400, startMul: 0.45, endMul: 2.8, mainCol: '120, 230, 160', innerCol: '52, 200, 110', lineMul: 0.7 },
+  ];
+  return { baseR, cloud, sparkles, rings };
+}
+
 function startDeathFinale(level, playerX, playerY) {
   const frozenAt = performance.now();
+  const baseR = 24 * (effectivePlayerHitR(frozenAt) / PLAYER_HIT_R);
   deathFinale = {
     until: frozenAt + DEATH_FINALE_MS,
     frozenAt,
@@ -888,6 +933,7 @@ function startDeathFinale(level, playerX, playerY) {
     balls: snapshotBallsForDeathFinale(),
     parts: parts.map((p) => ({ ...p })),
     sparkles: sparkles.map((s) => ({ ...s })),
+    cursorPop: buildDeathCursorPop(baseR),
   };
 }
 
@@ -951,7 +997,13 @@ function drawDeathFreezeFrame(now) {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-  drawPlayer(frameNow);
+  const cursorAlpha = computeDeathCursorAlpha(finale, now);
+  if (cursorAlpha > 0.01) {
+    ctx.save();
+    ctx.globalAlpha = cursorAlpha;
+    drawPlayer(frameNow);
+    ctx.restore();
+  }
   drawDeathCursorPopAura(finale, now);
   if (finale.flash > 0) {
     ctx.fillStyle = finale.flashCol;
@@ -966,25 +1018,76 @@ function drawDeathFreezeFrame(now) {
   ty = savedTy;
 }
 
+function computeDeathCursorAlpha(finale, now) {
+  const popMs = now - finale.frozenAt;
+  if (popMs <= DEATH_CURSOR_FADE_DELAY_MS) return 1;
+  const u = (popMs - DEATH_CURSOR_FADE_DELAY_MS) / DEATH_CURSOR_FADE_DUR_MS;
+  if (u >= 1) return 0;
+  const eased = 1 - u * u;
+  return eased;
+}
+
 function drawDeathCursorPopAura(finale, now) {
-  const u = (now - finale.frozenAt) / DEATH_CURSOR_POP_MS;
-  if (u >= 1) return;
-  const ease = 1 - u;
-  const playerR = 24 * (effectivePlayerHitR(finale.frozenAt) / PLAYER_HIT_R);
-  const R = playerR * 0.7 + u * playerR * 3.1;
-  ctx.save();
-  ctx.globalAlpha = ease * 0.92;
-  ctx.beginPath();
-  ctx.arc(finale.px, finale.py, R, 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(255, 140, 140, ${0.68 * ease})`;
-  ctx.lineWidth = 2.6 * (0.35 + ease * 0.65);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(finale.px, finale.py, R * 0.55, 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(255, 68, 68, ${0.42 * ease})`;
-  ctx.lineWidth = 1.35 * ease;
-  ctx.stroke();
-  ctx.restore();
+  const pop = finale.cursorPop;
+  if (!pop) return;
+  const popMs = now - finale.frozenAt;
+  if (popMs >= DEATH_CURSOR_POP_MS) return;
+  const cx = finale.px;
+  const cy = finale.py;
+
+  for (const ring of pop.rings) {
+    const u = (popMs - ring.delayMs) / ring.durMs;
+    if (u <= 0 || u >= 1) continue;
+    const ease = 1 - u;
+    const R = pop.baseR * (ring.startMul + (ring.endMul - ring.startMul) * u);
+    ctx.save();
+    ctx.globalAlpha = ease * 0.85;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${ring.mainCol}, ${0.6 * ease})`;
+    ctx.lineWidth = 2.4 * ring.lineMul * (0.35 + ease * 0.65);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.6, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${ring.innerCol}, ${0.36 * ease})`;
+    ctx.lineWidth = 1.2 * ring.lineMul * ease;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  const tSec = popMs / 1000;
+  for (const p of pop.cloud) {
+    const u = popMs / p.lifeMs;
+    if (u >= 1) continue;
+    const ease = 1 - u;
+    const damp = 1 - 0.45 * u;
+    const dist = p.ofs + p.sp * tSec * damp;
+    const x = cx + Math.cos(p.ang) * dist;
+    const y = cy + Math.sin(p.ang) * dist;
+    ctx.globalAlpha = ease * 0.85;
+    ctx.beginPath();
+    ctx.arc(x, y, p.r * (0.6 + ease * 0.7), 0, Math.PI * 2);
+    ctx.fillStyle = p.col;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  for (const sp of pop.sparkles) {
+    const u = popMs / sp.lifeMs;
+    if (u >= 1) continue;
+    const ease = 1 - u;
+    const ang = sp.ang + sp.spin * tSec * 0.6;
+    const dist = sp.ofs + sp.sp * tSec * (1 - 0.3 * u);
+    const x = cx + Math.cos(ang) * dist;
+    const y = cy + Math.sin(ang) * dist;
+    const tw = 0.65 + 0.35 * Math.sin(sp.tw + popMs * 0.022);
+    ctx.globalAlpha = ease * 0.95 * tw;
+    ctx.beginPath();
+    ctx.arc(x, y, sp.r * (0.8 + ease * 0.6), 0, Math.PI * 2);
+    ctx.fillStyle = sp.col;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
 async function fetchDeathStatsForDeathScreen(token, userId) {
@@ -2778,8 +2881,6 @@ function die(opts = {}) {
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
   const deathCause = opts.deathCause === 'square' ? 'square' : 'triangle';
-  burst(px, py, '#ffc8c8', 7);
-  burst(px, py, '#ff4444', 12);
   startDeathFinale(diedLevel, px, py);
   running = false;
   startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
