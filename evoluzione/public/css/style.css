@@ -954,6 +954,48 @@ canvas {
 /* Spazio per ⌂ fissa in basso + gesture Android (visual viewport) */
 #view-death.screen-view {
   padding-bottom:calc(max(1.35rem, env(safe-area-inset-bottom)) + var(--vv-layout-gap-bottom, 0px) + max(56px, calc(58px * var(--ui-scale))) + 2.35rem);
+  justify-content:flex-start;
+  padding-top:max(0.85rem, env(safe-area-inset-top));
+}
+#view-death .death-snippet {
+  margin:0.45rem 0 0;
+  padding:0.8rem 0.95rem;
+  border:2px solid rgba(140,170,255,0.35);
+  border-radius:0.65rem;
+  background:rgba(6,8,18,0.92);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.07) inset, 0 10px 36px rgba(0,0,0,0.5), 0 0 40px rgba(80,120,255,0.14);
+  color:rgba(230,235,255,0.92);
+  width:min(24rem, calc(100% - 1.1rem));
+  max-width:calc(100% - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+  box-sizing:border-box;
+  text-align:left;
+}
+#view-death .death-snippet__title {
+  font-size:0.68rem;
+  letter-spacing:0.26em;
+  color:rgba(255,255,255,0.9);
+  margin:0 0 0.65rem;
+  font-weight:700;
+  text-align:center;
+  text-shadow:0 0 18px rgba(180,210,255,0.35);
+}
+#view-death .death-soglie-block { margin-top:0; }
+#view-death .profile-threshold-stat--run-hit {
+  box-shadow:0 0 0 1px rgba(255,255,255,0.22) inset, 0 0 16px rgba(147,197,253,0.28);
+}
+#view-death .profile-mission-active--compact {
+  margin:0;
+  padding:0;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+#view-death .death-mission-plus-note,
+#view-death .death-mission-complete {
+  margin:0.45rem 0 0;
+  font-size:0.68rem;
+  line-height:1.35;
+  text-align:center;
 }
 #screen .death-sub {
   color:rgba(255,255,255,0.5); font-size:0.78rem; letter-spacing:0.16em;

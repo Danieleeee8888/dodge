@@ -53,11 +53,16 @@ import {
 import { getProfile, resolveDisplayName, updateDisplayName, ensureProfileForUser } from './profile.js';
 import {
   fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
-  invalidateLeaderboardUsernameMap,
+  invalidateLeaderboardUsernameMap, LEADERBOARD_TOP_N,
 } from './leaderboard.js';
 import { renderProfileBestCard } from './profile-best-display.js';
 import { renderProfileStatsKpiGrid } from './profile-kpi-display.js';
-import { renderProfileSurvivalThresholdStats } from './profile-threshold-display.js';
+import {
+  renderProfileSurvivalThresholdStats,
+  renderProfileThresholdLegend,
+  renderProfileThresholdStatGrid,
+  PROFILE_SURVIVAL_THRESHOLDS,
+} from './profile-threshold-display.js';
 
 let currentUserId = null;
 /** Username account (fisso, registrazione). */
@@ -492,6 +497,8 @@ let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 let leaderboardViewTab = 'general';
 /** Classifica mostrata in `#records-block` (schermata morte / refresh menu): segue l’ultima run pura vs Plus. */
 let deathRecordsLeaderboardKind = 'general';
+/** Righe classifica in schermata morte (la vista Classifica resta TOP 15). */
+const DEATH_RECORDS_TOP_N = 5;
 
 function syncLeaderboardTabButtons() {
   const g = document.getElementById('lb-tab-general');
@@ -564,14 +571,17 @@ function bindProfileTabs() {
 function renderRecordsInto(el, opts = {}) {
   if (!el) return;
   const isLbPage = el.id === 'records-block-lb';
+  const isDeathRecords = el.id === 'records-block';
   const kind = isLbPage ? leaderboardViewTab : (opts.leaderboardKind ?? 'general');
-  const rec = getCachedLeaderboard(kind);
+  const maxRows = opts.maxRows ?? (isDeathRecords ? DEATH_RECORDS_TOP_N : LEADERBOARD_TOP_N);
+  const rec = getCachedLeaderboard(kind).slice(0, maxRows);
   el.textContent = '';
 
   const title = document.createElement('h2');
+  const topLabel = isDeathRecords ? DEATH_RECORDS_TOP_N : LEADERBOARD_TOP_N;
   title.textContent = kind === 'pure'
-    ? 'TOP 15 · CLASSIFICA PURA'
-    : 'TOP 15 · CLASSIFICA GENERALE';
+    ? `TOP ${topLabel} · CLASSIFICA PURA`
+    : `TOP ${topLabel} · CLASSIFICA GENERALE`;
   el.appendChild(title);
 
   const list = document.createElement('ol');
@@ -722,6 +732,153 @@ async function formatMissionActivateFailure(res) {
   return `Errore attivazione (HTTP ${res.status})${extra}. Se usi l’emulatore Firebase, controlla il log del terminale delle Functions.`;
 }
 
+function clearDeathSummarySnippets() {
+  const profileSnippet = document.getElementById('death-profile-snippet');
+  const missionSnippet = document.getElementById('death-mission-snippet');
+  if (profileSnippet) {
+    profileSnippet.hidden = true;
+    document.getElementById('death-streak-legend')?.replaceChildren();
+    document.getElementById('death-streaks-grid')?.replaceChildren();
+  }
+  if (missionSnippet) {
+    missionSnippet.hidden = true;
+    missionSnippet.replaceChildren();
+  }
+}
+
+function highlightDeathStreakThresholds(diedElapsedMs, gridEl) {
+  if (!gridEl) return;
+  const runSeconds = Math.max(0, Math.floor(Number(diedElapsedMs) || 0) / 1000);
+  const tiles = gridEl.querySelectorAll('.profile-threshold-stat');
+  PROFILE_SURVIVAL_THRESHOLDS.forEach((threshold, index) => {
+    const tile = tiles[index];
+    if (!tile) return;
+    tile.classList.toggle('profile-threshold-stat--run-hit', runSeconds >= threshold.seconds);
+  });
+}
+
+function renderDeathProfileSnippet(stats, diedElapsedMs) {
+  const root = document.getElementById('death-profile-snippet');
+  const legendEl = document.getElementById('death-streak-legend');
+  const gridEl = document.getElementById('death-streaks-grid');
+  if (!root || !legendEl || !gridEl) return;
+  if (!stats || typeof stats !== 'object') {
+    root.hidden = true;
+    return;
+  }
+  renderProfileThresholdLegend(legendEl);
+  renderProfileThresholdStatGrid(gridEl, stats, 'current_streak_over');
+  highlightDeathStreakThresholds(diedElapsedMs, gridEl);
+  root.hidden = false;
+}
+
+function buildActiveMissionCardHtml(active, opts = {}) {
+  const {
+    compact = false,
+    showActions = true,
+    runHadPlus = false,
+  } = opts;
+  const prog = active.progress || {};
+  let cur = 0;
+  let tgt = 10;
+  const mc = MISSIONS_CONFIG.missions?.[active.code];
+  if (mc?.rule === 'yellow_kill_counter') {
+    cur = Number(prog.counter || 0);
+    tgt = Number(prog.target || mc.counter_target || 100);
+  } else {
+    cur = Number(prog.qualifying_runs || 0);
+    tgt = Number(prog.target_runs || mc?.target_runs || 10);
+  }
+  const pct = tgt > 0 ? Math.min(100, (cur / tgt) * 100) : 0;
+  const compactClass = compact ? ' profile-mission-active--compact' : '';
+  let html = `<div class="profile-mission-active${compactClass}">
+      <div class="profile-mission-active__title">${active.title}</div>
+      <p class="profile-mission-active__meta">${active.description}</p>
+      <p class="profile-mission-active__meta">Ricompensa: ${active.reward_label}</p>
+      <div class="profile-mission-progress"><div class="profile-mission-progress__fill" style="width:${pct}%"></div></div>
+      <p class="profile-mission-active__meta">${active.progress_label} · tempo ${active.remaining_hhmmss}</p>`;
+  if (runHadPlus) {
+    html += '<p class="profile-info profile-info--dim death-mission-plus-note">Le run con un premio Plus attivo non contano per il progresso delle missioni.</p>';
+  }
+  if (showActions) {
+    html += `<div class="profile-btn-row">
+        <button type="button" class="home-btn home-btn--compact home-btn--small home-btn--danger js-mission-cancel">Annulla missione</button>
+      </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderDeathMissionSnippet(missionsPayload, opts = {}) {
+  const root = document.getElementById('death-mission-snippet');
+  if (!root) return;
+  const active = missionsPayload?.active;
+  const missionCompleted = !!opts.missionCompleted;
+  if (!active && !missionCompleted) {
+    root.hidden = true;
+    root.replaceChildren();
+    return;
+  }
+  root.replaceChildren();
+  const title = document.createElement('h2');
+  title.className = 'death-snippet__title';
+  title.textContent = 'Missione attiva';
+  root.appendChild(title);
+  if (missionCompleted && !active) {
+    const done = document.createElement('p');
+    done.className = 'profile-info death-mission-complete';
+    done.textContent = 'Missione completata! Controlla i premi nel profilo.';
+    root.appendChild(done);
+    root.hidden = false;
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.innerHTML = buildActiveMissionCardHtml(active, {
+    compact: true,
+    showActions: false,
+    runHadPlus: !!opts.runHadPlus,
+  });
+  const card = wrap.firstElementChild;
+  if (card) root.appendChild(card);
+  root.hidden = false;
+}
+
+async function refreshDeathSummarySnippets(token, gameEndPayload, diedElapsedMs, runHadPlus) {
+  if (gameEndPayload?.mission_completed) {
+    renderDeathMissionSnippet({ active: null }, { runHadPlus, missionCompleted: true });
+  }
+  try {
+    const [statsRes, mRes] = await Promise.all([
+      fetch('/api/player/stats', { headers: { Authorization: `Bearer ${token}` } }),
+      fetch('/api/missions/current', { headers: { Authorization: `Bearer ${token}` } }),
+    ]);
+    if (statsRes.ok) {
+      const statsPayload = await statsRes.json().catch(() => ({}));
+      renderDeathProfileSnippet(statsPayload?.stats || {}, diedElapsedMs);
+    } else {
+      const profileSnippet = document.getElementById('death-profile-snippet');
+      if (profileSnippet) profileSnippet.hidden = true;
+    }
+    if (mRes.ok) {
+      const missionsPayload = await mRes.json().catch(() => ({}));
+      renderDeathMissionSnippet(missionsPayload, {
+        runHadPlus,
+        missionCompleted: !!gameEndPayload?.mission_completed,
+      });
+    } else if (!gameEndPayload?.mission_completed) {
+      const missionSnippet = document.getElementById('death-mission-snippet');
+      if (missionSnippet) missionSnippet.hidden = true;
+    }
+  } catch (_) {
+    if (!gameEndPayload?.mission_completed) {
+      const missionSnippet = document.getElementById('death-mission-snippet');
+      if (missionSnippet) missionSnippet.hidden = true;
+    }
+    const profileSnippet = document.getElementById('death-profile-snippet');
+    if (profileSnippet) profileSnippet.hidden = true;
+  }
+}
+
 async function refreshProfileMissionsAndPrizes() {
   const missionsRoot = document.getElementById('profile-missions-root');
   const prizesRoot = document.getElementById('profile-prizes-grid');
@@ -760,28 +917,7 @@ async function refreshProfileMissionsAndPrizes() {
 
   let html = '';
   if (active) {
-    const prog = active.progress || {};
-    let cur = 0;
-    let tgt = 10;
-    const mc = MISSIONS_CONFIG.missions?.[active.code];
-    if (mc?.rule === 'yellow_kill_counter') {
-      cur = Number(prog.counter || 0);
-      tgt = Number(prog.target || mc.counter_target || 100);
-    } else {
-      cur = Number(prog.qualifying_runs || 0);
-      tgt = Number(prog.target_runs || mc?.target_runs || 10);
-    }
-    const pct = tgt > 0 ? Math.min(100, (cur / tgt) * 100) : 0;
-    html += `<div class="profile-mission-active">
-      <div class="profile-mission-active__title">${active.title}</div>
-      <p class="profile-mission-active__meta">${active.description}</p>
-      <p class="profile-mission-active__meta">Ricompensa: ${active.reward_label}</p>
-      <div class="profile-mission-progress"><div class="profile-mission-progress__fill" style="width:${pct}%"></div></div>
-      <p class="profile-mission-active__meta">${active.progress_label} · tempo ${active.remaining_hhmmss}</p>
-      <div class="profile-btn-row">
-        <button type="button" class="home-btn home-btn--compact home-btn--small home-btn--danger js-mission-cancel">Annulla missione</button>
-      </div>
-    </div>`;
+    html += buildActiveMissionCardHtml(active, { showActions: true });
   } else {
     html += '<p class="profile-info profile-info--dim">Nessuna missione attiva. Attivane una dalla lista.</p>';
   }
@@ -1395,7 +1531,7 @@ function setupMenuUI() {
   } else {
     if (lbBtn) lbBtn.hidden = false;
     if (profileBtn) profileBtn.hidden = false;
-    renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind });
+    renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
     renderRecordsInto(lbEl);
   }
 }
@@ -2341,7 +2477,9 @@ function die(opts = {}) {
     if (deathTimeEl) deathTimeEl.textContent = `sopravvissuto ${fmt(diedElapsed)}`;
     const recEl = document.getElementById('records-block');
     deathRecordsLeaderboardKind = currentRunPrize ? 'general' : 'pure';
+    const runHadPlus = !!currentRunPrize;
     showScreenView('death');
+    clearDeathSummarySnippets();
 
     if (!isGuestModeActive() && currentUserId) {
       const user = auth.currentUser;
@@ -2351,7 +2489,7 @@ function die(opts = {}) {
       } else {
         if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio???</p>';
         applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed, currentRunPrize || null);
-        renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind });
+        renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
         const token = await user.getIdToken();
         const payload = await callGameEnd({
           duration_seconds: diedElapsed / 1000,
@@ -2370,7 +2508,8 @@ function die(opts = {}) {
         if (payload && payload.ok && payload.duplicate) {
           // Idempotente: la run era già stata salvata da un tentativo precedente. Refresh classifica, niente badge.
           await fetchBothLeaderboards().catch(() => {});
-          renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind });
+          renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
+          await refreshDeathSummarySnippets(token, payload, diedElapsed, runHadPlus);
         } else if (payload && payload.ok) {
           await fetchBothLeaderboards().catch(() => {});
           if (payload.improved && (payload.inTop15 || payload.inTop10)) {
@@ -2384,7 +2523,8 @@ function die(opts = {}) {
             badge.textContent = 'record personale!';
             if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
           }
-          renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind });
+          renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
+          await refreshDeathSummarySnippets(token, payload, diedElapsed, runHadPlus);
         } else {
           const err = payload && payload.error;
           const msg = err === 'run_id_mismatch'
