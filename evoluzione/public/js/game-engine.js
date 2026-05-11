@@ -50,7 +50,7 @@ import {
   signOut,
   sendPasswordResetEmail,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getProfile, resolveDisplayName, updateDisplayName } from './profile.js';
+import { getProfile, resolveDisplayName, updateDisplayName, ensureProfileForUser } from './profile.js';
 import {
   fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
   invalidateLeaderboardUsernameMap,
@@ -3407,7 +3407,12 @@ onAuthStateChanged(auth, async (user) => {
     guestModeEnabled = false;
     currentUserId = user.uid;
     currentUserEmail = user.email || '';
-    const profile = await getProfile(user.uid).catch(() => null);
+    let profile = await getProfile(user.uid).catch(() => null);
+    if (!profile && !hasPasswordProvider(user)) {
+      // Recovery: utente Google senza profilo Firestore (es. creazione fallita al primo login).
+      await ensureProfileForUser(user).catch(() => {});
+      profile = await getProfile(user.uid).catch(() => null);
+    }
     currentUsername = profile?.username || user.email || '???';
     currentDisplayName = resolveDisplayName(profile);
     await fetchBothLeaderboards().catch(() => {});

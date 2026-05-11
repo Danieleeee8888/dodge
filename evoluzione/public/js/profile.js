@@ -140,3 +140,44 @@ export async function getProfile(uid) {
 export async function updateLastSeen(uid) {
   await updateDoc(doc(db, 'users', uid), { lastSeen: serverTimestamp() }).catch(() => {});
 }
+
+function normalizeGoogleUsername(raw) {
+  const cleaned = String(raw || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  let base = cleaned || 'player';
+  if (base.length < 3) base = (base + 'player').slice(0, 12);
+  return base.slice(0, 20);
+}
+
+/**
+ * Crea il profilo Firestore per un utente Google se non esiste.
+ * Genera automaticamente un username dall'email; ritenta fino a 40 volte con suffissi random.
+ * Lanciata sia al primo login Google (auth.js) sia al caricamento del gioco (game-engine.js)
+ * come recovery per profili orfani.
+ */
+export async function ensureProfileForUser(user) {
+  if (!user) return;
+  const existing = await getProfile(user.uid).catch(() => null);
+  if (existing) return;
+
+  const emailLocal = String(user.email || '').split('@')[0];
+  const base = normalizeGoogleUsername(emailLocal || user.displayName || 'player');
+
+  for (let i = 0; i < 40; i++) {
+    const suffix = i === 0 ? '' : `_${Math.floor(100 + Math.random() * 9000)}`;
+    const maxBaseLen = Math.max(3, 20 - suffix.length);
+    const candidate = (base.slice(0, maxBaseLen) + suffix).slice(0, 20);
+    if (await usernameExists(candidate)) continue;
+    try {
+      await claimUsername(candidate, user.uid, user.email || '');
+      return;
+    } catch (err) {
+      if (err?.code === 'USERNAME_TAKEN') continue;
+      throw err;
+    }
+  }
+  throw new Error('USERNAME_TAKEN');
+}
