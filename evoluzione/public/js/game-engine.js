@@ -1174,6 +1174,11 @@ function openPrizePicker(counts) {
       cleanup();
       resolve(code);
     };
+    const syncConfirm = () => {
+      const active = Boolean(selected);
+      btnGo.disabled = !active;
+      btnGo.setAttribute('aria-disabled', active ? 'false' : 'true');
+    };
     grid.replaceChildren();
     for (const code of RUN_PRIZE_CODES) {
       const n = Math.max(0, Math.floor(Number(counts[code] || 0)));
@@ -1182,6 +1187,7 @@ function openPrizePicker(counts) {
       bt.className = 'prize-pick-slot';
       bt.style.color = meta[code].color;
       bt.disabled = n <= 0;
+      bt.setAttribute('aria-pressed', 'false');
       bt.innerHTML = `<span class="prize-pick-orbit"><span class="prize-pick-dot"></span></span><span>${meta[code].short}</span>`;
       if (n > 0) {
         const badge = document.createElement('span');
@@ -1191,17 +1197,30 @@ function openPrizePicker(counts) {
       }
       bt.addEventListener('click', () => {
         if (bt.disabled) return;
-        selected = code;
-        grid.querySelectorAll('.prize-pick-slot').forEach((el) => el.classList.remove('prize-pick-slot--selected'));
-        bt.classList.add('prize-pick-slot--selected');
-        btnGo.disabled = false;
+        if (selected === code) {
+          selected = null;
+          bt.classList.remove('prize-pick-slot--selected');
+          bt.setAttribute('aria-pressed', 'false');
+        } else {
+          selected = code;
+          grid.querySelectorAll('.prize-pick-slot').forEach((el) => {
+            el.classList.remove('prize-pick-slot--selected');
+            el.setAttribute('aria-pressed', 'false');
+          });
+          bt.classList.add('prize-pick-slot--selected');
+          bt.setAttribute('aria-pressed', 'true');
+        }
+        syncConfirm();
       });
       grid.appendChild(bt);
     }
     if (btnBack) btnBack.onclick = () => finish(PRIZE_PICK_BACK_HOME);
     btnPure.onclick = () => finish(null);
-    btnGo.onclick = () => finish(selected);
-    btnGo.disabled = true;
+    btnGo.onclick = () => {
+      if (!selected) return;
+      finish(selected);
+    };
+    syncConfirm();
     overlay.hidden = false;
     overlay.removeAttribute('hidden');
     overlay.setAttribute('aria-hidden', 'false');
@@ -1278,21 +1297,10 @@ function bindHomeNav() {
   };
   document.getElementById('btn-home-leaderboard')?.addEventListener('click', openLeaderboard);
 
-  const openHowtoFromHome = (e) => {
+  document.getElementById('btn-home-howto')?.addEventListener('click', (e) => {
     e.stopPropagation();
     showScreenView('howto');
-  };
-  const howtoHomeHit = document.querySelector('.home-howto-hitbox.js-open-howto');
-  if (howtoHomeHit && howtoHomeHit.dataset.howtoBound !== '1') {
-    howtoHomeHit.dataset.howtoBound = '1';
-    howtoHomeHit.addEventListener('click', openHowtoFromHome);
-    howtoHomeHit.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openHowtoFromHome(e);
-      }
-    });
-  }
+  });
 
   document.getElementById('btn-home-profile')?.addEventListener('click', async e => {
     e.stopPropagation();

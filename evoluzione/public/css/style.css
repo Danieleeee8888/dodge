@@ -867,7 +867,6 @@ canvas {
   box-sizing:border-box;
 }
 
-/** Solo pallini + tagline aprono le istruzioni (no fascia larga trasparente). */
 .home-howto-hitbox {
   display:inline-flex;
   flex-direction:column;
@@ -877,17 +876,40 @@ canvas {
   max-width:min(22rem, calc(100vw - 2rem));
   padding:0.35rem 0.5rem;
   box-sizing:border-box;
+}
+.home-howto-entry {
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(var(--chrome-bar-bottom) + max(54px, calc(54px * var(--ui-scale))) + 1.95rem);
+  z-index:25;
+  display:flex;
+  justify-content:center;
+  width:auto;
+  margin:0;
+  flex:0 0 auto;
+}
+.home-howto-link {
+  font:inherit;
+  font-size:clamp(0.62rem, 2.2vmin, 0.72rem);
+  letter-spacing:0.14em;
+  color:rgba(255,255,255,0.42);
+  text-decoration:underline;
+  text-underline-offset:0.18em;
+  background:none;
+  border:none;
+  padding:0.25rem 0.45rem;
   cursor:pointer;
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
-  border-radius:0.85rem;
 }
-.home-howto-hitbox:active {
-  opacity:0.88;
+.home-howto-link:hover,
+.home-howto-link:focus-visible {
+  color:rgba(255,255,255,0.58);
 }
-.home-howto-hitbox:focus-visible {
-  outline:2px solid rgba(147,197,253,0.65);
-  outline-offset:4px;
+.home-howto-link:focus-visible {
+  outline:2px solid rgba(147,197,253,0.55);
+  outline-offset:3px;
 }
 
 .home-modes-spacer {
@@ -895,6 +917,9 @@ canvas {
   min-height:0;
   width:100%;
   pointer-events:none;
+}
+.home-modes-spacer--below-play {
+  min-height:2cm;
 }
 #screen .menu-tagline {
   margin:0; padding:0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
@@ -2042,7 +2067,7 @@ canvas {
   font-size: 0.72rem;
   letter-spacing: 0.14em;
   text-align: center;
-  margin-bottom: 0.85rem;
+  margin: 0.85rem 0;
   font-weight: 700;
   color: rgba(230,235,255,0.95);
 }
@@ -2108,6 +2133,9 @@ canvas {
   flex-direction: column;
   gap: 0.5rem;
 }
+.prize-pick-actions--primary {
+  margin-bottom: 0.15rem;
+}
 .prize-pick-btn {
   font: inherit;
   letter-spacing: 0.12em;
@@ -2120,12 +2148,16 @@ canvas {
   background: rgba(255,255,255,0.08);
 }
 .prize-pick-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.prize-pick-btn--pure { border-color: rgba(255,255,255,0.28); }
-.prize-pick-btn--go {
+.prize-pick-btn--pure {
   background: rgba(80,120,220,0.35);
   border-color: rgba(140,170,255,0.5);
 }
+.prize-pick-btn--go:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.28);
+}
 .prize-pick-btn--back {
+  margin-top: 0.55rem;
   border-color: rgba(148,163,184,0.45);
   background: rgba(255,255,255,0.06);
   color: rgba(226,232,240,0.95);
