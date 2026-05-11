@@ -857,30 +857,34 @@ function snapshotDeathFinaleBall(b) {
   return {
     x: b.x,
     y: b.y,
+    vx: b.vx,
+    vy: b.vy,
     r: b.r,
     type: b.type,
     shape: b.shape,
     rotation: b.rotation,
+    pulse: b.pulse,
     col: b.col,
+    trail: b.trail ? b.trail.map((pt) => ({ x: pt.x, y: pt.y })) : [],
   };
 }
 
-function snapshotBallsForDeathFinale(killerBall = null) {
-  const frozen = balls.map(snapshotDeathFinaleBall);
-  if (killerBall) frozen.push(killerBall);
-  return frozen;
+function snapshotBallsForDeathFinale() {
+  return balls.map(snapshotDeathFinaleBall);
 }
 
-function startDeathFinale(level, playerX, playerY, killerBall = null) {
+function startDeathFinale(level, playerX, playerY) {
+  const frozenAt = performance.now();
   deathFinale = {
-    until: performance.now() + DEATH_FINALE_MS,
+    until: frozenAt + DEATH_FINALE_MS,
+    frozenAt,
     level,
     px: playerX,
     py: playerY,
     bgPhase,
     flash,
     flashCol,
-    balls: snapshotBallsForDeathFinale(killerBall),
+    balls: snapshotBallsForDeathFinale(),
     parts: parts.map((p) => ({ ...p })),
     sparkles: sparkles.map((s) => ({ ...s })),
   };
@@ -894,6 +898,7 @@ async function waitDeathFinaleMin() {
 function drawDeathFreezeFrame(now) {
   const finale = deathFinale;
   if (!finale) return;
+  const frameNow = finale.frozenAt;
   const savedRunning = running;
   const savedPx = px;
   const savedPy = py;
@@ -904,12 +909,30 @@ function drawDeathFreezeFrame(now) {
   tx = finale.px;
   ty = finale.py;
   running = true;
-  drawBg(now, finale.level, finale.bgPhase);
+  drawBg(frameNow, finale.level, finale.bgPhase);
   for (const b of finale.balls) {
     if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') {
-      drawBonusAura(b, now);
+      drawBonusAura(b, frameNow);
     }
-    drawShape(b, b.x, b.y, b.r, 1);
+    const pickupBlink = isBonusCircle(b) ? bonusPickupBlinkMul(frameNow, b) : 1;
+    for (let t = 0; t < b.trail.length; t++) {
+      const tt = t / b.trail.length;
+      ctx.globalAlpha = tt * 0.22 * pickupBlink;
+      const tr = b.r * tt * 0.85;
+      if (b.shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(b.trail[t].x, b.trail[t].y, tr, 0, Math.PI * 2);
+        ctx.fillStyle = b.col;
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.arc(b.trail[t].x, b.trail[t].y, Math.max(1.5, tr * 0.6), 0, Math.PI * 2);
+        ctx.fillStyle = b.col;
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    drawShape(b, b.x, b.y, b.r, pickupBlink);
   }
   for (const sp of finale.sparkles) {
     ctx.globalAlpha = Math.max(0, sp.life / sp.maxLife);
@@ -927,7 +950,7 @@ function drawDeathFreezeFrame(now) {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
-  drawPlayer(now);
+  drawPlayer(frameNow);
   if (finale.flash > 0) {
     ctx.fillStyle = finale.flashCol;
     ctx.globalAlpha = finale.flash;
@@ -2732,9 +2755,8 @@ function die(opts = {}) {
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
   const deathCause = opts.deathCause === 'square' ? 'square' : 'triangle';
-  const killerBall = opts.killerBall || null;
   burst(px, py, '#fff', 40);
-  startDeathFinale(diedLevel, px, py, killerBall);
+  startDeathFinale(diedLevel, px, py);
   running = false;
   startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
   if (deathUiTimeoutId != null) {
@@ -3264,11 +3286,8 @@ function loop(now){
       if (checkCollision(b, px, py)) {
         if(b.type==='white'){
           const deathCause = b.shape === 'triangle' ? 'triangle' : 'square';
-          const killerBall = snapshotDeathFinaleBall(b);
-          balls.splice(i,1);
-          spawnBall('white', { movement: b.movement });
-          die({ deathCause, killerBall });
-          continue;
+          die({ deathCause });
+          break;
         }
         if(b.type==='red'){
           runBonusesCollected.red++;
@@ -3386,6 +3405,11 @@ function loop(now){
     ctx.globalAlpha = 1;
 
     drawShape(b, b.x, b.y, b.r, pickupBlink);
+  }
+
+  if (deathFinale) {
+    drawDeathFreezeFrame(now);
+    return;
   }
 
   let nTri = 0, nSqr = 0;
