@@ -486,9 +486,8 @@ let introCountdown = null;
 let resumeCountdown = null;
 /** Timeout UI game over: va cancellato se si riparte prima che scada. */
 let deathUiTimeoutId = null;
-/** Photo finish sul canvas prima della schermata morte completa. */
+/** Scena congelata sul canvas prima del reveal della schermata morte. */
 const DEATH_FINALE_MS = 1000;
-const DEATH_UI_DELAY_MS = 600;
 let deathFinale = null;
 let deathRevealToken = 0;
 
@@ -872,8 +871,12 @@ function startDeathFinale(level, playerX, playerY) {
     level,
     px: playerX,
     py: playerY,
+    bgPhase,
+    flash,
+    flashCol,
     balls: snapshotBallsForDeathFinale(),
-    playerR: getPlayerDrawR(performance.now()),
+    parts: parts.map((p) => ({ ...p })),
+    sparkles: sparkles.map((s) => ({ ...s })),
   };
 }
 
@@ -882,57 +885,54 @@ async function waitDeathFinaleMin() {
   await waitMs(deathFinale.until - performance.now());
 }
 
-function drawDeathFinalePlayer(now) {
-  const finale = deathFinale;
-  if (!finale || finale.px <= -200) return;
-  const pulse = 0.55 + 0.45 * Math.sin(now * 0.005);
-  const rMain = finale.playerR;
-  ctx.save();
-  ctx.translate(finale.px, finale.py);
-  const gGlow = ctx.createRadialGradient(0, 0, 2, 0, 0, rMain + 28);
-  gGlow.addColorStop(0, `rgba(255,70,70,${0.22 + 0.1 * pulse})`);
-  gGlow.addColorStop(0.38, 'rgba(255,40,40,0.12)');
-  gGlow.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = gGlow;
-  ctx.beginPath();
-  ctx.arc(0, 0, rMain + 28, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = `rgba(255,90,90,${0.82 + 0.14 * pulse})`;
-  ctx.lineWidth = 2.35;
-  ctx.beginPath();
-  ctx.arc(0, 0, rMain, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,180,180,0.45)';
-  ctx.lineWidth = 1.1;
-  ctx.beginPath();
-  ctx.arc(0, 0, rMain - 7, 0, Math.PI * 2);
-  ctx.stroke();
-  const cg = ctx.createRadialGradient(-4, -4, 0, 0, 0, 11);
-  cg.addColorStop(0, '#fff0f0');
-  cg.addColorStop(0.55, '#ff8a8a');
-  cg.addColorStop(1, 'rgba(180,30,30,0.45)');
-  ctx.fillStyle = cg;
-  ctx.beginPath();
-  ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#ffe4e4';
-  ctx.beginPath();
-  ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawDeathFinaleFrame(now) {
+function drawDeathFreezeFrame(now) {
   const finale = deathFinale;
   if (!finale) return;
-  drawBg(now, finale.level);
+  const savedRunning = running;
+  const savedPx = px;
+  const savedPy = py;
+  const savedTx = tx;
+  const savedTy = ty;
+  px = finale.px;
+  py = finale.py;
+  tx = finale.px;
+  ty = finale.py;
+  running = true;
+  drawBg(now, finale.level, finale.bgPhase);
   for (const b of finale.balls) {
     if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') {
       drawBonusAura(b, now);
     }
     drawShape(b, b.x, b.y, b.r, 1);
   }
-  drawDeathFinalePlayer(now);
+  for (const sp of finale.sparkles) {
+    ctx.globalAlpha = Math.max(0, sp.life / sp.maxLife);
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+    ctx.fillStyle = sp.col;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (const p of finale.parts) {
+    ctx.globalAlpha = p.alpha;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = p.col;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawPlayer(now);
+  if (finale.flash > 0) {
+    ctx.fillStyle = finale.flashCol;
+    ctx.globalAlpha = finale.flash;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+  running = savedRunning;
+  px = savedPx;
+  py = savedPy;
+  tx = savedTx;
+  ty = savedTy;
 }
 
 async function fetchDeathStatsForDeathScreen(token, userId) {
@@ -1114,11 +1114,8 @@ async function beginDeathFinaleAndReveal({
   diedNb,
   deathCause,
   runHadPlus,
-  playerX,
-  playerY,
 }) {
   const revealToken = ++deathRevealToken;
-  startDeathFinale(diedLevel, playerX, playerY);
   const bundlePromise = prepareDeathScreenBundle({
     diedElapsed,
     diedLevel,
@@ -2716,7 +2713,6 @@ function die(opts = {}) {
   hasExtraLife = 0;
   syncPowerHud(performance.now());
   stopMusic();
-  running = false;
   syncHudRunPrizeAccent();
   fingerDown = false;
   paused = false;
@@ -2730,25 +2726,21 @@ function die(opts = {}) {
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
   const deathCause = opts.deathCause === 'square' ? 'square' : 'triangle';
-  burst(px,py,'#fff',40);
+  burst(px, py, '#fff', 40);
+  startDeathFinale(diedLevel, px, py);
+  running = false;
   startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
   if (deathUiTimeoutId != null) {
     clearTimeout(deathUiTimeoutId);
     deathUiTimeoutId = null;
   }
-  deathUiTimeoutId = setTimeout(() => {
-    deathUiTimeoutId = null;
-    if (running) return;
-    void beginDeathFinaleAndReveal({
-      diedElapsed,
-      diedLevel,
-      diedNb,
-      deathCause,
-      runHadPlus: !!currentRunPrize,
-      playerX: px,
-      playerY: py,
-    });
-  }, DEATH_UI_DELAY_MS);
+  void beginDeathFinaleAndReveal({
+    diedElapsed,
+    diedLevel,
+    diedNb,
+    deathCause,
+    runHadPlus: !!currentRunPrize,
+  });
 }
 
 function togglePause() {
@@ -3033,7 +3025,7 @@ function loop(now){
 
   if (!running) {
     if (deathFinale) {
-      drawDeathFinaleFrame(now);
+      drawDeathFreezeFrame(now);
       return;
     }
     drawBg(now, 0);
@@ -3655,18 +3647,19 @@ function drawBonusAura(b, now) {
   ctx.fill();
 }
 
-function drawBg(now, lv){
+function drawBg(now, lv, frozenBgPhase = null){
+  const phase = frozenBgPhase != null ? frozenBgPhase : bgPhase;
   const intensity = Math.min((lv-1)*0.09, 0.65);
   if(intensity<0.01) return;
   ctx.strokeStyle=`rgba(200,215,255,${intensity*0.045})`;
   ctx.lineWidth=0.5;
   const cols=14, rows=9;
   for(let i=0;i<=cols;i++){
-    const ox=Math.sin(bgPhase*3+i*0.4)*10*intensity;
+    const ox=Math.sin(phase*3+i*0.4)*10*intensity;
     ctx.beginPath(); ctx.moveTo(i*(W/cols)+ox,0); ctx.lineTo(i*(W/cols)-ox,H); ctx.stroke();
   }
   for(let j=0;j<=rows;j++){
-    const oy=Math.cos(bgPhase*2+j*0.6)*10*intensity;
+    const oy=Math.cos(phase*2+j*0.6)*10*intensity;
     ctx.beginPath(); ctx.moveTo(0,j*(H/rows)+oy); ctx.lineTo(W,j*(H/rows)-oy); ctx.stroke();
   }
   const g=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);
