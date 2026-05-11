@@ -1,5 +1,7 @@
 import { applyGameViewportChromeVars } from './viewport-ui-scale.js';
-import { fillProfileBestStatRows } from './profile-best-display.js';
+import { renderProfileBestCard } from './profile-best-display.js';
+import { renderProfileStatsKpiGrid } from './profile-kpi-display.js';
+import { renderProfileSurvivalThresholdStats } from './profile-threshold-display.js';
 
 function bindViewportUiSync() {
   const run = () => {
@@ -32,24 +34,13 @@ function fmt(ms) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(millis).padStart(3, '0')}`;
 }
 
-function formatHhmmss(totalSeconds) {
-  const t = Math.max(0, Math.floor(Number(totalSeconds) || 0));
-  const hh = Math.floor(t / 3600);
-  const mm = Math.floor((t % 3600) / 60);
-  const ss = t % 60;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-}
-
-const COLLECTED_BONUS_KEYS = ['red', 'blue', 'yellow', 'green', 'purple'];
-
-/** Somma storica dei bonus colorati raccolti (stessi contatori della griglia sopra). */
-function bonusesCollectedTotal(collected) {
-  const c = collected && typeof collected === 'object' ? collected : {};
-  let sum = 0;
-  for (const k of COLLECTED_BONUS_KEYS) {
-    sum += Math.max(0, Math.floor(Number(c[k] || 0)));
-  }
-  return sum;
+function publicThresholdElements() {
+  return {
+    legend: document.getElementById('public-profile-threshold-legend'),
+    runsOver: document.getElementById('public-profile-runs-over-grid'),
+    streaks: document.getElementById('public-profile-streaks-grid'),
+    bestStreaks: document.getElementById('public-profile-best-streaks-grid'),
+  };
 }
 
 function getUserIdFromUrl() {
@@ -59,51 +50,51 @@ function getUserIdFromUrl() {
   return q.get('userId') || '';
 }
 
+function renderPublicProfileStats(stats) {
+  const data = stats && typeof stats === 'object' ? stats : {};
+  renderProfileBestCard(document.getElementById('public-profile-stats-best-card'), {
+    generalMs: Math.floor(Number(data.best_general_ms || 0)),
+    pureMs: Math.floor(Number(data.best_pure_ms || 0)),
+    prizeUsed: String(data.best_general_prize_used || '').trim(),
+    fmt,
+  });
+  renderProfileStatsKpiGrid(document.getElementById('public-profile-stats-grid'), data);
+  renderProfileSurvivalThresholdStats(data, publicThresholdElements());
+  document.getElementById('public-red').textContent = String(Math.floor(Number(data?.collected?.red || 0)));
+  document.getElementById('public-blue').textContent = String(Math.floor(Number(data?.collected?.blue || 0)));
+  document.getElementById('public-yellow').textContent = String(Math.floor(Number(data?.collected?.yellow || 0)));
+  document.getElementById('public-green').textContent = String(Math.floor(Number(data?.collected?.green || 0)));
+  document.getElementById('public-purple').textContent = String(Math.floor(Number(data?.collected?.purple || 0)));
+}
+
 async function loadPublicProfile() {
   const userId = getUserIdFromUrl();
   const msg = document.getElementById('public-profile-msg');
   if (!userId) {
     if (msg) msg.textContent = 'Profilo non valido.';
+    renderPublicProfileStats({});
     return;
   }
   try {
     const response = await fetch(`/api/player/stats/${encodeURIComponent(userId)}`);
     if (!response.ok) {
       if (msg) msg.textContent = 'Profilo non disponibile.';
+      renderPublicProfileStats({});
       return;
     }
     const payload = await response.json();
     const user = payload?.user || {};
     const stats = payload?.stats || {};
     document.getElementById('public-profile-name').textContent = user.displayName || user.username || 'Giocatore';
-    fillProfileBestStatRows(
-      document.getElementById('profile-best-main'),
-      document.getElementById('profile-best-pure'),
-      {
-        generalMs: Math.floor(Number(stats.best_general_ms || 0)),
-        pureMs: Math.floor(Number(stats.best_pure_ms || 0)),
-        prizeUsed: String(stats.best_general_prize_used || '').trim(),
-        fmt,
-      },
-    );
-    document.getElementById('public-total-games').textContent = `Partite giocate: ${Math.floor(Number(stats.total_games || 0))}`;
-    document.getElementById('public-total-playtime').textContent = `Tempo totale di gioco: ${formatHhmmss(stats.total_playtime_seconds || 0)}`;
-    document.getElementById('public-red').textContent = String(Math.floor(Number(stats?.collected?.red || 0)));
-    document.getElementById('public-blue').textContent = String(Math.floor(Number(stats?.collected?.blue || 0)));
-    document.getElementById('public-yellow').textContent = String(Math.floor(Number(stats?.collected?.yellow || 0)));
-    document.getElementById('public-green').textContent = String(Math.floor(Number(stats?.collected?.green || 0)));
-    document.getElementById('public-purple').textContent = String(Math.floor(Number(stats?.collected?.purple || 0)));
-    const bonusTotalEl = document.getElementById('public-bonus-total');
-    if (bonusTotalEl) {
-      bonusTotalEl.textContent = `Bonus presi (totale): ${bonusesCollectedTotal(stats?.collected)}`;
-    }
+    renderPublicProfileStats(stats);
   } catch (_) {
     if (msg) msg.textContent = 'Errore di rete.';
+    renderPublicProfileStats({});
   }
 }
 
 document.getElementById('btn-public-back')?.addEventListener('click', () => {
-  window.location.href = '/index.html';
+  window.location.href = '/';
 });
 
 loadPublicProfile();

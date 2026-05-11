@@ -36,7 +36,10 @@
       },
       {
         "source": "/api/**",
-        "function": "api"
+        "function": {
+          "functionId": "api",
+          "region": "europe-west1"
+        }
       }
     ],
     "headers": [

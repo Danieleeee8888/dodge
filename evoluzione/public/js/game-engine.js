@@ -55,6 +55,9 @@ import {
   fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
   invalidateLeaderboardUsernameMap,
 } from './leaderboard.js';
+import { renderProfileBestCard } from './profile-best-display.js';
+import { renderProfileStatsKpiGrid } from './profile-kpi-display.js';
+import { renderProfileSurvivalThresholdStats } from './profile-threshold-display.js';
 
 let currentUserId = null;
 /** Username account (fisso, registrazione). */
@@ -665,6 +668,11 @@ function updateShellForPhase(phase) {
 }
 // -- NAVIGAZIONE HOME SCREEN --------------------------------------------------
 
+function syncCanvasPointerEvents() {
+  if (!canvas || !screen) return;
+  canvas.style.pointerEvents = screen.style.display !== 'none' ? 'none' : 'auto';
+}
+
 function showScreenView(name) {
   document.querySelectorAll('#screen .screen-view').forEach(v => { v.hidden = true; });
   const view = document.getElementById('view-' + name);
@@ -674,6 +682,7 @@ function showScreenView(name) {
   screen.classList.toggle('screen-death', name === 'death');
   screen.style.cursor = name === 'death' ? 'pointer' : 'default';
   screen.style.display = 'flex';
+  syncCanvasPointerEvents();
   if (homeCornerBtn) {
     homeCornerBtn.classList.toggle('home-corner--hidden', name !== 'death');
   }
@@ -681,6 +690,7 @@ function showScreenView(name) {
 
 function hideScreen() {
   screen.style.display = 'none';
+  syncCanvasPointerEvents();
   if (homeCornerBtn) homeCornerBtn.classList.add('home-corner--hidden');
 }
 
@@ -881,10 +891,19 @@ function maybeShowPlusLaunchNotice(user) {
   overlay.setAttribute('aria-hidden', 'false');
 }
 
+function profileThresholdElements() {
+  return {
+    legend: document.getElementById('profile-threshold-legend'),
+    runsOver: document.getElementById('profile-runs-over-grid'),
+    streaks: document.getElementById('profile-streaks-grid'),
+    bestStreaks: document.getElementById('profile-best-streaks-grid'),
+  };
+}
+
 function clearProfileStatsTabExtras() {
   document.getElementById('profile-stats-best-card')?.replaceChildren();
   document.getElementById('profile-stats-grid')?.replaceChildren();
-  renderProfileSurvivalThresholdStats({});
+  renderProfileSurvivalThresholdStats({}, profileThresholdElements());
   document.getElementById('profile-recent-games-root')?.replaceChildren();
 }
 
@@ -909,143 +928,6 @@ function profileRecentPrizeClass(code) {
   return /^[a-z_]+$/.test(c) ? c : '';
 }
 
-/** Mappa codice Premio Plus → classe colore per il valore PB. */
-const PROFILE_BEST_PRIZE_COLOR_CLASS = Object.freeze({
-  red_plus: 'profile-best-time-plus--red',
-  blue_plus: 'profile-best-time-plus--blue',
-  yellow_plus: 'profile-best-time-plus--yellow',
-  green_plus: 'profile-best-time-plus--green',
-  purple_plus: 'profile-best-time-plus--purple',
-});
-
-function renderProfileBestCard(container, opts) {
-  if (!container) return;
-  container.replaceChildren();
-  const generalMs = Math.floor(Math.max(0, Number(opts?.generalMs) || 0));
-  const pureMs = Math.floor(Math.max(0, Number(opts?.pureMs) || 0));
-  const prizeUsed = opts?.prizeUsed ? String(opts.prizeUsed).trim() : '';
-  const fmtFn = typeof opts?.fmt === 'function' ? opts.fmt : (v) => String(v);
-
-  const label = document.createElement('span');
-  label.className = 'profile-stats-best-label';
-  label.textContent = 'Miglior tempo';
-
-  const value = document.createElement('span');
-  value.className = 'profile-stats-best-value';
-  if (generalMs < 1) {
-    value.textContent = '—';
-  } else {
-    value.textContent = fmtFn(generalMs);
-    const prizeClass = PROFILE_BEST_PRIZE_COLOR_CLASS[prizeUsed];
-    if (prizeClass) value.classList.add(prizeClass);
-  }
-
-  container.appendChild(label);
-  container.appendChild(value);
-
-  const showPure = generalMs >= 1 && pureMs >= 1 && pureMs !== generalMs;
-  if (showPure || (generalMs >= 1 && pureMs < 1)) {
-    const pure = document.createElement('span');
-    pure.className = 'profile-stats-best-pure';
-    pure.textContent = `Puro: ${pureMs >= 1 ? fmtFn(pureMs) : '—'}`;
-    container.appendChild(pure);
-  }
-}
-
-function formatStatsPlaytime(totalSeconds) {
-  const s = Math.max(0, Math.floor(Number(totalSeconds) || 0));
-  const hh = Math.floor(s / 3600);
-  const mm = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-}
-
-function appendProfileStatsKpiCard(container, label, value, opts = {}) {
-  const article = document.createElement('article');
-  article.className = 'profile-stats-kpi';
-  if (opts.wide) article.classList.add('profile-stats-kpi--wide');
-  const h = document.createElement('h4');
-  h.textContent = label;
-  const p = document.createElement('p');
-  p.textContent = String(value);
-  article.append(h, p);
-  container.appendChild(article);
-}
-
-const PROFILE_SURVIVAL_THRESHOLDS = [
-  { seconds: 60, label: '≥ 1:00', tone: 'red' },
-  { seconds: 90, label: '≥ 1:30', tone: 'blue' },
-  { seconds: 120, label: '≥ 2:00', tone: 'yellow' },
-  { seconds: 150, label: '≥ 2:30', tone: 'green' },
-  { seconds: 180, label: '≥ 3:00', tone: 'purple' },
-];
-
-function renderProfileThresholdLegend(container) {
-  if (!container) return;
-  container.replaceChildren();
-  const spacer = document.createElement('span');
-  spacer.className = 'profile-threshold-legend-spacer';
-  spacer.setAttribute('aria-hidden', 'true');
-  container.appendChild(spacer);
-  for (const threshold of PROFILE_SURVIVAL_THRESHOLDS) {
-    const item = document.createElement('div');
-    item.className = `profile-threshold-legend-item profile-color-stat--${threshold.tone}`;
-    const label = document.createElement('span');
-    label.className = 'profile-threshold-legend-label';
-    label.textContent = threshold.label;
-    item.append(label);
-    container.appendChild(item);
-  }
-}
-
-function renderProfileThresholdStatGrid(container, stats, fieldPrefix) {
-  if (!container) return;
-  container.replaceChildren();
-  for (const threshold of PROFILE_SURVIVAL_THRESHOLDS) {
-    const tile = document.createElement('div');
-    tile.className = `profile-color-stat profile-threshold-stat profile-color-stat--${threshold.tone}`;
-    tile.setAttribute('aria-label', threshold.label);
-    const value = document.createElement('span');
-    value.className = 'profile-threshold-value';
-    const key = `${fieldPrefix}_${threshold.seconds}s`;
-    value.textContent = String(Math.floor(Number(stats?.[key] || 0)));
-    tile.append(value);
-    container.appendChild(tile);
-  }
-}
-
-function renderProfileStatsKpiGrid(container, stats) {
-  if (!container) return;
-  container.replaceChildren();
-  const totalGames = Math.floor(Number(stats?.total_games || 0));
-  const totalPlay = Number(stats?.total_playtime_seconds || 0);
-  const deathsTri = Math.floor(Number(stats?.deaths_by_triangle || 0));
-  const deathsSq = Math.floor(Number(stats?.deaths_by_square || 0));
-
-  appendProfileStatsKpiCard(container, 'Partite giocate', totalGames);
-  appendProfileStatsKpiCard(container, 'Tempo totale', formatStatsPlaytime(totalPlay));
-  appendProfileStatsKpiCard(container, 'Morti triangoli', deathsTri);
-  appendProfileStatsKpiCard(container, 'Morti quadrati', deathsSq);
-}
-
-function renderProfileSurvivalThresholdStats(stats) {
-  renderProfileThresholdLegend(document.getElementById('profile-threshold-legend'));
-  renderProfileThresholdStatGrid(
-    document.getElementById('profile-runs-over-grid'),
-    stats,
-    'runs_over',
-  );
-  renderProfileThresholdStatGrid(
-    document.getElementById('profile-streaks-grid'),
-    stats,
-    'current_streak_over',
-  );
-  renderProfileThresholdStatGrid(
-    document.getElementById('profile-best-streaks-grid'),
-    stats,
-    'best_streak_over',
-  );
-}
 
 function renderProfileRecentGamesList(container, rows) {
   if (!container) return;
@@ -1121,7 +1003,7 @@ async function setupProfileView() {
     if (emailEl) emailEl.textContent = '';
     renderProfileBestCard(bestCardEl, { generalMs: 0, pureMs: 0, prizeUsed: '', fmt });
     renderProfileStatsKpiGrid(statsGridEl, {});
-    renderProfileSurvivalThresholdStats({});
+    renderProfileSurvivalThresholdStats({}, profileThresholdElements());
     Object.values(colorMap).forEach((el) => { if (el) el.textContent = '0'; });
     if (displayInput) {
       displayInput.value = '';
@@ -1163,7 +1045,7 @@ async function setupProfileView() {
       const prizeUsed = String(stats.best_general_prize_used || '').trim();
       renderProfileBestCard(bestCardEl, { generalMs, pureMs, prizeUsed, fmt });
       renderProfileStatsKpiGrid(statsGridEl, stats);
-      renderProfileSurvivalThresholdStats(stats);
+      renderProfileSurvivalThresholdStats(stats, profileThresholdElements());
       if (colorMap.red) colorMap.red.textContent = String(Math.floor(Number(stats.red_collected || 0)));
       if (colorMap.blue) colorMap.blue.textContent = String(Math.floor(Number(stats.blue_collected || 0)));
       if (colorMap.yellow) colorMap.yellow.textContent = String(Math.floor(Number(stats.yellow_collected || 0)));
@@ -1180,6 +1062,7 @@ async function setupProfileView() {
         fmt,
       });
       renderProfileStatsKpiGrid(statsGridEl, {});
+      renderProfileSurvivalThresholdStats({}, profileThresholdElements());
     }
   } catch (_) {
     clearProfileStatsTabExtras();
@@ -1190,6 +1073,7 @@ async function setupProfileView() {
       fmt,
     });
     renderProfileStatsKpiGrid(statsGridEl, {});
+    renderProfileSurvivalThresholdStats({}, profileThresholdElements());
   }
   await refreshProfileMissionsAndPrizes().catch(() => {});
 }
@@ -1448,12 +1332,16 @@ function bindHomeNav() {
     });
   }
 
-  // ? HOME (tutti i pulsanti back)
-  document.querySelectorAll('.js-back-home').forEach(btn => {
-    btn.addEventListener('click', e => {
+  document.querySelectorAll('.js-back-home').forEach((btn) => {
+    if (btn.dataset.backHomeBound === '1') return;
+    btn.dataset.backHomeBound = '1';
+    const goHome = (e) => {
+      e.preventDefault();
       e.stopPropagation();
       showScreenView('home');
-    });
+    };
+    btn.addEventListener('click', goHome);
+    btn.addEventListener('pointerup', goHome);
   });
 
   document.getElementById('homeCornerBtn')?.addEventListener('click', e => {

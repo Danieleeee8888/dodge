@@ -250,6 +250,17 @@ async function profileBestFieldsForUid(uid, cachedUserDocData = undefined) {
   };
 }
 
+function publicSurvivalThresholdFields(statsDoc) {
+  const d = statsDoc || {};
+  const out = {};
+  for (const sec of [60, 90, 120, 150, 180]) {
+    out[`runs_over_${sec}s`] = safeNum(d[`runs_over_${sec}s`], 0);
+    out[`current_streak_over_${sec}s`] = safeNum(d[`current_streak_over_${sec}s`], 0);
+    out[`best_streak_over_${sec}s`] = safeNum(d[`best_streak_over_${sec}s`], 0);
+  }
+  return out;
+}
+
 function publicStatsShape(statsDoc) {
   const d = statsDoc || {};
   return {
@@ -257,6 +268,9 @@ function publicStatsShape(statsDoc) {
     total_games: safeNum(d.total_games, 0),
     total_playtime_seconds: safeNum(d.total_playtime_seconds, 0),
     total_playtime_hhmmss: hhmmss(d.total_playtime_seconds),
+    deaths_by_triangle: safeNum(d.deaths_by_triangle, 0),
+    deaths_by_square: safeNum(d.deaths_by_square, 0),
+    ...publicSurvivalThresholdFields(d),
     collected: {
       red: safeNum(d.red_collected, 0),
       blue: safeNum(d.blue_collected, 0),

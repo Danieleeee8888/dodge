@@ -775,6 +775,7 @@ canvas {
   display:flex; flex-direction:column; align-items:stretch; justify-content:center;
   z-index:20; cursor:default; touch-action:manipulation;
   background:#000; font-family:inherit;
+  pointer-events:auto;
 }
 #screen.screen-death { cursor:pointer; }
 #screen:not(.screen-death) {
@@ -1311,6 +1312,8 @@ canvas {
   bottom:var(--chrome-bar-bottom);
   top:auto;
   z-index:26;
+  touch-action:manipulation;
+  pointer-events:auto;
   width:max(52px, calc(54px * var(--ui-scale)));
   height:max(52px, calc(54px * var(--ui-scale)));
   border-radius:50%;
@@ -1576,6 +1579,9 @@ canvas {
 }
 .profile-threshold-legend {
   margin-bottom: 0.15rem;
+}
+.profile-threshold-legend-spacer {
+  grid-column: 1;
 }
 .profile-threshold-rows {
   display: flex;
