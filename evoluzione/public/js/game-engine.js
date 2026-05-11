@@ -2829,6 +2829,7 @@ function startGame() {
   applyIntroCdVisual(3, 'r');
 }
 
+/** @returns {'shield'|'extra'|'fatal'} */
 function die(opts = {}) {
   if (shieldActive) {
     runShieldsConsumed++;
@@ -2836,7 +2837,7 @@ function die(opts = {}) {
     syncPowerHud(performance.now());
     flash = 1; flashCol = 'rgba(255,68,68,0.5)';
     burst(px, py, '#ff4444', 24);
-    return;
+    return 'shield';
   }
   if (hasExtraLife > 0) {
     runExtraLivesUsed++;
@@ -2858,7 +2859,7 @@ function die(opts = {}) {
       spawnSparkle(sx + Math.cos(a) * (4 + Math.random() * 8), sy + Math.sin(a) * (4 + Math.random() * 8), i % 2 ? '#e9d5ff' : '#c084fc');
     }
     if (audioEnabled) playSoundBonus('purple');
-    return;
+    return 'extra';
   }
   if (audioEnabled) playSoundDie();
   shieldActive = false;
@@ -2895,6 +2896,7 @@ function die(opts = {}) {
     deathCause,
     runHadPlus: !!currentRunPrize,
   });
+  return 'fatal';
 }
 
 function togglePause() {
@@ -3411,7 +3413,11 @@ function loop(now){
       if (checkCollision(b, px, py)) {
         if(b.type==='white'){
           const deathCause = b.shape === 'triangle' ? 'triangle' : 'square';
-          die({ deathCause });
+          const hitOutcome = die({ deathCause });
+          if (hitOutcome === 'shield' || hitOutcome === 'extra') {
+            balls.splice(i, 1);
+            continue;
+          }
           break;
         }
         if(b.type==='red'){
