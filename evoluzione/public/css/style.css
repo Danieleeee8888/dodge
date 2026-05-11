@@ -2176,7 +2176,7 @@ canvas {
   gap: 0.5rem;
 }
 .prize-pick-actions--primary {
-  margin-bottom: 0.15rem;
+  margin-bottom: 1rem;
 }
 .prize-pick-btn {
   font: inherit;
