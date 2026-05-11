@@ -1409,6 +1409,26 @@ function syncHudRunPrizeAccent() {
 }
 
 let _navBound = false;
+/** Evita click fantasma sul pulsante classifica (stessa posizione del ⌂) dopo il ritorno in home. */
+const SUBVIEW_HOME_NAV_GUARD_MS = 450;
+let subviewHomeNavGuardUntil = 0;
+
+function armSubViewHomeNavGuard() {
+  subviewHomeNavGuardUntil = performance.now() + SUBVIEW_HOME_NAV_GUARD_MS;
+}
+
+function subviewHomeNavGuardActive() {
+  return performance.now() < subviewHomeNavGuardUntil;
+}
+
+function returnToHomeMenu(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  armSubViewHomeNavGuard();
+  showScreenView('home');
+  updateShellForPhase('menu');
+}
+
 function bindHomeNav() {
   if (_navBound) return;
   _navBound = true;
@@ -1424,6 +1444,10 @@ function bindHomeNav() {
 
   const openLeaderboard = (e) => {
     e.stopPropagation();
+    if (subviewHomeNavGuardActive()) {
+      e.preventDefault();
+      return;
+    }
     leaderboardViewTab = 'general';
     syncLeaderboardTabButtons();
     const lbEl = document.getElementById('records-block-lb');
@@ -1479,20 +1503,10 @@ function bindHomeNav() {
   document.querySelectorAll('.js-back-home').forEach((btn) => {
     if (btn.dataset.backHomeBound === '1') return;
     btn.dataset.backHomeBound = '1';
-    const goHome = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      showScreenView('home');
-    };
-    btn.addEventListener('click', goHome);
-    btn.addEventListener('pointerup', goHome);
+    btn.addEventListener('click', returnToHomeMenu);
   });
 
-  document.getElementById('homeCornerBtn')?.addEventListener('click', e => {
-    e.stopPropagation();
-    showScreenView('home');
-    updateShellForPhase('menu');
-  });
+  document.getElementById('homeCornerBtn')?.addEventListener('click', returnToHomeMenu);
 
   // RESET PASSWORD
   document.getElementById('btn-reset-pw')?.addEventListener('click', async e => {
