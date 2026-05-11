@@ -1563,6 +1563,59 @@ canvas {
 .profile-color-stat--green .profile-color-dot { background: #34cc6e; }
 .profile-color-stat--purple .profile-color-dot { background: #a855f7; }
 
+.profile-soglie-block {
+  width: 100%;
+  margin-bottom: 0.35rem;
+}
+.profile-threshold-legend,
+.profile-threshold-row {
+  display: grid;
+  grid-template-columns: minmax(3.2rem, 4.2rem) repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+  align-items: center;
+}
+.profile-threshold-legend {
+  margin-bottom: 0.15rem;
+}
+.profile-threshold-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.profile-threshold-row__label {
+  margin: 0;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.profile-threshold-row__values {
+  grid-column: 2 / -1;
+}
+.profile-threshold-legend-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.22rem;
+}
+.profile-threshold-legend-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.profile-threshold-legend-item.profile-color-stat--red .profile-threshold-legend-label { color: #ff4444; }
+.profile-threshold-legend-item.profile-color-stat--blue .profile-threshold-legend-label { color: #4488ff; }
+.profile-threshold-legend-item.profile-color-stat--yellow .profile-threshold-legend-label { color: #e9c81a; }
+.profile-threshold-legend-item.profile-color-stat--green .profile-threshold-legend-label { color: #34cc6e; }
+.profile-threshold-legend-item.profile-color-stat--purple .profile-threshold-legend-label { color: #a855f7; }
+.profile-threshold-stat .profile-threshold-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.1;
+}
+
 /* Card "hero" per Miglior tempo + griglia KPI tab Stats profilo in-app
    (stile allineato a .admin-kpi della pagina admin). */
 .profile-stats-best {

@@ -175,6 +175,23 @@
           <h3 id="profile-heading-stats" class="profile-panel-title">Statistiche</h3>
           <div id="profile-stats-best-card" class="profile-stats-best"></div>
           <div id="profile-stats-grid" class="profile-stats-grid"></div>
+          <div class="profile-soglie-block">
+            <div id="profile-threshold-legend" class="profile-threshold-legend" aria-label="Soglie di tempo"></div>
+            <div class="profile-threshold-rows">
+              <div class="profile-threshold-row">
+                <p class="profile-threshold-row__label profile-info--dim">Totale</p>
+                <div id="profile-runs-over-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Partite oltre soglia"></div>
+              </div>
+              <div class="profile-threshold-row">
+                <p class="profile-threshold-row__label profile-info--dim">Serie<br>attuale</p>
+                <div id="profile-streaks-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Strike consecutivi attuali"></div>
+              </div>
+              <div class="profile-threshold-row">
+                <p class="profile-threshold-row__label profile-info--dim">Record</p>
+                <div id="profile-best-streaks-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Miglior strike per soglia"></div>
+              </div>
+            </div>
+          </div>
           <p class="profile-panel-note profile-info--dim profile-stats-subhead">Bonus raccolti (totale)</p>
           <div class="profile-color-stats">
             <div class="profile-color-stat profile-color-stat--red"><span class="profile-color-dot"></span><span id="profile-stat-red">0</span></div>

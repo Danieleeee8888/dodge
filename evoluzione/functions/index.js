@@ -299,6 +299,11 @@ function playerStatsExportHeaders() {
     "current_streak_over_120s",
     "current_streak_over_150s",
     "current_streak_over_180s",
+    "best_streak_over_60s",
+    "best_streak_over_90s",
+    "best_streak_over_120s",
+    "best_streak_over_150s",
+    "best_streak_over_180s",
     "has_red_plus",
     "has_red_premium",
     "has_blue_plus",
@@ -371,6 +376,11 @@ async function upsertPlayerStatsIfMissing(uid) {
     current_streak_over_120s: 0,
     current_streak_over_150s: 0,
     current_streak_over_180s: 0,
+    best_streak_over_60s: 0,
+    best_streak_over_90s: 0,
+    best_streak_over_120s: 0,
+    best_streak_over_150s: 0,
+    best_streak_over_180s: 0,
     has_red_plus: false,
     has_red_premium: false,
     has_blue_plus: false,
@@ -716,6 +726,22 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
 
       prizeUsedForLeaderboards = prizeUsedEffective;
 
+      const prevCurStreak60 = safeNum(s0.current_streak_over_60s, 0);
+      const prevCurStreak90 = safeNum(s0.current_streak_over_90s, 0);
+      const prevCurStreak120 = safeNum(s0.current_streak_over_120s, 0);
+      const prevCurStreak150 = safeNum(s0.current_streak_over_150s, 0);
+      const prevCurStreak180 = safeNum(s0.current_streak_over_180s, 0);
+      const nextCurStreak60 = duration >= 60 ? prevCurStreak60 + 1 : 0;
+      const nextCurStreak90 = duration >= 90 ? prevCurStreak90 + 1 : 0;
+      const nextCurStreak120 = duration >= 120 ? prevCurStreak120 + 1 : 0;
+      const nextCurStreak150 = duration >= 150 ? prevCurStreak150 + 1 : 0;
+      const nextCurStreak180 = duration >= 180 ? prevCurStreak180 + 1 : 0;
+      const nextBestStreak60 = Math.max(safeNum(s0.best_streak_over_60s, 0), duration >= 60 ? nextCurStreak60 : prevCurStreak60);
+      const nextBestStreak90 = Math.max(safeNum(s0.best_streak_over_90s, 0), duration >= 90 ? nextCurStreak90 : prevCurStreak90);
+      const nextBestStreak120 = Math.max(safeNum(s0.best_streak_over_120s, 0), duration >= 120 ? nextCurStreak120 : prevCurStreak120);
+      const nextBestStreak150 = Math.max(safeNum(s0.best_streak_over_150s, 0), duration >= 150 ? nextCurStreak150 : prevCurStreak150);
+      const nextBestStreak180 = Math.max(safeNum(s0.best_streak_over_180s, 0), duration >= 180 ? nextCurStreak180 : prevCurStreak180);
+
       const next = {
         user_id: uid,
         total_games: safeNum(s0.total_games, 0) + 1,
@@ -736,11 +762,16 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         runs_over_120s: safeNum(s0.runs_over_120s, 0) + (duration >= 120 ? 1 : 0),
         runs_over_150s: safeNum(s0.runs_over_150s, 0) + (duration >= 150 ? 1 : 0),
         runs_over_180s: safeNum(s0.runs_over_180s, 0) + (duration >= 180 ? 1 : 0),
-        current_streak_over_60s: duration >= 60 ? safeNum(s0.current_streak_over_60s, 0) + 1 : 0,
-        current_streak_over_90s: duration >= 90 ? safeNum(s0.current_streak_over_90s, 0) + 1 : 0,
-        current_streak_over_120s: duration >= 120 ? safeNum(s0.current_streak_over_120s, 0) + 1 : 0,
-        current_streak_over_150s: duration >= 150 ? safeNum(s0.current_streak_over_150s, 0) + 1 : 0,
-        current_streak_over_180s: duration >= 180 ? safeNum(s0.current_streak_over_180s, 0) + 1 : 0,
+        current_streak_over_60s: nextCurStreak60,
+        current_streak_over_90s: nextCurStreak90,
+        current_streak_over_120s: nextCurStreak120,
+        current_streak_over_150s: nextCurStreak150,
+        current_streak_over_180s: nextCurStreak180,
+        best_streak_over_60s: nextBestStreak60,
+        best_streak_over_90s: nextBestStreak90,
+        best_streak_over_120s: nextBestStreak120,
+        best_streak_over_150s: nextBestStreak150,
+        best_streak_over_180s: nextBestStreak180,
         game_started_at: null,
         updated_at: nowTs(),
       };
@@ -1072,6 +1103,11 @@ async function adminCreateOrphanProfile(uid, email) {
       current_streak_over_120s: 0,
       current_streak_over_150s: 0,
       current_streak_over_180s: 0,
+      best_streak_over_60s: 0,
+      best_streak_over_90s: 0,
+      best_streak_over_120s: 0,
+      best_streak_over_150s: 0,
+      best_streak_over_180s: 0,
       has_red_plus: false,
       has_red_premium: false,
       has_blue_plus: false,
@@ -1615,6 +1651,11 @@ app.get("/api/admin/export", requireAuth, requireAdmin, async (req, res) => {
           current_streak_over_120s: safeNum(st.current_streak_over_120s, 0),
           current_streak_over_150s: safeNum(st.current_streak_over_150s, 0),
           current_streak_over_180s: safeNum(st.current_streak_over_180s, 0),
+          best_streak_over_60s: safeNum(st.best_streak_over_60s, 0),
+          best_streak_over_90s: safeNum(st.best_streak_over_90s, 0),
+          best_streak_over_120s: safeNum(st.best_streak_over_120s, 0),
+          best_streak_over_150s: safeNum(st.best_streak_over_150s, 0),
+          best_streak_over_180s: safeNum(st.best_streak_over_180s, 0),
           has_red_plus: !!st.has_red_plus,
           has_red_premium: !!st.has_red_premium,
           has_blue_plus: !!st.has_blue_plus,

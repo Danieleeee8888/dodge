@@ -884,6 +884,7 @@ function maybeShowPlusLaunchNotice(user) {
 function clearProfileStatsTabExtras() {
   document.getElementById('profile-stats-best-card')?.replaceChildren();
   document.getElementById('profile-stats-grid')?.replaceChildren();
+  renderProfileSurvivalThresholdStats({});
   document.getElementById('profile-recent-games-root')?.replaceChildren();
 }
 
@@ -971,6 +972,48 @@ function appendProfileStatsKpiCard(container, label, value, opts = {}) {
   container.appendChild(article);
 }
 
+const PROFILE_SURVIVAL_THRESHOLDS = [
+  { seconds: 60, label: '≥ 1:00', tone: 'red' },
+  { seconds: 90, label: '≥ 1:30', tone: 'blue' },
+  { seconds: 120, label: '≥ 2:00', tone: 'yellow' },
+  { seconds: 150, label: '≥ 2:30', tone: 'green' },
+  { seconds: 180, label: '≥ 3:00', tone: 'purple' },
+];
+
+function renderProfileThresholdLegend(container) {
+  if (!container) return;
+  container.replaceChildren();
+  const spacer = document.createElement('span');
+  spacer.className = 'profile-threshold-legend-spacer';
+  spacer.setAttribute('aria-hidden', 'true');
+  container.appendChild(spacer);
+  for (const threshold of PROFILE_SURVIVAL_THRESHOLDS) {
+    const item = document.createElement('div');
+    item.className = `profile-threshold-legend-item profile-color-stat--${threshold.tone}`;
+    const label = document.createElement('span');
+    label.className = 'profile-threshold-legend-label';
+    label.textContent = threshold.label;
+    item.append(label);
+    container.appendChild(item);
+  }
+}
+
+function renderProfileThresholdStatGrid(container, stats, fieldPrefix) {
+  if (!container) return;
+  container.replaceChildren();
+  for (const threshold of PROFILE_SURVIVAL_THRESHOLDS) {
+    const tile = document.createElement('div');
+    tile.className = `profile-color-stat profile-threshold-stat profile-color-stat--${threshold.tone}`;
+    tile.setAttribute('aria-label', threshold.label);
+    const value = document.createElement('span');
+    value.className = 'profile-threshold-value';
+    const key = `${fieldPrefix}_${threshold.seconds}s`;
+    value.textContent = String(Math.floor(Number(stats?.[key] || 0)));
+    tile.append(value);
+    container.appendChild(tile);
+  }
+}
+
 function renderProfileStatsKpiGrid(container, stats) {
   if (!container) return;
   container.replaceChildren();
@@ -978,31 +1021,30 @@ function renderProfileStatsKpiGrid(container, stats) {
   const totalPlay = Number(stats?.total_playtime_seconds || 0);
   const deathsTri = Math.floor(Number(stats?.deaths_by_triangle || 0));
   const deathsSq = Math.floor(Number(stats?.deaths_by_square || 0));
-  const over60 = Math.floor(Number(stats?.runs_over_60s || 0));
-  const over90 = Math.floor(Number(stats?.runs_over_90s || 0));
-  const over120 = Math.floor(Number(stats?.runs_over_120s || 0));
-  const over150 = Math.floor(Number(stats?.runs_over_150s || 0));
-  const over180 = Math.floor(Number(stats?.runs_over_180s || 0));
-  const streak60 = Math.floor(Number(stats?.current_streak_over_60s || 0));
-  const streak90 = Math.floor(Number(stats?.current_streak_over_90s || 0));
-  const streak120 = Math.floor(Number(stats?.current_streak_over_120s || 0));
-  const streak150 = Math.floor(Number(stats?.current_streak_over_150s || 0));
-  const streak180 = Math.floor(Number(stats?.current_streak_over_180s || 0));
 
   appendProfileStatsKpiCard(container, 'Partite giocate', totalGames);
   appendProfileStatsKpiCard(container, 'Tempo totale', formatStatsPlaytime(totalPlay));
   appendProfileStatsKpiCard(container, 'Morti triangoli', deathsTri);
   appendProfileStatsKpiCard(container, 'Morti quadrati', deathsSq);
-  appendProfileStatsKpiCard(container, '≥ 1 min', over60);
-  appendProfileStatsKpiCard(container, '≥ 1 min 30s', over90);
-  appendProfileStatsKpiCard(container, '≥ 2 min', over120);
-  appendProfileStatsKpiCard(container, '≥ 2 min 30s', over150);
-  appendProfileStatsKpiCard(container, '≥ 3 min', over180);
-  appendProfileStatsKpiCard(container, 'Strike ≥ 1 min', streak60);
-  appendProfileStatsKpiCard(container, 'Strike ≥ 1 min 30s', streak90);
-  appendProfileStatsKpiCard(container, 'Strike ≥ 2 min', streak120);
-  appendProfileStatsKpiCard(container, 'Strike ≥ 2 min 30s', streak150);
-  appendProfileStatsKpiCard(container, 'Strike ≥ 3 min', streak180);
+}
+
+function renderProfileSurvivalThresholdStats(stats) {
+  renderProfileThresholdLegend(document.getElementById('profile-threshold-legend'));
+  renderProfileThresholdStatGrid(
+    document.getElementById('profile-runs-over-grid'),
+    stats,
+    'runs_over',
+  );
+  renderProfileThresholdStatGrid(
+    document.getElementById('profile-streaks-grid'),
+    stats,
+    'current_streak_over',
+  );
+  renderProfileThresholdStatGrid(
+    document.getElementById('profile-best-streaks-grid'),
+    stats,
+    'best_streak_over',
+  );
 }
 
 function renderProfileRecentGamesList(container, rows) {
@@ -1079,6 +1121,7 @@ async function setupProfileView() {
     if (emailEl) emailEl.textContent = '';
     renderProfileBestCard(bestCardEl, { generalMs: 0, pureMs: 0, prizeUsed: '', fmt });
     renderProfileStatsKpiGrid(statsGridEl, {});
+    renderProfileSurvivalThresholdStats({});
     Object.values(colorMap).forEach((el) => { if (el) el.textContent = '0'; });
     if (displayInput) {
       displayInput.value = '';
@@ -1120,6 +1163,7 @@ async function setupProfileView() {
       const prizeUsed = String(stats.best_general_prize_used || '').trim();
       renderProfileBestCard(bestCardEl, { generalMs, pureMs, prizeUsed, fmt });
       renderProfileStatsKpiGrid(statsGridEl, stats);
+      renderProfileSurvivalThresholdStats(stats);
       if (colorMap.red) colorMap.red.textContent = String(Math.floor(Number(stats.red_collected || 0)));
       if (colorMap.blue) colorMap.blue.textContent = String(Math.floor(Number(stats.blue_collected || 0)));
       if (colorMap.yellow) colorMap.yellow.textContent = String(Math.floor(Number(stats.yellow_collected || 0)));
