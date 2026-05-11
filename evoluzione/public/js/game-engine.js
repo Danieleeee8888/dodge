@@ -981,7 +981,13 @@ function renderProfileStatsKpiGrid(container, stats) {
   const over60 = Math.floor(Number(stats?.runs_over_60s || 0));
   const over90 = Math.floor(Number(stats?.runs_over_90s || 0));
   const over120 = Math.floor(Number(stats?.runs_over_120s || 0));
+  const over150 = Math.floor(Number(stats?.runs_over_150s || 0));
   const over180 = Math.floor(Number(stats?.runs_over_180s || 0));
+  const streak60 = Math.floor(Number(stats?.current_streak_over_60s || 0));
+  const streak90 = Math.floor(Number(stats?.current_streak_over_90s || 0));
+  const streak120 = Math.floor(Number(stats?.current_streak_over_120s || 0));
+  const streak150 = Math.floor(Number(stats?.current_streak_over_150s || 0));
+  const streak180 = Math.floor(Number(stats?.current_streak_over_180s || 0));
 
   appendProfileStatsKpiCard(container, 'Partite giocate', totalGames);
   appendProfileStatsKpiCard(container, 'Tempo totale', formatStatsPlaytime(totalPlay));
@@ -990,7 +996,13 @@ function renderProfileStatsKpiGrid(container, stats) {
   appendProfileStatsKpiCard(container, '≥ 1 min', over60);
   appendProfileStatsKpiCard(container, '≥ 1 min 30s', over90);
   appendProfileStatsKpiCard(container, '≥ 2 min', over120);
+  appendProfileStatsKpiCard(container, '≥ 2 min 30s', over150);
   appendProfileStatsKpiCard(container, '≥ 3 min', over180);
+  appendProfileStatsKpiCard(container, 'Strike ≥ 1 min', streak60);
+  appendProfileStatsKpiCard(container, 'Strike ≥ 1 min 30s', streak90);
+  appendProfileStatsKpiCard(container, 'Strike ≥ 2 min', streak120);
+  appendProfileStatsKpiCard(container, 'Strike ≥ 2 min 30s', streak150);
+  appendProfileStatsKpiCard(container, 'Strike ≥ 3 min', streak180);
 }
 
 function renderProfileRecentGamesList(container, rows) {

@@ -288,7 +288,7 @@ async function loadPlayerDetail(id) {
     <p class="admin-list-row"><span>Email</span><strong>${escapeHtml(u.email || '-')}</strong></p>
     <p class="admin-list-row"><span>Ruolo</span><strong>${escapeHtml(u.role || 'user')}</strong></p>
     <p class="admin-list-row"><span>Premi posseduti</span><strong>${escapeHtml(ownedRewards)}</strong></p>
-    <p class="admin-list-row"><span>Streak 60/90/120/150</span><strong>${escapeHtml(`${s.current_streak_over_60s || 0}/${s.current_streak_over_90s || 0}/${s.current_streak_over_120s || 0}/${s.current_streak_over_150s || 0}`)}</strong></p>
+    <p class="admin-list-row"><span>Streak 60/90/120/150/180</span><strong>${escapeHtml(`${s.current_streak_over_60s || 0}/${s.current_streak_over_90s || 0}/${s.current_streak_over_120s || 0}/${s.current_streak_over_150s || 0}/${s.current_streak_over_180s || 0}`)}</strong></p>
     <p class="profile-info profile-info--dim admin-panel-hint">Allinea profilo + classifiche; puoi forzare i ms (aggiorna anche <code>users.bestTime</code>). Rimuove gli <code>scores</code> con tempo più alto.</p>
     <button id="btn-admin-sync-lb-from-profile" class="home-btn home-btn--compact js-no-start" type="button">Allinea classifiche / profilo</button>
     <h4 class="admin-subtitle">Tutte le statistiche (Firestore)</h4>
