@@ -853,8 +853,8 @@ function waitMs(ms) {
   });
 }
 
-function snapshotBallsForDeathFinale() {
-  return balls.map((b) => ({
+function snapshotDeathFinaleBall(b) {
+  return {
     x: b.x,
     y: b.y,
     r: b.r,
@@ -862,10 +862,16 @@ function snapshotBallsForDeathFinale() {
     shape: b.shape,
     rotation: b.rotation,
     col: b.col,
-  }));
+  };
 }
 
-function startDeathFinale(level, playerX, playerY) {
+function snapshotBallsForDeathFinale(killerBall = null) {
+  const frozen = balls.map(snapshotDeathFinaleBall);
+  if (killerBall) frozen.push(killerBall);
+  return frozen;
+}
+
+function startDeathFinale(level, playerX, playerY, killerBall = null) {
   deathFinale = {
     until: performance.now() + DEATH_FINALE_MS,
     level,
@@ -874,7 +880,7 @@ function startDeathFinale(level, playerX, playerY) {
     bgPhase,
     flash,
     flashCol,
-    balls: snapshotBallsForDeathFinale(),
+    balls: snapshotBallsForDeathFinale(killerBall),
     parts: parts.map((p) => ({ ...p })),
     sparkles: sparkles.map((s) => ({ ...s })),
   };
@@ -2726,8 +2732,9 @@ function die(opts = {}) {
   const diedLevel = level;
   const diedNb = balls.filter(b => b.type === 'white').length;
   const deathCause = opts.deathCause === 'square' ? 'square' : 'triangle';
+  const killerBall = opts.killerBall || null;
   burst(px, py, '#fff', 40);
-  startDeathFinale(diedLevel, px, py);
+  startDeathFinale(diedLevel, px, py, killerBall);
   running = false;
   startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
   if (deathUiTimeoutId != null) {
@@ -3256,9 +3263,11 @@ function loop(now){
     if(px>-200){
       if (checkCollision(b, px, py)) {
         if(b.type==='white'){
+          const deathCause = b.shape === 'triangle' ? 'triangle' : 'square';
+          const killerBall = snapshotDeathFinaleBall(b);
           balls.splice(i,1);
           spawnBall('white', { movement: b.movement });
-          die({ deathCause: b.shape === 'triangle' ? 'triangle' : 'square' });
+          die({ deathCause, killerBall });
           continue;
         }
         if(b.type==='red'){
