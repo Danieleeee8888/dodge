@@ -3412,6 +3412,7 @@ onAuthStateChanged(auth, async (user) => {
       // Recovery: utente Google senza profilo Firestore (es. creazione fallita al primo login).
       await ensureProfileForUser(user).catch(() => {});
       profile = await getProfile(user.uid).catch(() => null);
+      if (profile) await refreshProfileMissionsAndPrizes().catch(() => {});
     }
     currentUsername = profile?.username || user.email || '???';
     currentDisplayName = resolveDisplayName(profile);
