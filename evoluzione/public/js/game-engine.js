@@ -486,6 +486,11 @@ let introCountdown = null;
 let resumeCountdown = null;
 /** Timeout UI game over: va cancellato se si riparte prima che scada. */
 let deathUiTimeoutId = null;
+/** Photo finish sul canvas prima della schermata morte completa. */
+const DEATH_FINALE_MS = 1000;
+const DEATH_UI_DELAY_MS = 600;
+let deathFinale = null;
+let deathRevealToken = 0;
 
 const cdOverlayEl = document.getElementById('countdownOverlay');
 const cdInnerEl = document.getElementById('cdInner');
@@ -843,40 +848,290 @@ function renderDeathMissionSnippet(missionsPayload, opts = {}) {
   root.hidden = false;
 }
 
-async function refreshDeathSummarySnippets(token, gameEndPayload, diedElapsedMs, runHadPlus) {
-  if (gameEndPayload?.mission_completed) {
-    renderDeathMissionSnippet({ active: null }, { runHadPlus, missionCompleted: true });
+function waitMs(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, Math.max(0, ms));
+  });
+}
+
+function snapshotBallsForDeathFinale() {
+  return balls.map((b) => ({
+    x: b.x,
+    y: b.y,
+    r: b.r,
+    type: b.type,
+    shape: b.shape,
+    rotation: b.rotation,
+    col: b.col,
+  }));
+}
+
+function startDeathFinale(level, playerX, playerY) {
+  deathFinale = {
+    until: performance.now() + DEATH_FINALE_MS,
+    level,
+    px: playerX,
+    py: playerY,
+    balls: snapshotBallsForDeathFinale(),
+    playerR: getPlayerDrawR(performance.now()),
+  };
+}
+
+async function waitDeathFinaleMin() {
+  if (!deathFinale) return;
+  await waitMs(deathFinale.until - performance.now());
+}
+
+function drawDeathFinalePlayer(now) {
+  const finale = deathFinale;
+  if (!finale || finale.px <= -200) return;
+  const pulse = 0.55 + 0.45 * Math.sin(now * 0.005);
+  const rMain = finale.playerR;
+  ctx.save();
+  ctx.translate(finale.px, finale.py);
+  const gGlow = ctx.createRadialGradient(0, 0, 2, 0, 0, rMain + 28);
+  gGlow.addColorStop(0, `rgba(255,70,70,${0.22 + 0.1 * pulse})`);
+  gGlow.addColorStop(0.38, 'rgba(255,40,40,0.12)');
+  gGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gGlow;
+  ctx.beginPath();
+  ctx.arc(0, 0, rMain + 28, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(255,90,90,${0.82 + 0.14 * pulse})`;
+  ctx.lineWidth = 2.35;
+  ctx.beginPath();
+  ctx.arc(0, 0, rMain, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,180,180,0.45)';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.arc(0, 0, rMain - 7, 0, Math.PI * 2);
+  ctx.stroke();
+  const cg = ctx.createRadialGradient(-4, -4, 0, 0, 0, 11);
+  cg.addColorStop(0, '#fff0f0');
+  cg.addColorStop(0.55, '#ff8a8a');
+  cg.addColorStop(1, 'rgba(180,30,30,0.45)');
+  ctx.fillStyle = cg;
+  ctx.beginPath();
+  ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffe4e4';
+  ctx.beginPath();
+  ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawDeathFinaleFrame(now) {
+  const finale = deathFinale;
+  if (!finale) return;
+  drawBg(now, finale.level);
+  for (const b of finale.balls) {
+    if (b.type === 'red' || b.type === 'blue' || b.type === 'yellow' || b.type === 'green' || b.type === 'purple') {
+      drawBonusAura(b, now);
+    }
+    drawShape(b, b.x, b.y, b.r, 1);
   }
+  drawDeathFinalePlayer(now);
+}
+
+async function fetchDeathStatsForDeathScreen(token, userId) {
+  if (token) {
+    try {
+      const statsRes = await fetch('/api/player/stats', { headers: { Authorization: `Bearer ${token}` } });
+      if (statsRes.ok) {
+        const payload = await statsRes.json().catch(() => ({}));
+        return payload?.stats || {};
+      }
+    } catch (_) {}
+  }
+  if (userId) {
+    try {
+      const pubRes = await fetch(`/api/player/stats/${encodeURIComponent(userId)}`);
+      if (pubRes.ok) {
+        const payload = await pubRes.json().catch(() => ({}));
+        return payload?.stats || {};
+      }
+    } catch (_) {}
+  }
+  return {};
+}
+
+async function fetchDeathMissionsForDeathScreen(token) {
+  if (!token) return { active: null };
   try {
-    const [statsRes, mRes] = await Promise.all([
-      fetch('/api/player/stats', { headers: { Authorization: `Bearer ${token}` } }),
-      fetch('/api/missions/current', { headers: { Authorization: `Bearer ${token}` } }),
-    ]);
-    if (statsRes.ok) {
-      const statsPayload = await statsRes.json().catch(() => ({}));
-      renderDeathProfileSnippet(statsPayload?.stats || {}, diedElapsedMs);
-    } else {
-      const profileSnippet = document.getElementById('death-profile-snippet');
-      if (profileSnippet) profileSnippet.hidden = true;
-    }
-    if (mRes.ok) {
-      const missionsPayload = await mRes.json().catch(() => ({}));
-      renderDeathMissionSnippet(missionsPayload, {
-        runHadPlus,
-        missionCompleted: !!gameEndPayload?.mission_completed,
-      });
-    } else if (!gameEndPayload?.mission_completed) {
-      const missionSnippet = document.getElementById('death-mission-snippet');
-      if (missionSnippet) missionSnippet.hidden = true;
-    }
-  } catch (_) {
-    if (!gameEndPayload?.mission_completed) {
-      const missionSnippet = document.getElementById('death-mission-snippet');
-      if (missionSnippet) missionSnippet.hidden = true;
-    }
-    const profileSnippet = document.getElementById('death-profile-snippet');
-    if (profileSnippet) profileSnippet.hidden = true;
+    const mRes = await fetch('/api/missions/current', { headers: { Authorization: `Bearer ${token}` } });
+    if (mRes.ok) return await mRes.json().catch(() => ({ active: null }));
+  } catch (_) {}
+  return { active: null };
+}
+
+async function prepareDeathScreenBundle({
+  diedElapsed,
+  diedLevel,
+  diedNb,
+  deathCause,
+  runHadPlus,
+}) {
+  const leaderboardKind = runHadPlus ? 'general' : 'pure';
+  const base = {
+    diedElapsed,
+    diedLevel,
+    diedNb,
+    leaderboardKind,
+    runHadPlus,
+    gameEndPayload: null,
+    stats: null,
+    missionsPayload: { active: null },
+    recordBadge: null,
+    recordsMessage: '',
+    showProfileSnippet: false,
+    showMissionSnippet: false,
+  };
+
+  if (isGuestModeActive() || !currentUserId) {
+    await fetchBothLeaderboards().catch(() => {});
+    return base;
   }
+
+  const user = auth.currentUser;
+  if (!user || !user.emailVerified) {
+    base.recordsMessage = 'verifica l\'email per salvare i record ? controlla anche lo spam';
+    return base;
+  }
+
+  applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed, currentRunPrize || null);
+  let token = null;
+  try {
+    token = await user.getIdToken();
+  } catch (_) {
+    base.recordsMessage = 'errore di rete ? punteggio non salvato';
+    await fetchBothLeaderboards().catch(() => {});
+    base.stats = await fetchDeathStatsForDeathScreen(null, currentUserId);
+    base.showProfileSnippet = true;
+    return base;
+  }
+
+  const payload = await callGameEnd({
+    duration_seconds: diedElapsed / 1000,
+    level_reached: diedLevel,
+    whites_on_screen_at_death: diedNb,
+    death_cause: deathCause,
+    bonus_active: null,
+    bonuses_collected: { ...runBonusesCollected },
+    extra_lives_used: runExtraLivesUsed,
+    shields_consumed: runShieldsConsumed,
+    whites_killed_by_yellow: runWhitesKilledByYellow,
+    prize_used: currentRunPrize,
+    green_skipped_this_run: runGreenSkipped,
+    max_extra_lives_simultaneous_this_run: runMaxExtraLivesSimultaneous,
+  }, token);
+
+  if (!payload || !payload.ok) {
+    const err = payload && payload.error;
+    base.recordsMessage = err === 'run_id_mismatch'
+      ? 'partita non salvata: un\'altra sessione \u00e8 attiva'
+      : err === 'invalid_duration'
+      ? 'partita non salvata: durata non valida'
+      : err === 'no_profile'
+      ? 'profilo non trovato \u2014 effettua di nuovo l\'accesso'
+      : err === 'client_error'
+      ? 'partita non salvata (richiesta non valida)'
+      : 'errore di rete ? punteggio non salvato';
+    await fetchBothLeaderboards().catch(() => {});
+    base.stats = await fetchDeathStatsForDeathScreen(token, currentUserId);
+    base.missionsPayload = await fetchDeathMissionsForDeathScreen(token);
+    base.showProfileSnippet = true;
+    base.showMissionSnippet = true;
+    return base;
+  }
+
+  base.gameEndPayload = payload;
+  await fetchBothLeaderboards().catch(() => {});
+  if (payload.improved && (payload.inTop15 || payload.inTop10)) {
+    base.recordBadge = 'nuovo record in classifica!';
+  } else if (payload.improved) {
+    base.recordBadge = 'record personale!';
+  }
+
+  const [stats, missionsPayload] = await Promise.all([
+    fetchDeathStatsForDeathScreen(token, currentUserId),
+    fetchDeathMissionsForDeathScreen(token),
+  ]);
+  base.stats = stats;
+  base.missionsPayload = missionsPayload;
+  base.showProfileSnippet = true;
+  base.showMissionSnippet = true;
+  return base;
+}
+
+function applyDeathSummaryFromBundle(bundle) {
+  clearDeathSummarySnippets();
+  const recEl = document.getElementById('records-block');
+  if (!recEl) return;
+  recEl.textContent = '';
+  if (bundle.recordsMessage) {
+    recEl.innerHTML = `<p class="rec-saving">${bundle.recordsMessage}</p>`;
+  } else {
+    if (bundle.recordBadge) {
+      const badge = document.createElement('p');
+      badge.className = bundle.recordBadge === 'nuovo record in classifica!'
+        ? 'rec-saving rec-saving--highlight'
+        : 'rec-saving';
+      badge.textContent = bundle.recordBadge;
+      recEl.appendChild(badge);
+    }
+    deathRecordsLeaderboardKind = bundle.leaderboardKind;
+    renderRecordsInto(recEl, { leaderboardKind: bundle.leaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
+  }
+
+  if (bundle.showProfileSnippet) {
+    renderDeathProfileSnippet(bundle.stats || {}, bundle.diedElapsed);
+  }
+  if (bundle.showMissionSnippet) {
+    renderDeathMissionSnippet(bundle.missionsPayload || { active: null }, {
+      runHadPlus: bundle.runHadPlus,
+      missionCompleted: !!bundle.gameEndPayload?.mission_completed,
+    });
+  }
+}
+
+function revealDeathScreen(bundle) {
+  tEl.textContent = fmt(bundle.diedElapsed);
+  lvEl.textContent = String(bundle.diedLevel);
+  nbEl.textContent = String(bundle.diedNb);
+  updateShellForPhase('gameover');
+  const deathTimeEl = document.getElementById('death-time');
+  if (deathTimeEl) deathTimeEl.textContent = `sopravvissuto ${fmt(bundle.diedElapsed)}`;
+  applyDeathSummaryFromBundle(bundle);
+  showScreenView('death');
+  setupMenuUI();
+}
+
+async function beginDeathFinaleAndReveal({
+  diedElapsed,
+  diedLevel,
+  diedNb,
+  deathCause,
+  runHadPlus,
+  playerX,
+  playerY,
+}) {
+  const revealToken = ++deathRevealToken;
+  startDeathFinale(diedLevel, playerX, playerY);
+  const bundlePromise = prepareDeathScreenBundle({
+    diedElapsed,
+    diedLevel,
+    diedNb,
+    deathCause,
+    runHadPlus,
+  });
+  await Promise.all([waitDeathFinaleMin(), bundlePromise]);
+  if (revealToken !== deathRevealToken || running) return;
+  deathFinale = null;
+  const bundle = await bundlePromise;
+  if (revealToken !== deathRevealToken || running) return;
+  revealDeathScreen(bundle);
 }
 
 async function refreshProfileMissionsAndPrizes() {
@@ -2370,6 +2625,8 @@ function startGame() {
     clearTimeout(deathUiTimeoutId);
     deathUiTimeoutId = null;
   }
+  deathRevealToken++;
+  deathFinale = null;
   fingerDown = false;
   paused = false;
   if (pauseOverlay) pauseOverlay.style.display = 'none';
@@ -2479,85 +2736,19 @@ function die(opts = {}) {
     clearTimeout(deathUiTimeoutId);
     deathUiTimeoutId = null;
   }
-  deathUiTimeoutId = setTimeout(async () => {
+  deathUiTimeoutId = setTimeout(() => {
     deathUiTimeoutId = null;
     if (running) return;
-    tEl.textContent = fmt(diedElapsed);
-    lvEl.textContent = String(diedLevel);
-    nbEl.textContent = String(diedNb);
-    updateShellForPhase('gameover');
-    // Aggiorna testo tempo nel view-death pre-costruito
-    const deathTimeEl = document.getElementById('death-time');
-    if (deathTimeEl) deathTimeEl.textContent = `sopravvissuto ${fmt(diedElapsed)}`;
-    const recEl = document.getElementById('records-block');
-    deathRecordsLeaderboardKind = currentRunPrize ? 'general' : 'pure';
-    const runHadPlus = !!currentRunPrize;
-    showScreenView('death');
-    clearDeathSummarySnippets();
-
-    if (!isGuestModeActive() && currentUserId) {
-      const user = auth.currentUser;
-      if (!user || !user.emailVerified) {
-        // Email non verificata: mostra avviso, non tentare il salvataggio
-        if (recEl) recEl.innerHTML = '<p class="rec-saving">verifica l\'email per salvare i record ? controlla anche lo spam</p>';
-      } else {
-        if (recEl) recEl.innerHTML = '<p class="rec-saving">salvataggio???</p>';
-        applyOptimisticScore(currentUserId, currentDisplayName, diedElapsed, currentRunPrize || null);
-        renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
-        const token = await user.getIdToken();
-        const payload = await callGameEnd({
-          duration_seconds: diedElapsed / 1000,
-          level_reached: diedLevel,
-          whites_on_screen_at_death: diedNb,
-          death_cause: deathCause,
-          bonus_active: null,
-          bonuses_collected: { ...runBonusesCollected },
-          extra_lives_used: runExtraLivesUsed,
-          shields_consumed: runShieldsConsumed,
-          whites_killed_by_yellow: runWhitesKilledByYellow,
-          prize_used: currentRunPrize,
-          green_skipped_this_run: runGreenSkipped,
-          max_extra_lives_simultaneous_this_run: runMaxExtraLivesSimultaneous,
-        }, token);
-        if (payload && payload.ok && payload.duplicate) {
-          // Idempotente: la run era già stata salvata da un tentativo precedente. Refresh classifica, niente badge.
-          await fetchBothLeaderboards().catch(() => {});
-          renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
-          await refreshDeathSummarySnippets(token, payload, diedElapsed, runHadPlus);
-        } else if (payload && payload.ok) {
-          await fetchBothLeaderboards().catch(() => {});
-          if (payload.improved && (payload.inTop15 || payload.inTop10)) {
-            const badge = document.createElement('p');
-            badge.className = 'rec-saving rec-saving--highlight';
-            badge.textContent = 'nuovo record in classifica!';
-            if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
-          } else if (payload.improved) {
-            const badge = document.createElement('p');
-            badge.className = 'rec-saving';
-            badge.textContent = 'record personale!';
-            if (recEl) recEl.insertAdjacentElement('afterbegin', badge);
-          }
-          renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
-          await refreshDeathSummarySnippets(token, payload, diedElapsed, runHadPlus);
-        } else {
-          const err = payload && payload.error;
-          const msg = err === 'run_id_mismatch'
-            ? 'partita non salvata: un\'altra sessione \u00e8 attiva'
-            : err === 'invalid_duration'
-            ? 'partita non salvata: durata non valida'
-            : err === 'no_profile'
-            ? 'profilo non trovato \u2014 effettua di nuovo l\'accesso'
-            : err === 'client_error'
-            ? 'partita non salvata (richiesta non valida)'
-            : 'errore di rete ? punteggio non salvato';
-          if (recEl) recEl.innerHTML = `<p class="rec-saving">${msg}</p>`;
-        }
-      }
-    } else {
-      if (recEl) recEl.innerHTML = '';
-    }
-    setupMenuUI();
-  }, 600);
+    void beginDeathFinaleAndReveal({
+      diedElapsed,
+      diedLevel,
+      diedNb,
+      deathCause,
+      runHadPlus: !!currentRunPrize,
+      playerX: px,
+      playerY: py,
+    });
+  }, DEATH_UI_DELAY_MS);
 }
 
 function togglePause() {
@@ -2631,6 +2822,7 @@ function isControlTarget(el) {
   if (el.id === 'audioCornerBtn' || (el.closest && el.closest('#audioCornerBtn'))) return true;
   if (el.id === 'homeCornerBtn' || (el.closest && el.closest('#homeCornerBtn'))) return true;
   if (el.closest && el.closest('#plusLaunchOverlay')) return true;
+  if (deathFinale) return true;
   // Blocca startGame se siamo sulla home screen (non death)
   if (screen && screen.style.display !== 'none' && !screen.classList.contains('screen-death')) return true;
   // Blocca i pulsanti js-no-start anche nel death screen (HOME, RIPROVA)
@@ -2646,6 +2838,7 @@ window.addEventListener('mousedown', e=>{
   if (running && paused && !resumeCountdown) return;
   const [x,y]=getXY(e);
   if (!running) {
+    if (deathFinale) return;
     if (!startGameSequenceBusy) void beginStartGameSequence();
     return;
   }
@@ -2680,6 +2873,7 @@ window.addEventListener('touchstart', e=>{
   e.preventDefault();
   const [x,y]=getXY(e);
   if (!running) {
+    if (deathFinale) return;
     if (!startGameSequenceBusy) void beginStartGameSequence();
     return;
   }
@@ -2837,7 +3031,11 @@ function loop(now){
   ctx.fillStyle = '#000000';
   ctx.fillRect(0,0,W,H);
 
-  if(!running){
+  if (!running) {
+    if (deathFinale) {
+      drawDeathFinaleFrame(now);
+      return;
+    }
     drawBg(now, 0);
     return;
   }
