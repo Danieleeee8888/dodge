@@ -992,6 +992,167 @@ app.get("/api/admin/overview", requireAuth, requireAdmin, async (req, res) => {
 });
 
 /**
+ * Genera uno username unico da email (server-side, usa Admin SDK).
+ * Stesso algoritmo di ensureProfileForUser nel client.
+ */
+async function adminAutoUsername(email) {
+  const base = String(email || "player")
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "") || "player";
+  const baseNorm = base.length < 3 ? (base + "player").slice(0, 12) : base.slice(0, 20);
+  for (let i = 0; i < 40; i++) {
+    const suffix = i === 0 ? "" : `_${Math.floor(100 + Math.random() * 9000)}`;
+    const maxBaseLen = Math.max(3, 20 - suffix.length);
+    const candidate = (baseNorm.slice(0, maxBaseLen) + suffix).slice(0, 20);
+    const nameSnap = await db.collection("usernames").doc(candidate).get();
+    if (!nameSnap.exists) return candidate;
+  }
+  throw new Error("USERNAME_EXHAUSTED");
+}
+
+/**
+ * Crea profilo Firestore (users + usernames + player_stats) per un utente orfano.
+ * Usa Admin SDK: bypassa le client rules (scrittura backend).
+ * Ritorna { already_exists: true } se il profilo esiste già (idempotente).
+ */
+async function adminCreateOrphanProfile(uid, email) {
+  const userRef = db.collection("users").doc(uid);
+  const userSnap = await userRef.get();
+  if (userSnap.exists) return {already_exists: true};
+
+  const username = await adminAutoUsername(email);
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const role = normalizedEmail === ADMIN_EMAIL ? "admin" : "user";
+
+  const batch = db.batch();
+  batch.set(db.collection("usernames").doc(username), {uid, claimedAt: now});
+  batch.set(userRef, {
+    username,
+    usernameLower: username,
+    displayName: username,
+    email: email || "",
+    role,
+    createdAt: now,
+    lastSeen: now,
+    gamesPlayed: 0,
+    bestTime: 0,
+  });
+  const statsRef = db.collection("player_stats").doc(uid);
+  const statsSnap = await statsRef.get();
+  if (!statsSnap.exists) {
+    batch.set(statsRef, {
+      user_id: uid,
+      total_games: 0,
+      total_playtime_seconds: 0,
+      best_time_seconds: 0,
+      deaths_by_triangle: 0,
+      deaths_by_square: 0,
+      red_collected: 0,
+      blue_collected: 0,
+      yellow_collected: 0,
+      green_collected: 0,
+      purple_collected: 0,
+      extra_lives_used: 0,
+      shields_consumed: 0,
+      whites_killed_by_yellow: 0,
+      runs_over_60s: 0,
+      runs_over_90s: 0,
+      runs_over_120s: 0,
+      runs_over_150s: 0,
+      runs_over_180s: 0,
+      current_streak_over_60s: 0,
+      current_streak_over_90s: 0,
+      current_streak_over_120s: 0,
+      current_streak_over_150s: 0,
+      has_red_plus: false,
+      has_red_premium: false,
+      has_blue_plus: false,
+      has_blue_premium: false,
+      has_yellow_plus: false,
+      has_yellow_premium: false,
+      has_green_plus: false,
+      has_green_premium: false,
+      has_purple_plus: false,
+      has_purple_premium: false,
+      premi_usati_count: 0,
+      ...defaultMissionPlayerStatsFields(),
+      prizes: emptyPrizes(),
+      updated_at: nowTs(),
+    });
+  }
+  await batch.commit();
+  return {username, role, player_stats_created: !statsSnap.exists};
+}
+
+/**
+ * Solo admin: scansiona Firebase Auth e trova utenti senza documento users/{uid}.
+ * dry_run=true (default) → solo report; dry_run=false → crea i profili mancanti.
+ */
+app.post("/api/admin/scan-fix-orphaned-users", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const dryRun = req.body.dry_run !== false;
+
+    const authUsers = [];
+    let pageToken;
+    do {
+      const result = await admin.auth().listUsers(1000, pageToken);
+      authUsers.push(...result.users);
+      pageToken = result.pageToken;
+    } while (pageToken);
+
+    const usersSnap = await db.collection("users").get();
+    const existingUids = new Set(usersSnap.docs.map((d) => d.id));
+    const orphaned = authUsers.filter((u) => !existingUids.has(u.uid));
+
+    if (dryRun) {
+      return res.json({
+        ok: true,
+        dry_run: true,
+        total_auth_users: authUsers.length,
+        total_firestore_users: usersSnap.size,
+        orphaned_count: orphaned.length,
+        orphaned: orphaned.map((u) => ({
+          uid: u.uid,
+          email: u.email || null,
+          display_name: u.displayName || null,
+          providers: (u.providerData || []).map((p) => p.providerId),
+          created_at: u.metadata?.creationTime || null,
+        })),
+      });
+    }
+
+    const results = [];
+    for (const authUser of orphaned) {
+      try {
+        const outcome = await adminCreateOrphanProfile(authUser.uid, authUser.email || "");
+        results.push({uid: authUser.uid, email: authUser.email || null, ok: true, ...outcome});
+      } catch (err) {
+        results.push({uid: authUser.uid, email: authUser.email || null, ok: false, error: String(err.message)});
+      }
+    }
+
+    return res.json({
+      ok: true,
+      dry_run: false,
+      total_auth_users: authUsers.length,
+      total_firestore_users: usersSnap.size,
+      orphaned_found: orphaned.length,
+      fixed: results.filter((r) => r.ok && !r.already_exists).length,
+      already_existed: results.filter((r) => r.ok && r.already_exists).length,
+      failed: results.filter((r) => !r.ok).length,
+      results,
+    });
+  } catch (e) {
+    logger.error("POST /api/admin/scan-fix-orphaned-users", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+/**
  * Migrazione una tantum: allinea role su users e totali base su player_stats
  * da storico `scores` + campi users (gamesPlayed, bestTime ms).
  * Idempotente: usa Math.max con valori già presenti su player_stats.

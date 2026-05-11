@@ -430,6 +430,39 @@ function bindEvents() {
       else setMsg('Errore di rete.');
     }
   });
+  document.getElementById('btn-admin-scan-orphans')?.addEventListener('click', async () => {
+    setMsg('Scansione in corso…');
+    try {
+      const data = await apiPost('/api/admin/scan-fix-orphaned-users', {dry_run: true});
+      const list = (data.orphaned || []).map((u) =>
+        `  • ${u.email || '(no email)'} | uid:${u.uid} | provider:${(u.providers||[]).join(',')} | creato:${u.created_at || '?'}`
+      ).join('\n');
+      setMsg(
+        `Auth totali: ${data.total_auth_users} · Firestore: ${data.total_firestore_users} · Orfani: ${data.orphaned_count}\n` +
+        (data.orphaned_count > 0 ? list : 'Nessun utente orfano.')
+      );
+    } catch (e) {
+      const code = String(e.message || '');
+      if (code === 'HTTP_403') setMsg('Accesso negato.');
+      else setMsg('Errore di rete o API.');
+    }
+  });
+
+  document.getElementById('btn-admin-fix-orphans')?.addEventListener('click', async () => {
+    if (!window.confirm('Creare i profili Firestore mancanti per tutti gli utenti orfani? L\'username sarà generato automaticamente dall\'email.')) return;
+    setMsg('Creazione profili in corso…');
+    try {
+      const data = await apiPost('/api/admin/scan-fix-orphaned-users', {dry_run: false});
+      setMsg(
+        `Orfani trovati: ${data.orphaned_found} · Creati: ${data.fixed} · Già esistenti: ${data.already_existed} · Errori: ${data.failed}`
+      );
+    } catch (e) {
+      const code = String(e.message || '');
+      if (code === 'HTTP_403') setMsg('Accesso negato.');
+      else setMsg('Errore di rete o API.');
+    }
+  });
+
   window.addEventListener('popstate', () => {
     void routeLoad();
   });
