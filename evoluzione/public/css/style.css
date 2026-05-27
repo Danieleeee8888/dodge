@@ -64,7 +64,8 @@ html.page-scroll-root body.page-scroll-body .screen-view {
   -webkit-overflow-scrolling: touch;
 }
 
-html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--sub {
+html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--sub,
+html.page-scroll-root body.page-scroll-body .legal-page.screen-view--sub {
   padding-bottom: calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
 }
 
@@ -2652,21 +2653,6 @@ canvas {
   opacity: 0.88;
 }
 
-/* Pagine legali (privacy, termini, contatti): scroll sulla vista, come admin */
-html.page-scroll-root body.page-scroll-body .legal-page.screen-view--sub {
-  position: fixed;
-  inset: 0;
-  height: 100%;
-  height: 100dvh;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y pinch-zoom;
-  -webkit-overflow-scrolling: touch;
-  justify-content: flex-start;
-  padding-bottom: calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
-}
 .legal-page .legal-body,
 .legal-page .legal-body a {
   user-select: text;
