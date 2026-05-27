@@ -3449,7 +3449,6 @@ function isControlTarget(el) {
   if (el.id === 'homeCornerBtn' || (el.closest && el.closest('#homeCornerBtn'))) return true;
   if (el.id === 'pauseExitHomeBtn' || (el.closest && el.closest('#pauseExitHomeBtn'))) return true;
   if (el.closest && el.closest('.pause-exit-home')) return true;
-  if (pauseOverlay && pauseOverlay.classList.contains('pause-overlay--active') && el.closest && el.closest('#pauseOverlay')) return true;
   if (el.closest && el.closest('#plusLaunchOverlay')) return true;
   if (deathFinale) return true;
   // Blocca startGame se siamo sulla home screen (non death)
@@ -3486,14 +3485,14 @@ window.addEventListener('mousemove', e=>{
 window.addEventListener('mouseup', ()=>{ fingerDown=false; });
 
 window.addEventListener('touchstart', e=>{
-  if (isControlTarget(e.target)) return;
-  if (e.target && e.target.closest && e.target.closest('#prizePickOverlay')) return;
-  if (e.target && e.target.closest && e.target.closest('#plusLaunchOverlay')) return;
   if (running && e.touches.length >= 2) {
     e.preventDefault();
     togglePause();
     return;
   }
+  if (isControlTarget(e.target)) return;
+  if (e.target && e.target.closest && e.target.closest('#prizePickOverlay')) return;
+  if (e.target && e.target.closest && e.target.closest('#plusLaunchOverlay')) return;
   if (running && paused && !resumeCountdown) {
     e.preventDefault();
     return;
