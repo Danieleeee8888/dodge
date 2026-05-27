@@ -145,6 +145,8 @@ const pauseOverlay = document.getElementById('pauseOverlay');
 const pauseExitHomeBtn = document.getElementById('pauseExitHomeBtn');
 /** Uscita manuale da pausa: entro questa finestra non si chiama game/end (statistiche intatte). */
 const EARLY_EXIT_GRACE_MS = 15000;
+let pauseExitHomeAllowed = false;
+let pauseExitHomeBusy = false;
 let deferredInstallPrompt = null;
 let installNudgeEl = null;
 
@@ -900,7 +902,8 @@ function updateShellForPhase(phase) {
 
 function syncCanvasPointerEvents() {
   if (!canvas || !screen) return;
-  canvas.style.pointerEvents = screen.style.display !== 'none' ? 'none' : 'auto';
+  const menuOpen = screen.style.display !== 'none';
+  canvas.style.pointerEvents = (menuOpen || paused) ? 'none' : 'auto';
 }
 
 function showScreenView(name) {
@@ -2288,9 +2291,7 @@ function bindHomeNav() {
 
   document.getElementById('homeCornerBtn')?.addEventListener('click', returnToHomeMenu);
 
-  pauseExitHomeBtn?.addEventListener('click', (e) => {
-    void abortRunAndReturnHome(e);
-  });
+  bindPauseExitHomeBtn();
 
   // RESET PASSWORD
   document.getElementById('btn-reset-pw')?.addEventListener('click', async e => {
@@ -3278,7 +3279,13 @@ function die(opts = {}) {
 }
 
 function canShowPauseExitHome() {
-  return running && paused && !introCountdown && !resumeCountdown && elapsed < EARLY_EXIT_GRACE_MS;
+  return (
+    pauseExitHomeAllowed
+    && running
+    && paused
+    && !introCountdown
+    && !resumeCountdown
+  );
 }
 
 function syncPauseExitHomeVisibility() {
@@ -3287,20 +3294,36 @@ function syncPauseExitHomeVisibility() {
 }
 
 function hidePauseOverlay() {
+  pauseExitHomeAllowed = false;
   if (pauseOverlay) {
     pauseOverlay.style.display = 'none';
     pauseOverlay.classList.remove('pause-overlay--active');
     pauseOverlay.setAttribute('aria-hidden', 'true');
   }
   if (pauseExitHomeBtn) pauseExitHomeBtn.hidden = true;
+  syncCanvasPointerEvents();
 }
 
 function showPauseOverlay() {
   if (!pauseOverlay) return;
+  pauseExitHomeAllowed = elapsed < EARLY_EXIT_GRACE_MS;
   pauseOverlay.style.display = 'flex';
   pauseOverlay.classList.add('pause-overlay--active');
   pauseOverlay.setAttribute('aria-hidden', 'false');
   syncPauseExitHomeVisibility();
+  syncCanvasPointerEvents();
+}
+
+function bindPauseExitHomeBtn() {
+  if (!pauseExitHomeBtn || pauseExitHomeBtn.dataset.pauseExitBound === '1') return;
+  pauseExitHomeBtn.dataset.pauseExitBound = '1';
+  const onExit = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void abortRunAndReturnHome(e);
+  };
+  pauseExitHomeBtn.addEventListener('click', onExit);
+  pauseExitHomeBtn.addEventListener('pointerup', onExit);
 }
 
 async function abortRunAndReturnHome(e) {
@@ -3308,42 +3331,48 @@ async function abortRunAndReturnHome(e) {
     e.preventDefault();
     e.stopPropagation();
   }
-  if (!canShowPauseExitHome()) return;
+  if (pauseExitHomeBusy) return;
+  if (!pauseExitHomeBtn || pauseExitHomeBtn.hidden) return;
+  pauseExitHomeBusy = true;
+  try {
+    const runIdToAbort = currentRunId;
+    deathRevealToken++;
+    if (deathUiTimeoutId != null) {
+      clearTimeout(deathUiTimeoutId);
+      deathUiTimeoutId = null;
+    }
+    deathFinale = null;
+    fingerDown = false;
+    paused = false;
+    running = false;
+    resumeCountdown = null;
+    introCountdown = null;
+    currentRunId = null;
+    currentRunPrize = null;
+    hidePauseOverlay();
+    if (cdOverlayEl) {
+      cdOverlayEl.classList.remove('show');
+      cdOverlayEl.classList.remove('countdownOverlay--resume');
+    }
+    stopMusic();
+    syncHudRunPrizeAccent();
+    screen.classList.remove('screen-death');
+    screen.style.background = '';
+    startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
+    armSubViewHomeNavGuard();
+    updateShellForPhase('menu');
+    showScreenView('home');
+    setupMenuUI();
+    syncCanvasPointerEvents();
 
-  const runIdToAbort = currentRunId;
-  deathRevealToken++;
-  if (deathUiTimeoutId != null) {
-    clearTimeout(deathUiTimeoutId);
-    deathUiTimeoutId = null;
-  }
-  deathFinale = null;
-  fingerDown = false;
-  paused = false;
-  running = false;
-  resumeCountdown = null;
-  introCountdown = null;
-  currentRunId = null;
-  currentRunPrize = null;
-  hidePauseOverlay();
-  if (cdOverlayEl) {
-    cdOverlayEl.classList.remove('show');
-    cdOverlayEl.classList.remove('countdownOverlay--resume');
-  }
-  stopMusic();
-  syncHudRunPrizeAccent();
-  screen.classList.remove('screen-death');
-  screen.style.background = '';
-  startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
-  armSubViewHomeNavGuard();
-  updateShellForPhase('menu');
-  showScreenView('home');
-  setupMenuUI();
-
-  if (!isGuestModeActive() && auth.currentUser?.emailVerified && runIdToAbort) {
-    try {
-      const token = await auth.currentUser.getIdToken();
-      await callGameAbort(runIdToAbort, token);
-    } catch (_) {}
+    if (!isGuestModeActive() && auth.currentUser?.emailVerified && runIdToAbort) {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        await callGameAbort(runIdToAbort, token);
+      } catch (_) {}
+    }
+  } finally {
+    pauseExitHomeBusy = false;
   }
 }
 
@@ -3361,6 +3390,7 @@ function togglePause() {
   }
 
   hidePauseOverlay();
+  syncCanvasPointerEvents();
   const t0 = performance.now();
   resumeCountdown = { phase: 0, phaseEnd: t0 + INTRO_CD_MS };
   if (cdOverlayEl) {
@@ -3418,7 +3448,8 @@ function isControlTarget(el) {
   if (el.id === 'audioCornerBtn' || (el.closest && el.closest('#audioCornerBtn'))) return true;
   if (el.id === 'homeCornerBtn' || (el.closest && el.closest('#homeCornerBtn'))) return true;
   if (el.id === 'pauseExitHomeBtn' || (el.closest && el.closest('#pauseExitHomeBtn'))) return true;
-  if (el.closest && el.closest('#pauseOverlay .pause-exit-home')) return true;
+  if (el.closest && el.closest('.pause-exit-home')) return true;
+  if (pauseOverlay && pauseOverlay.classList.contains('pause-overlay--active') && el.closest && el.closest('#pauseOverlay')) return true;
   if (el.closest && el.closest('#plusLaunchOverlay')) return true;
   if (deathFinale) return true;
   // Blocca startGame se siamo sulla home screen (non death)
