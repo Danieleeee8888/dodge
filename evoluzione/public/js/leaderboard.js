@@ -8,6 +8,7 @@ export const LEADERBOARD_TOP_N = 15;
 
 let _cacheGeneral = [];
 let _cachePure = [];
+let _cacheLevel = [];
 const SCORE_MIN = 1;
 const SCORE_MAX = 7200000;
 /** Partite recenti in `scores`: serve coprire abbastanza righe perché molte run Plus in cima non escludano dal merge i migliori tempi puri. */
@@ -173,24 +174,57 @@ export async function fetchLeaderboard(kind = 'general', n = LEADERBOARD_TOP_N) 
   }
 }
 
-/** Compat: una volta caricate entrambe le classifiche le cache sono aggiornate. */
+/**
+ * Classifica per livello (TOP 15): legge dall'endpoint backend che fa già il sort cascade
+ * level → best_streak 180/150/120/90/60 → bestTime (nascosto) → uid.
+ * Risposta: { ok, rows: [{ uid, displayName, level, s60, s90, s120, s150, s180 }] }
+ */
+export async function fetchLeaderboardByLevel() {
+  try {
+    const resp = await fetch('/api/leaderboard/by-level', { credentials: 'omit' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
+    _cacheLevel = rows.map((r) => ({
+      uid: String(r.uid || ''),
+      displayName: String(r.displayName || '').slice(0, 24) || '???',
+      level: Math.max(1, Math.floor(Number(r.level) || 1)),
+      s60: Math.max(0, Math.floor(Number(r.s60) || 0)),
+      s90: Math.max(0, Math.floor(Number(r.s90) || 0)),
+      s120: Math.max(0, Math.floor(Number(r.s120) || 0)),
+      s150: Math.max(0, Math.floor(Number(r.s150) || 0)),
+      s180: Math.max(0, Math.floor(Number(r.s180) || 0)),
+    })).filter((r) => r.uid);
+    return _cacheLevel;
+  } catch (e) {
+    return _cacheLevel;
+  }
+}
+
+export function getCachedLevelLeaderboard() {
+  return _cacheLevel;
+}
+
+/** Compat: una volta caricate tutte le classifiche le cache sono aggiornate. */
 export async function fetchBothLeaderboards(n = LEADERBOARD_TOP_N) {
   await Promise.all([
     fetchLeaderboard('general', n),
     fetchLeaderboard('pure', n),
+    fetchLeaderboardByLevel(),
   ]);
 }
 
 export function getCachedLeaderboard(kind = 'general') {
+  if (kind === 'level') return _cacheLevel;
   return kind === 'pure' ? _cachePure : _cacheGeneral;
 }
 
-/** Aggiorna il livello in cache classifica (generale + pura) per un uid. */
+/** Aggiorna il livello in cache classifica (generale + pura + per-livello) per un uid. */
 export function syncLeaderboardLevel(uid, level) {
   if (!uid) return;
   const lv = Math.max(1, Math.floor(Number(level) || 0));
   if (!Number.isFinite(lv) || lv < 1) return;
-  for (const cache of [_cacheGeneral, _cachePure]) {
+  for (const cache of [_cacheGeneral, _cachePure, _cacheLevel]) {
     const idx = cache.findIndex((r) => r.uid === uid);
     if (idx >= 0) cache[idx] = { ...cache[idx], level: lv };
   }

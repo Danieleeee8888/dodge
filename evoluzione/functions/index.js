@@ -576,6 +576,96 @@ app.get("/api/player/stats/:userId", async (req, res) => {
   }
 });
 
+/**
+ * Classifica per livello (pubblica, TOP 15).
+ * Sort cascade: level desc, best_streak_over_180s desc, 150s, 120s, 90s, 60s,
+ * poi bestTime desc (nascosto al client), infine uid per stabilità.
+ * Le serie usate per lo spareggio NON tolgono il `level_base_*`: confrontiamo i totali "storici"
+ * cosi' un giocatore che ha appena fatto level-up non viene penalizzato.
+ */
+app.get("/api/leaderboard/by-level", async (req, res) => {
+  try {
+    const FETCH_LIMIT = 60;
+    const TOP_N = LEADERBOARD_TOP_N;
+
+    const psSnap = await db.collection("player_stats")
+        .orderBy("level", "desc")
+        .limit(FETCH_LIMIT)
+        .get();
+
+    if (psSnap.empty) {
+      return res.json({ok: true, rows: []});
+    }
+
+    const usernameSnap = await db.collection("usernames").get();
+    const uidToSlug = new Map();
+    usernameSnap.docs.forEach((d) => {
+      const data = d.data() || {};
+      if (typeof data.uid === "string" && data.uid) uidToSlug.set(data.uid, d.id);
+    });
+
+    const candidates = psSnap.docs.map((d) => {
+      const s = d.data() || {};
+      return {
+        uid: d.id,
+        level: Math.max(1, Math.floor(safeNum(s.level, 1))),
+        s60: Math.max(0, Math.floor(safeNum(s.best_streak_over_60s, 0))),
+        s90: Math.max(0, Math.floor(safeNum(s.best_streak_over_90s, 0))),
+        s120: Math.max(0, Math.floor(safeNum(s.best_streak_over_120s, 0))),
+        s150: Math.max(0, Math.floor(safeNum(s.best_streak_over_150s, 0))),
+        s180: Math.max(0, Math.floor(safeNum(s.best_streak_over_180s, 0))),
+      };
+    });
+
+    const userRefs = candidates.map((c) => db.collection("users").doc(c.uid));
+    const userDocs = userRefs.length > 0 ? await db.getAll(...userRefs) : [];
+    const uidToUser = new Map();
+    userDocs.forEach((doc) => {
+      uidToUser.set(doc.id, doc.exists ? (doc.data() || {}) : {});
+    });
+
+    const enriched = candidates.map((c) => {
+      const u = uidToUser.get(c.uid) || {};
+      const slug = uidToSlug.get(c.uid) || "";
+      const fromDoc = String(u.displayName || "").trim();
+      const legacy = String(u.username || "").trim();
+      const displayName = (fromDoc || legacy || slug || "???").slice(0, 24);
+      return {
+        ...c,
+        displayName,
+        bestTime: Math.max(0, Math.floor(safeNum(u.bestTime, 0))),
+      };
+    });
+
+    enriched.sort((a, b) => {
+      if (b.level !== a.level) return b.level - a.level;
+      if (b.s180 !== a.s180) return b.s180 - a.s180;
+      if (b.s150 !== a.s150) return b.s150 - a.s150;
+      if (b.s120 !== a.s120) return b.s120 - a.s120;
+      if (b.s90 !== a.s90) return b.s90 - a.s90;
+      if (b.s60 !== a.s60) return b.s60 - a.s60;
+      if (b.bestTime !== a.bestTime) return b.bestTime - a.bestTime;
+      return a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0;
+    });
+
+    const rows = enriched.slice(0, TOP_N).map((r) => ({
+      uid: r.uid,
+      displayName: r.displayName,
+      level: r.level,
+      s60: r.s60,
+      s90: r.s90,
+      s120: r.s120,
+      s150: r.s150,
+      s180: r.s180,
+    }));
+
+    return res.json({ok: true, rows});
+  } catch (e) {
+    logger.error("GET /api/leaderboard/by-level", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
 app.get("/api/prizes", requireAuth, async (req, res) => {
   try {
     await upsertPlayerStatsIfMissing(req.uid);

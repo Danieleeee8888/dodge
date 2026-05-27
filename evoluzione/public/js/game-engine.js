@@ -54,7 +54,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getProfile, resolveDisplayName, updateDisplayName, ensureProfileForUser } from './profile.js';
 import {
-  fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore, syncLeaderboardLevel,
+  fetchBothLeaderboards, getCachedLeaderboard, getCachedLevelLeaderboard,
+  applyOptimisticScore, syncLeaderboardLevel,
   invalidateLeaderboardUsernameMap, LEADERBOARD_TOP_N,
 } from './leaderboard.js';
 import { renderProfileBestCard } from './profile-best-display.js';
@@ -502,51 +503,12 @@ const cdNumEl = document.getElementById('cdNum');
 
 let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
-/** Tab attiva sulla vista classifica (`records-block-lb`). */
-let leaderboardViewTab = 'pure';
-/** Classifica mostrata in `#records-block` (schermata morte / refresh menu): segue l’ultima run pura vs Plus. */
+/** Classifica mostrata in `#records-block` (schermata morte / refresh menu): segue l'ultima run pura vs Plus. */
 let deathRecordsLeaderboardKind = 'general';
 /** Righe classifica in schermata morte (la vista Classifica resta TOP 15). */
 const DEATH_RECORDS_TOP_N = 5;
 /** Feature toggle temporaneo: nasconde UI Bonus Plus / Missioni senza rimuovere la logica. */
 const ENABLE_PLUS_MISSIONS_UI = false;
-
-function syncLeaderboardTabButtons() {
-  const g = document.getElementById('lb-tab-general');
-  const p = document.getElementById('lb-tab-pure');
-  if (!p) return;
-  if (!ENABLE_PLUS_MISSIONS_UI && g) g.hidden = true;
-  if (!ENABLE_PLUS_MISSIONS_UI) leaderboardViewTab = 'pure';
-  if (!g) {
-    const isPureOnly = true;
-    p.classList.toggle('leaderboard-tab--active', isPureOnly);
-    p.setAttribute('aria-selected', 'true');
-    return;
-  }
-  const isGen = leaderboardViewTab === 'general';
-  g.classList.toggle('leaderboard-tab--active', isGen);
-  p.classList.toggle('leaderboard-tab--active', !isGen);
-  g.setAttribute('aria-selected', isGen ? 'true' : 'false');
-  p.setAttribute('aria-selected', !isGen ? 'true' : 'false');
-}
-
-function bindLeaderboardTabs() {
-  const root = document.getElementById('view-leaderboard');
-  if (!root || root.dataset.lbTabsBound === '1') return;
-  root.dataset.lbTabsBound = '1';
-  document.getElementById('lb-tab-general')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    leaderboardViewTab = 'general';
-    syncLeaderboardTabButtons();
-    renderRecordsInto(document.getElementById('records-block-lb'));
-  });
-  document.getElementById('lb-tab-pure')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    leaderboardViewTab = 'pure';
-    syncLeaderboardTabButtons();
-    renderRecordsInto(document.getElementById('records-block-lb'));
-  });
-}
 
 /** Tab attiva sulla vista profilo (`#view-profile`). */
 let profileViewTab = 'personal';
@@ -600,18 +562,20 @@ function bindProfileTabs() {
 
 function renderRecordsInto(el, opts = {}) {
   if (!el) return;
-  const isLbPage = el.id === 'records-block-lb';
+  const isLbPage = el.id === 'records-block-times';
   const isDeathRecords = el.id === 'records-block';
-  const kind = isLbPage ? leaderboardViewTab : (opts.leaderboardKind ?? 'general');
+  const kind = opts.leaderboardKind ?? 'general';
   const maxRows = opts.maxRows ?? (isDeathRecords ? DEATH_RECORDS_TOP_N : LEADERBOARD_TOP_N);
   const rec = getCachedLeaderboard(kind).slice(0, maxRows);
   el.textContent = '';
 
   const title = document.createElement('h2');
   const topLabel = isDeathRecords ? DEATH_RECORDS_TOP_N : LEADERBOARD_TOP_N;
-  title.textContent = kind === 'pure'
-    ? `TOP ${topLabel} · CLASSIFICA PURA`
-    : `TOP ${topLabel} · CLASSIFICA GENERALE`;
+  title.textContent = isLbPage
+    ? `TOP ${topLabel} · TEMPI`
+    : kind === 'pure'
+      ? `TOP ${topLabel} · CLASSIFICA PURA`
+      : `TOP ${topLabel} · CLASSIFICA GENERALE`;
   el.appendChild(title);
 
   const list = document.createElement('ol');
@@ -675,6 +639,92 @@ function renderRecordsInto(el, opts = {}) {
         levelPill.title = 'Livello giocatore';
         right.appendChild(levelPill);
       }
+      item.appendChild(left);
+      item.appendChild(right);
+      list.appendChild(item);
+    });
+  }
+
+  el.appendChild(list);
+}
+
+/**
+ * Soglie e tono colore allineati a PROFILE_SURVIVAL_THRESHOLDS in profile-threshold-display.js.
+ * Ordine sx -> dx: 60, 90, 120, 150, 180 (come nel profilo).
+ */
+const LEVEL_LB_THRESHOLDS = [
+  { key: 's60', sec: 60, tone: 'red', label: '\u2265 1:00' },
+  { key: 's90', sec: 90, tone: 'blue', label: '\u2265 1:30' },
+  { key: 's120', sec: 120, tone: 'yellow', label: '\u2265 2:00' },
+  { key: 's150', sec: 150, tone: 'green', label: '\u2265 2:30' },
+  { key: 's180', sec: 180, tone: 'purple', label: '\u2265 3:00' },
+];
+
+function renderLevelLeaderboardInto(el) {
+  if (!el) return;
+  const rec = getCachedLevelLeaderboard().slice(0, LEADERBOARD_TOP_N);
+  el.textContent = '';
+
+  const title = document.createElement('h2');
+  title.textContent = `TOP ${LEADERBOARD_TOP_N} · LIVELLO`;
+  el.appendChild(title);
+
+  const list = document.createElement('ol');
+  if (rec.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'rec-empty';
+    empty.textContent = 'nessun record ancora';
+    list.appendChild(empty);
+  } else {
+    rec.forEach((row, i) => {
+      const item = document.createElement('li');
+      item.className = 'rec-row';
+      if (i === 0) item.classList.add('rec-r1');
+      if (row.uid === currentUserId) item.classList.add('rec-row--me');
+
+      const left = document.createElement('span');
+      left.className = 'rec-row-left';
+
+      const rank = document.createElement('span');
+      rank.className = 'rec-rank';
+      rank.textContent = `${i + 1}.`;
+
+      const tag = document.createElement('button');
+      tag.type = 'button';
+      tag.className = 'rec-tag rec-tag-btn js-no-start';
+      tag.textContent = (row.displayName || '???').slice(0, 12);
+      tag.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (!row.uid) return;
+        window.location.href = `/profile/${encodeURIComponent(row.uid)}`;
+      });
+
+      left.appendChild(rank);
+      left.appendChild(tag);
+
+      const right = document.createElement('span');
+      right.className = 'rec-row-right';
+
+      const streakRow = document.createElement('span');
+      streakRow.className = 'rec-streak-row';
+      LEVEL_LB_THRESHOLDS.forEach((t) => {
+        const n = Math.max(0, Math.floor(Number(row[t.key]) || 0));
+        const cell = document.createElement('span');
+        cell.className = `rec-streak-cell rec-streak-cell--${t.tone}` + (n === 0 ? ' rec-streak-cell--zero' : '');
+        cell.textContent = String(n);
+        cell.title = `Serie ${t.label}: ${n} di fila`;
+        cell.setAttribute('aria-label', `Serie almeno ${t.sec}s: ${n}`);
+        streakRow.appendChild(cell);
+      });
+      right.appendChild(streakRow);
+
+      const levelPill = document.createElement('span');
+      levelPill.className = 'rec-level-pill';
+      const levelNum = Math.floor(Number(row.level));
+      levelPill.textContent = Number.isFinite(levelNum) && levelNum >= 1 ? `LV ${levelNum}` : 'LV 1';
+      levelPill.title = 'Livello giocatore';
+      right.appendChild(levelPill);
+
       item.appendChild(left);
       item.appendChild(right);
       list.appendChild(item);
@@ -1933,7 +1983,6 @@ function bindHomeNav() {
   if (_navBound) return;
   _navBound = true;
 
-  bindLeaderboardTabs();
   bindProfileTabs();
 
   // GIOCA
@@ -1948,12 +1997,15 @@ function bindHomeNav() {
       e.preventDefault();
       return;
     }
-    leaderboardViewTab = ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure';
-    syncLeaderboardTabButtons();
-    const lbEl = document.getElementById('records-block-lb');
-    renderRecordsInto(lbEl);
+    const timesEl = document.getElementById('records-block-times');
+    const levelsEl = document.getElementById('records-block-levels');
+    renderRecordsInto(timesEl, { leaderboardKind: ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure' });
+    renderLevelLeaderboardInto(levelsEl);
     showScreenView('leaderboard');
-    fetchBothLeaderboards().then(() => renderRecordsInto(lbEl)).catch(() => {});
+    fetchBothLeaderboards().then(() => {
+      renderRecordsInto(timesEl, { leaderboardKind: ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure' });
+      renderLevelLeaderboardInto(levelsEl);
+    }).catch(() => {});
   };
   document.getElementById('btn-home-leaderboard')?.addEventListener('click', openLeaderboard);
 
@@ -2034,19 +2086,23 @@ function setupMenuUI() {
   const nameEl = document.getElementById('menuPlayerName');
   if (nameEl) nameEl.textContent = isGuestModeActive() ? 'OSPITE OFFLINE' : currentDisplayName;
   const recEl = document.getElementById('records-block');
-  const lbEl = document.getElementById('records-block-lb');
+  const timesEl = document.getElementById('records-block-times');
+  const levelsEl = document.getElementById('records-block-levels');
   const lbBtn = document.getElementById('btn-home-leaderboard');
   const profileBtn = document.getElementById('btn-home-profile');
+  const timesKind = ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure';
   if (isGuestModeActive()) {
     if (recEl) recEl.innerHTML = '';
     if (lbBtn) lbBtn.hidden = false;
     if (profileBtn) profileBtn.hidden = false;
-    if (lbEl) renderRecordsInto(lbEl);
+    if (timesEl) renderRecordsInto(timesEl, { leaderboardKind: timesKind });
+    if (levelsEl) renderLevelLeaderboardInto(levelsEl);
   } else {
     if (lbBtn) lbBtn.hidden = false;
     if (profileBtn) profileBtn.hidden = false;
     renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
-    renderRecordsInto(lbEl);
+    if (timesEl) renderRecordsInto(timesEl, { leaderboardKind: timesKind });
+    if (levelsEl) renderLevelLeaderboardInto(levelsEl);
   }
 }
 

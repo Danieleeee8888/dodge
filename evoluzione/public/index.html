@@ -136,11 +136,10 @@
   <!-- ── CLASSIFICA ────────────────────────────────────────── -->
   <div id="view-leaderboard" class="screen-view screen-view--sub" hidden>
     <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
-    <div class="leaderboard-tab-strip" role="tablist" aria-label="Tipo classifica">
-      <button type="button" id="lb-tab-general" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" hidden>Generale</button>
-      <button type="button" id="lb-tab-pure" class="leaderboard-tab leaderboard-tab--active js-no-start" role="tab" aria-selected="true">Pura</button>
+    <div class="leaderboards-split">
+      <div id="records-block-times" class="leaderboard-col records-block-list"></div>
+      <div id="records-block-levels" class="leaderboard-col records-block-list records-block-list--level"></div>
     </div>
-    <div id="records-block-lb"></div>
   </div>
 
   <!-- ── PROFILO ───────────────────────────────────────────── -->

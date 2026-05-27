@@ -1115,7 +1115,7 @@ canvas {
   flex:0 0 auto;
 }
 #records-block .rec-tag-btn,
-#records-block-lb .rec-tag-btn {
+.records-block-list .rec-tag-btn {
   background: transparent;
   border: 0;
   color: inherit;
@@ -1124,7 +1124,7 @@ canvas {
   cursor: pointer;
 }
 #records-block .rec-tag-btn:active,
-#records-block-lb .rec-tag-btn:active {
+.records-block-list .rec-tag-btn:active {
   opacity: 0.8;
 }
 #records-block .rec-row-right {
@@ -1504,7 +1504,7 @@ canvas {
   color:#fff;
 }
 .screen-view--sub .view-title { margin-top:0.15rem; }
-.screen-view--sub #records-block-lb { margin-top:0.15rem; }
+.screen-view--sub .records-block-list { margin-top:0.15rem; }
 
 /* Tab classifica generale / pura */
 .leaderboard-tab-strip {
@@ -2098,7 +2098,7 @@ canvas {
 #records-block { cursor:default; }
 
 /* Classifica standalone */
-#records-block-lb {
+.records-block-list {
   margin:0; cursor:default;
   padding:0.95rem 1.05rem;
   border:2px solid rgba(140,170,255,0.35); border-radius:0.65rem;
@@ -2110,15 +2110,15 @@ canvas {
   max-width:calc(100% - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right)));
   box-sizing:border-box;
 }
-#records-block-lb h2 { font-size:0.68rem; letter-spacing:0.26em; color:rgba(255,255,255,0.9); margin-bottom:0.75rem; font-weight:700; }
-#records-block-lb ol { list-style:none; padding:0; margin:0; }
-#records-block-lb li { padding:0.55rem 0.65rem; margin:0.35rem 0; border-radius:0.55rem; font-weight:600; font-size:0.92rem; letter-spacing:0.06em; border:1px solid rgba(255,255,255,0.08); color:#e4e8f5; background:rgba(255,255,255,0.06); }
-#records-block-lb li.rec-r1 { color:#fff0a0; background:rgba(220,180,30,0.14); box-shadow:0 0 20px rgba(230,200,40,0.28); }
-#records-block-lb li.rec-empty { color:rgba(255,255,255,0.35); font-weight:500; font-size:0.78rem; background:rgba(255,255,255,0.03); }
-#records-block-lb li.rec-row { display:flex; align-items:center; justify-content:space-between; gap:10px; text-align:left; }
-#records-block-lb li.rec-row .rec-row-left { flex:1; min-width:0; display:flex; align-items:center; gap:0.42rem; }
-#records-block-lb .rec-rank { width:2.15ch; flex:0 0 2.15ch; text-align:right; color:rgba(255,255,255,0.72); }
-#records-block-lb .rec-tag {
+.records-block-list h2 { font-size:0.68rem; letter-spacing:0.26em; color:rgba(255,255,255,0.9); margin-bottom:0.75rem; font-weight:700; }
+.records-block-list ol { list-style:none; padding:0; margin:0; }
+.records-block-list li { padding:0.55rem 0.65rem; margin:0.35rem 0; border-radius:0.55rem; font-weight:600; font-size:0.92rem; letter-spacing:0.06em; border:1px solid rgba(255,255,255,0.08); color:#e4e8f5; background:rgba(255,255,255,0.06); }
+.records-block-list li.rec-r1 { color:#fff0a0; background:rgba(220,180,30,0.14); box-shadow:0 0 20px rgba(230,200,40,0.28); }
+.records-block-list li.rec-empty { color:rgba(255,255,255,0.35); font-weight:500; font-size:0.78rem; background:rgba(255,255,255,0.03); }
+.records-block-list li.rec-row { display:flex; align-items:center; justify-content:space-between; gap:10px; text-align:left; }
+.records-block-list li.rec-row .rec-row-left { flex:1; min-width:0; display:flex; align-items:center; gap:0.42rem; }
+.records-block-list .rec-rank { width:2.15ch; flex:0 0 2.15ch; text-align:right; color:rgba(255,255,255,0.72); }
+.records-block-list .rec-tag {
   min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -2126,21 +2126,21 @@ canvas {
   letter-spacing:0.12em;
   font-weight:700;
 }
-#records-block-lb .rec-row-right {
+.records-block-list .rec-row-right {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 0.45rem;
   flex: 0 0 auto;
 }
-#records-block-lb .rec-prize-dot {
+.records-block-list .rec-prize-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: 0 0 8px rgba(255,255,255,0.28);
 }
-#records-block-lb .rec-time {
+.records-block-list .rec-time {
   flex:0 0 auto;
   min-width:10ch;
   text-align:right;
@@ -2148,7 +2148,83 @@ canvas {
   font-feature-settings: 'tnum' 1;
   letter-spacing:0.05em;
 }
-#records-block-lb li.rec-row--me { border-color:rgba(147,197,253,0.45); background:rgba(147,197,253,0.08); }
+.records-block-list li.rec-row--me { border-color:rgba(147,197,253,0.45); background:rgba(147,197,253,0.08); }
+
+/* Wrapper 2 colonne: Tempi | Livello */
+.leaderboards-split {
+  display:flex;
+  gap:0.45rem;
+  align-items:flex-start;
+  justify-content:center;
+  width:min(48rem, calc(100% - 0.6rem));
+  margin:0 auto;
+  box-sizing:border-box;
+}
+.leaderboard-col { flex:1 1 0; min-width:0; }
+/* In split mode i due blocchi devono prendere l'intera larghezza della loro colonna. */
+.leaderboards-split .records-block-list {
+  width:100%;
+  max-width:100%;
+  padding:0.6rem 0.55rem;
+  font-size:0.72rem;
+  letter-spacing:0.06em;
+}
+.leaderboards-split .records-block-list h2 {
+  font-size:0.6rem;
+  letter-spacing:0.18em;
+  margin-bottom:0.55rem;
+}
+.leaderboards-split .records-block-list li {
+  padding:0.42rem 0.45rem;
+  margin:0.28rem 0;
+  font-size:0.8rem;
+  letter-spacing:0.04em;
+  border-radius:0.45rem;
+}
+.leaderboards-split .records-block-list li.rec-row { gap:6px; }
+.leaderboards-split .records-block-list li.rec-row .rec-row-left { gap:0.3rem; }
+.leaderboards-split .records-block-list .rec-rank { width:1.9ch; flex:0 0 1.9ch; }
+.leaderboards-split .records-block-list .rec-tag { letter-spacing:0.06em; font-size:0.78rem; }
+.leaderboards-split .records-block-list .rec-row-right { gap:0.3rem; }
+.leaderboards-split .records-block-list .rec-time {
+  min-width:auto;
+  font-size:0.72rem;
+}
+.leaderboards-split .records-block-list .rec-level-pill {
+  font-size:0.65rem;
+  letter-spacing:0.06em;
+  padding:0.12rem 0.32rem;
+}
+
+/* Riga 5 numeri colorati (best streak per soglia) nella classifica per livello */
+.rec-streak-row {
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  flex:0 0 auto;
+}
+.rec-streak-cell {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:1.6ch;
+  padding:0.08rem 0.28rem;
+  border-radius:0.32rem;
+  font-size:0.7rem;
+  font-weight:700;
+  letter-spacing:0;
+  line-height:1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  color:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset;
+}
+.rec-streak-cell--zero { opacity:0.32; }
+.rec-streak-cell--red    { background:#ff4444; }
+.rec-streak-cell--blue   { background:#4488ff; }
+.rec-streak-cell--yellow { background:#e9c81a; color:#1c1500; }
+.rec-streak-cell--green  { background:#34cc6e; color:#062611; }
+.rec-streak-cell--purple { background:#a855f7; }
 
 /* Scelta premio pre-partita */
 .prize-pick-overlay {
