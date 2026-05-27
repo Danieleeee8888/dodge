@@ -9,38 +9,110 @@ export const LEADERBOARD_TOP_N = 15;
 let _cacheGeneral = [];
 let _cachePure = [];
 let _cacheLevel = [];
+let _cacheGeneralAt = 0;
+let _cachePureAt = 0;
+let _cacheLevelAt = 0;
 const SCORE_MIN = 1;
 const SCORE_MAX = 7200000;
-/** Partite recenti in `scores`: serve coprire abbastanza righe perché molte run Plus in cima non escludano dal merge i migliori tempi puri. */
-const FALLBACK_SCAN_LIMIT = 2500;
+/** Fallback legacy su `scores` se endpoint HTTP classifica non disponibile. */
+const FALLBACK_SCAN_LIMIT = 300;
+const LEADERBOARD_CACHE_TTL_MS = 60_000;
 const USERNAME_UID_MAP_TTL_MS = 60_000;
+const STORAGE_KEY = 'dodge_lb_cache_v1';
 
 let _uidToClaimedUsername = null;
 let _uidToClaimedUsernameAt = 0;
+let _inflightUsernameMap = null;
+const _inflightFetchByKey = new Map();
+
+function nowMs() {
+  return Date.now();
+}
+
+function readSessionStorageCache() {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    _cacheGeneral = Array.isArray(parsed?.generalRows) ? parsed.generalRows : [];
+    _cachePure = Array.isArray(parsed?.pureRows) ? parsed.pureRows : [];
+    _cacheLevel = Array.isArray(parsed?.levelRows) ? parsed.levelRows : [];
+    _cacheGeneralAt = Number.isFinite(parsed?.generalAt) ? parsed.generalAt : 0;
+    _cachePureAt = Number.isFinite(parsed?.pureAt) ? parsed.pureAt : 0;
+    _cacheLevelAt = Number.isFinite(parsed?.levelAt) ? parsed.levelAt : 0;
+  } catch (_) {}
+}
+
+function writeSessionStorageCache() {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+      generalRows: _cacheGeneral,
+      pureRows: _cachePure,
+      levelRows: _cacheLevel,
+      generalAt: _cacheGeneralAt,
+      pureAt: _cachePureAt,
+      levelAt: _cacheLevelAt,
+    }));
+  } catch (_) {}
+}
+
+function cacheTimestampForKind(kind) {
+  if (kind === 'pure') return _cachePureAt;
+  if (kind === 'level') return _cacheLevelAt;
+  return _cacheGeneralAt;
+}
+
+function setCacheTimestampForKind(kind, ts) {
+  if (kind === 'pure') _cachePureAt = ts;
+  else if (kind === 'level') _cacheLevelAt = ts;
+  else _cacheGeneralAt = ts;
+}
+
+function isKindCacheFresh(kind, ttlMs = LEADERBOARD_CACHE_TTL_MS) {
+  const rows = getCachedLeaderboard(kind);
+  const at = cacheTimestampForKind(kind);
+  return Array.isArray(rows) && at > 0 && nowMs() - at < ttlMs;
+}
+
+export function hasFreshLeaderboardCaches(ttlMs = LEADERBOARD_CACHE_TTL_MS) {
+  return isKindCacheFresh('general', ttlMs) &&
+    isKindCacheFresh('pure', ttlMs) &&
+    isKindCacheFresh('level', ttlMs);
+}
+
+readSessionStorageCache();
 
 /**
  * Mappa uid → username scelto in registrazione.
  * Usiamo `usernames/{usernameLower}` (lettura pubblica): il doc id è lo slug normalizzato.
  */
 async function getUidToClaimedUsernameMap() {
-  const now = Date.now();
+  const now = nowMs();
   if (_uidToClaimedUsername && now - _uidToClaimedUsernameAt < USERNAME_UID_MAP_TTL_MS) {
     return _uidToClaimedUsername;
   }
-  const snap = await getDocs(collection(db, 'usernames'));
-  const map = new Map();
-  snap.docs.forEach((d) => {
-    const uid = d.data()?.uid;
-    if (typeof uid === 'string' && uid) map.set(uid, d.id);
-  });
-  _uidToClaimedUsername = map;
-  _uidToClaimedUsernameAt = now;
-  return map;
+  if (_inflightUsernameMap) return _inflightUsernameMap;
+  _inflightUsernameMap = getDocs(collection(db, 'usernames'))
+    .then((snap) => {
+      const map = new Map();
+      snap.docs.forEach((d) => {
+        const uid = d.data()?.uid;
+        if (typeof uid === 'string' && uid) map.set(uid, d.id);
+      });
+      _uidToClaimedUsername = map;
+      _uidToClaimedUsernameAt = nowMs();
+      return map;
+    })
+    .finally(() => {
+      _inflightUsernameMap = null;
+    });
+  return _inflightUsernameMap;
 }
 
 export function invalidateLeaderboardUsernameMap() {
   _uidToClaimedUsername = null;
   _uidToClaimedUsernameAt = 0;
+  _inflightUsernameMap = null;
 }
 
 /** Nome in classifica: displayName sul doc, altrimenti legacy `username`, altrimenti slug registrazione. */
@@ -116,61 +188,82 @@ async function fetchLegacyScoresTopPure(n = LEADERBOARD_TOP_N) {
   return dedupeBestByUid(rows, n);
 }
 
+function normalizeApiTimesRow(row) {
+  return {
+    id: String(row?.id || row?.uid || ''),
+    uid: String(row?.uid || ''),
+    displayName: String(row?.displayName || row?.username || '???').slice(0, 24),
+    ms: Math.max(0, Math.floor(Number(row?.ms) || 0)),
+    level: row?.level == null ? null : Math.max(1, Math.floor(Number(row.level) || 1)),
+    prize_used: row?.prize_used ?? null,
+  };
+}
+
+function updateCacheForKind(kind, rows) {
+  if (kind === 'pure') _cachePure = rows;
+  else if (kind === 'level') _cacheLevel = rows;
+  else _cacheGeneral = rows;
+  setCacheTimestampForKind(kind, nowMs());
+  writeSessionStorageCache();
+}
+
+async function fetchLeaderboardTimesApi(kind = 'general', n = LEADERBOARD_TOP_N) {
+  const resp = await fetch(`/api/leaderboard/times?kind=${encodeURIComponent(kind)}&n=${encodeURIComponent(String(n))}`, { credentials: 'omit' });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const data = await resp.json();
+  const rows = Array.isArray(data?.rows) ? data.rows : [];
+  return rows.map(normalizeApiTimesRow).filter((r) => r.uid && isValidMs(r.ms)).slice(0, n);
+}
+
 /**
  * kind: 'general' | 'pure'
- * Unisce leaderboard (+ storico scores filtrato per pura) e risolve il nome visualizzato.
+ * Path principale: endpoint HTTP backend cached.
+ * Fallback: merge legacy da Firestore client (scores + usernames).
  */
-export async function fetchLeaderboard(kind = 'general', n = LEADERBOARD_TOP_N) {
-  const uidToSlug = await getUidToClaimedUsernameMap().catch(() => new Map());
-  const lbLimit = Math.max(n, 60);
-
+export async function fetchLeaderboard(kind = 'general', n = LEADERBOARD_TOP_N, options = {}) {
+  const force = !!options?.force;
+  if (!force && isKindCacheFresh(kind)) {
+    const rows = getCachedLeaderboard(kind);
+    return rows.length > n ? rows.slice(0, n) : rows;
+  }
+  const inflightKey = `${kind}:${n}`;
+  if (!force && _inflightFetchByKey.has(inflightKey)) {
+    return _inflightFetchByKey.get(inflightKey);
+  }
+  const run = (async () => {
   if (kind === 'pure') {
     try {
-      const [lbPureSnap, scSnap] = await Promise.all([
-        getDocs(query(collection(db, 'leaderboard_pure'), orderBy('ms', 'desc'), limit(lbLimit))),
-        getDocs(query(collection(db, 'scores'), orderBy('ms', 'desc'), limit(FALLBACK_SCAN_LIMIT))),
-      ]);
-      const pureScoreRows = scSnap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter(isPureScoreRow);
-      const combined = [
-        ...lbPureSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-        ...pureScoreRows,
-      ];
-      if (combined.length === 0) {
-        _cachePure = [];
-        return _cachePure;
-      }
-      const merged = dedupeBestByUid(combined, 9999);
-      _cachePure = dedupeBestByUid(applyPublicDisplayNames(merged, uidToSlug), n);
+      const rows = await fetchLeaderboardTimesApi('pure', n);
+      updateCacheForKind('pure', rows);
       return _cachePure;
     } catch (e) {
+      const uidToSlug = await getUidToClaimedUsernameMap().catch(() => new Map());
       _cachePure = await fetchLegacyScoresTopPure(n).catch(() => []);
       _cachePure = dedupeBestByUid(applyPublicDisplayNames(_cachePure, uidToSlug), n);
+      setCacheTimestampForKind('pure', nowMs());
+      writeSessionStorageCache();
       return _cachePure;
     }
   }
 
   try {
-    const [lbSnap, scSnap] = await Promise.all([
-      getDocs(query(collection(db, 'leaderboard'), orderBy('ms', 'desc'), limit(lbLimit))),
-      getDocs(query(collection(db, 'scores'), orderBy('ms', 'desc'), limit(FALLBACK_SCAN_LIMIT))),
-    ]);
-    const combined = [
-      ...lbSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-      ...scSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-    ];
-    if (combined.length === 0) {
-      _cacheGeneral = [];
-      return _cacheGeneral;
-    }
-    const merged = dedupeBestByUid(combined, 9999);
-    _cacheGeneral = dedupeBestByUid(applyPublicDisplayNames(merged, uidToSlug), n);
+    const rows = await fetchLeaderboardTimesApi('general', n);
+    updateCacheForKind('general', rows);
     return _cacheGeneral;
   } catch (e) {
+    const uidToSlug = await getUidToClaimedUsernameMap().catch(() => new Map());
     _cacheGeneral = await fetchLegacyScoresTop(n).catch(() => []);
     _cacheGeneral = dedupeBestByUid(applyPublicDisplayNames(_cacheGeneral, uidToSlug), n);
+    setCacheTimestampForKind('general', nowMs());
+    writeSessionStorageCache();
     return _cacheGeneral;
+  }
+  })();
+  _inflightFetchByKey.set(inflightKey, run);
+  try {
+    return await run;
+  } finally {
+    _inflightFetchByKey.delete(inflightKey);
   }
 }
 
@@ -179,7 +272,9 @@ export async function fetchLeaderboard(kind = 'general', n = LEADERBOARD_TOP_N) 
  * level → best_streak 180/150/120/90/60 → bestTime (nascosto) → uid.
  * Risposta: { ok, rows: [{ uid, displayName, level, s60, s90, s120, s150, s180 }] }
  */
-export async function fetchLeaderboardByLevel() {
+export async function fetchLeaderboardByLevel(options = {}) {
+  const force = !!options?.force;
+  if (!force && isKindCacheFresh('level')) return _cacheLevel;
   try {
     const resp = await fetch('/api/leaderboard/by-level', { credentials: 'omit' });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -195,6 +290,8 @@ export async function fetchLeaderboardByLevel() {
       s150: Math.max(0, Math.floor(Number(r.s150) || 0)),
       s180: Math.max(0, Math.floor(Number(r.s180) || 0)),
     })).filter((r) => r.uid);
+    _cacheLevelAt = nowMs();
+    writeSessionStorageCache();
     return _cacheLevel;
   } catch (e) {
     return _cacheLevel;
@@ -206,11 +303,13 @@ export function getCachedLevelLeaderboard() {
 }
 
 /** Compat: una volta caricate tutte le classifiche le cache sono aggiornate. */
-export async function fetchBothLeaderboards(n = LEADERBOARD_TOP_N) {
+export async function fetchBothLeaderboards(n = LEADERBOARD_TOP_N, options = {}) {
+  const force = !!options?.force;
+  if (!force && hasFreshLeaderboardCaches()) return;
   await Promise.all([
-    fetchLeaderboard('general', n),
-    fetchLeaderboard('pure', n),
-    fetchLeaderboardByLevel(),
+    fetchLeaderboard('general', n, options),
+    fetchLeaderboard('pure', n, options),
+    fetchLeaderboardByLevel(options),
   ]);
 }
 
@@ -228,6 +327,7 @@ export function syncLeaderboardLevel(uid, level) {
     const idx = cache.findIndex((r) => r.uid === uid);
     if (idx >= 0) cache[idx] = { ...cache[idx], level: lv };
   }
+  writeSessionStorageCache();
 }
 
 /**
@@ -257,6 +357,7 @@ export function applyOptimisticScore(uid, displayName, ms, prizeUsed = null) {
   }
   if (improvedGeneral) {
     _cacheGeneral = _cacheGeneral.sort((a, b) => b.ms - a.ms).slice(0, LEADERBOARD_TOP_N);
+    _cacheGeneralAt = nowMs();
   }
 
   if (!prizeUsed) {
@@ -276,7 +377,9 @@ export function applyOptimisticScore(uid, displayName, ms, prizeUsed = null) {
     }
     if (improvedPure) {
       _cachePure = _cachePure.sort((a, b) => b.ms - a.ms).slice(0, LEADERBOARD_TOP_N);
+      _cachePureAt = nowMs();
     }
   }
+  writeSessionStorageCache();
 }
 

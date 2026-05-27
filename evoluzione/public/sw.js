@@ -3,7 +3,7 @@
  * si vede subito (fallback su cache se offline).
  * Bump CACHE quando vuoi uno svuotamento duro su tutti i client.
  */
-const CACHE = 'dodge-v63';
+const CACHE = 'dodge-v64';
 const PRECACHE = [
   '/',
   '/index.html',
@@ -52,6 +52,10 @@ function isNetworkFirstAsset(url) {
   return /\.(js|css|json)$/i.test(p);
 }
 
+function isLeaderboardApi(url) {
+  return url.origin === self.location.origin && url.pathname.startsWith('/api/leaderboard/');
+}
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (isFirebaseOrCdn(url) || e.request.method !== 'GET') {
@@ -71,6 +75,27 @@ self.addEventListener('fetch', (e) => {
         })
         .catch(() => caches.match(e.request).then((hit) => hit || Promise.reject(new Error('offline'))))
     );
+    return;
+  }
+
+  if (isLeaderboardApi(url)) {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(e.request);
+      const networkPromise = fetch(e.request, { cache: 'no-store' })
+        .then((res) => {
+          if (res && res.ok) cache.put(e.request, res.clone());
+          return res;
+        })
+        .catch(() => null);
+      if (cached) {
+        networkPromise.catch(() => {});
+        return cached;
+      }
+      const networkRes = await networkPromise;
+      if (networkRes) return networkRes;
+      throw new Error('offline');
+    })());
     return;
   }
 

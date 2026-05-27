@@ -56,7 +56,7 @@ import { getProfile, resolveDisplayName, updateDisplayName, ensureProfileForUser
 import {
   fetchBothLeaderboards, getCachedLeaderboard, getCachedLevelLeaderboard,
   applyOptimisticScore, syncLeaderboardLevel,
-  invalidateLeaderboardUsernameMap, LEADERBOARD_TOP_N,
+  invalidateLeaderboardUsernameMap, hasFreshLeaderboardCaches, LEADERBOARD_TOP_N,
 } from './leaderboard.js';
 import { renderProfileBestCard } from './profile-best-display.js';
 import { renderProfileStatsKpiGrid } from './profile-kpi-display.js';
@@ -1330,7 +1330,9 @@ async function prepareDeathScreenBundle({
   };
 
   if (isGuestModeActive() || !currentUserId) {
-    await fetchBothLeaderboards().catch(() => {});
+    if (!hasFreshLeaderboardCaches()) {
+      await fetchBothLeaderboards().catch(() => {});
+    }
     return base;
   }
 
@@ -1346,7 +1348,9 @@ async function prepareDeathScreenBundle({
     token = await user.getIdToken();
   } catch (_) {
     base.recordsMessage = 'errore di rete ? punteggio non salvato';
-    await fetchBothLeaderboards().catch(() => {});
+    if (!hasFreshLeaderboardCaches()) {
+      await fetchBothLeaderboards().catch(() => {});
+    }
     base.stats = await fetchDeathStatsForDeathScreen(null, currentUserId);
     base.showProfileSnippet = true;
     return base;
@@ -1378,7 +1382,9 @@ async function prepareDeathScreenBundle({
       : err === 'client_error'
       ? 'partita non salvata (richiesta non valida)'
       : 'errore di rete ? punteggio non salvato';
-    await fetchBothLeaderboards().catch(() => {});
+    if (!hasFreshLeaderboardCaches()) {
+      await fetchBothLeaderboards().catch(() => {});
+    }
     base.stats = await fetchDeathStatsForDeathScreen(token, currentUserId);
     base.missionsPayload = await fetchDeathMissionsForDeathScreen(token);
     base.showProfileSnippet = true;
@@ -1387,7 +1393,9 @@ async function prepareDeathScreenBundle({
   }
 
   base.gameEndPayload = payload;
-  await fetchBothLeaderboards().catch(() => {});
+  if ((payload.improved && payload.inTop15) || !hasFreshLeaderboardCaches()) {
+    await fetchBothLeaderboards().catch(() => {});
+  }
   if (payload.level_after != null) {
     syncLeaderboardLevel(currentUserId, payload.level_after);
   }
@@ -2061,6 +2069,7 @@ function bindHomeNav() {
     syncLeaderboardTabUi();
     renderLeaderboardPanels();
     showScreenView('leaderboard');
+    if (hasFreshLeaderboardCaches()) return;
     fetchBothLeaderboards().then(() => renderLeaderboardPanels()).catch(() => {});
   };
   document.getElementById('btn-home-leaderboard')?.addEventListener('click', openLeaderboard);
@@ -2099,7 +2108,7 @@ function bindHomeNav() {
         const profile = await getProfile(currentUserId);
         currentDisplayName = resolveDisplayName(profile);
         invalidateLeaderboardUsernameMap();
-        await fetchBothLeaderboards().catch(() => {});
+        await fetchBothLeaderboards(LEADERBOARD_TOP_N, { force: true }).catch(() => {});
         setupMenuUI();
         if (msgEl) msgEl.textContent = 'Nome visualizzato aggiornato.';
       } catch (err) {

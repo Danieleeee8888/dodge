@@ -17,10 +17,19 @@ app.use(express.json({limit: "1mb"}));
 
 const ADMIN_EMAIL = "danielet88@gmail.com";
 const LEADERBOARD_TOP_N = 15;
+const LEADERBOARD_FETCH_LIMIT = 60;
+const LEADERBOARD_CACHE_TTL_MS = 30 * 1000;
+const USERNAME_MAP_CACHE_TTL_MS = 30 * 1000;
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 const PLUS_LAUNCH_GIFT_FIELD = "plus_launch_gift_2026_05";
+const leaderboardTimesCache = {
+  general: {rows: [], at: 0},
+  pure: {rows: [], at: 0},
+};
+const leaderboardByLevelCache = {rows: [], at: 0};
+let usernameMapCache = {map: null, at: 0};
 
 const missionsPackage = require("./missions-config.json");
 const MISSION_WINDOW_MS = Number(missionsPackage.MISSION_WINDOW_MS) > 0
@@ -241,6 +250,38 @@ function parsePositiveInt(v, fallback) {
   const n = Number.parseInt(String(v || ""), 10);
   if (!Number.isFinite(n) || n <= 0) return fallback;
   return n;
+}
+
+function cacheFresh(at, ttlMs = LEADERBOARD_CACHE_TTL_MS) {
+  return Number.isFinite(at) && at > 0 && Date.now() - at < ttlMs;
+}
+
+function invalidateLeaderboardTimesCache(kinds = []) {
+  const nextKinds = Array.isArray(kinds) && kinds.length > 0 ? kinds : ["general", "pure"];
+  for (const kind of nextKinds) {
+    if (!leaderboardTimesCache[kind]) continue;
+    leaderboardTimesCache[kind].rows = [];
+    leaderboardTimesCache[kind].at = 0;
+  }
+}
+
+function invalidateLeaderboardByLevelCache() {
+  leaderboardByLevelCache.rows = [];
+  leaderboardByLevelCache.at = 0;
+}
+
+async function getUidToSlugMapCached() {
+  if (usernameMapCache.map && cacheFresh(usernameMapCache.at, USERNAME_MAP_CACHE_TTL_MS)) {
+    return usernameMapCache.map;
+  }
+  const usernameSnap = await db.collection("usernames").get();
+  const uidToSlug = new Map();
+  usernameSnap.docs.forEach((d) => {
+    const data = d.data() || {};
+    if (typeof data.uid === "string" && data.uid) uidToSlug.set(data.uid, d.id);
+  });
+  usernameMapCache = {map: uidToSlug, at: Date.now()};
+  return uidToSlug;
 }
 
 function toIsoDatePart(d = new Date()) {
@@ -576,6 +617,45 @@ app.get("/api/player/stats/:userId", async (req, res) => {
   }
 });
 
+app.get("/api/leaderboard/times", async (req, res) => {
+  try {
+    const rawKind = String(req.query.kind || "general").toLowerCase();
+    const kind = rawKind === "pure" ? "pure" : rawKind === "general" ? "general" : null;
+    if (!kind) return res.status(400).json({error: "invalid_kind"});
+
+    const topN = Math.min(LEADERBOARD_TOP_N, parsePositiveInt(req.query.n, LEADERBOARD_TOP_N));
+    const cacheEntry = leaderboardTimesCache[kind];
+    if (cacheFresh(cacheEntry.at) && Array.isArray(cacheEntry.rows) && cacheEntry.rows.length > 0) {
+      return res.json({ok: true, kind, rows: cacheEntry.rows.slice(0, topN), cached: true});
+    }
+
+    const collectionName = kind === "pure" ? "leaderboard_pure" : "leaderboard";
+    const snap = await db.collection(collectionName)
+        .orderBy("ms", "desc")
+        .limit(Math.max(topN, LEADERBOARD_FETCH_LIMIT))
+        .get();
+
+    const rows = snap.docs.map((d) => {
+      const row = d.data() || {};
+      const ms = Math.max(0, Math.floor(safeNum(row.ms, 0)));
+      return {
+        id: d.id,
+        uid: String(row.uid || d.id || ""),
+        displayName: String(row.displayName || row.username || "???").slice(0, 24),
+        ms,
+        level: Math.max(1, Math.floor(safeNum(row.level, 1))),
+        prize_used: row.prize_used == null ? null : String(row.prize_used),
+      };
+    }).filter((r) => r.uid && r.ms > 0);
+
+    leaderboardTimesCache[kind] = {rows, at: Date.now()};
+    return res.json({ok: true, kind, rows: rows.slice(0, topN)});
+  } catch (e) {
+    logger.error("GET /api/leaderboard/times", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
 /**
  * Classifica per livello (pubblica, TOP 15).
  * Sort cascade: level desc, best_streak_over_180s desc, 150s, 120s, 90s, 60s,
@@ -585,24 +665,23 @@ app.get("/api/player/stats/:userId", async (req, res) => {
  */
 app.get("/api/leaderboard/by-level", async (req, res) => {
   try {
-    const FETCH_LIMIT = 60;
     const TOP_N = LEADERBOARD_TOP_N;
+    if (cacheFresh(leaderboardByLevelCache.at) && leaderboardByLevelCache.rows.length > 0) {
+      return res.json({ok: true, rows: leaderboardByLevelCache.rows.slice(0, TOP_N), cached: true});
+    }
 
     const psSnap = await db.collection("player_stats")
         .orderBy("level", "desc")
-        .limit(FETCH_LIMIT)
+        .limit(LEADERBOARD_FETCH_LIMIT)
         .get();
 
     if (psSnap.empty) {
+      leaderboardByLevelCache.rows = [];
+      leaderboardByLevelCache.at = Date.now();
       return res.json({ok: true, rows: []});
     }
 
-    const usernameSnap = await db.collection("usernames").get();
-    const uidToSlug = new Map();
-    usernameSnap.docs.forEach((d) => {
-      const data = d.data() || {};
-      if (typeof data.uid === "string" && data.uid) uidToSlug.set(data.uid, d.id);
-    });
+    const uidToSlug = await getUidToSlugMapCached();
 
     const candidates = psSnap.docs.map((d) => {
       const s = d.data() || {};
@@ -658,6 +737,8 @@ app.get("/api/leaderboard/by-level", async (req, res) => {
       s150: r.s150,
       s180: r.s180,
     }));
+    leaderboardByLevelCache.rows = rows;
+    leaderboardByLevelCache.at = Date.now();
 
     return res.json({ok: true, rows});
   } catch (e) {
@@ -881,6 +962,8 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
     /** Impostato nella transaction: premio Plus effettivo per questa run (per score/classifica generale). */
     let prizeUsedForLeaderboards = null;
     let inTop15Result = false;
+    let touchedGeneralLeaderboard = false;
+    let touchedPureLeaderboard = false;
     /** @type {{ mission_warning?: string, mission_completed?: boolean }} */
     const responseExtra = {};
 
@@ -1163,11 +1246,14 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
             level: levelAfter,
             updatedAt: nowTs(),
           }, {merge: true});
+          touchedPureLeaderboard = true;
         } else if (pureLbSnap.exists) {
           tx.set(pureLbRef, {level: levelAfter, updatedAt: nowTs()}, {merge: true});
+          touchedPureLeaderboard = true;
         }
       } else if (pureLbSnap.exists) {
         tx.set(pureLbRef, {level: levelAfter, updatedAt: nowTs()}, {merge: true});
+        touchedPureLeaderboard = true;
       }
 
       tx.set(scoreRef, scorePayload);
@@ -1175,8 +1261,10 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       if (shouldUpdateLeaderboard && inTop15) {
         tx.set(lbUserRef, lbRow, {merge: true});
         inTop15Result = true;
+        touchedGeneralLeaderboard = true;
       } else if (lbUserSnap.exists) {
         tx.set(lbUserRef, {level: levelAfter, updatedAt: nowTs()}, {merge: true});
+        touchedGeneralLeaderboard = true;
       }
     });
 
@@ -1191,6 +1279,13 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       overflow.docs.forEach((d) => batch.delete(d.ref));
       await batch.commit();
     }
+    if (touchedGeneralLeaderboard || touchedPureLeaderboard) {
+      const kinds = [];
+      if (touchedGeneralLeaderboard) kinds.push("general");
+      if (touchedPureLeaderboard) kinds.push("pure");
+      invalidateLeaderboardTimesCache(kinds);
+    }
+    invalidateLeaderboardByLevelCache();
 
     return res.json({
       ok: true,
