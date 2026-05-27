@@ -82,13 +82,19 @@ function dedupeBestByUid(rows, n = LEADERBOARD_TOP_N) {
     if (!uid || !isValidMs(ms)) return;
     const prev = bestByUid.get(uid);
     if (!prev || ms > prev.ms) {
-      bestByUid.set(uid, {
+      const next = {
         ...row,
         id: row.id || uid,
         uid,
         displayName: row.displayName || row.username || '???',
         ms,
-      });
+      };
+      if (prev?.level != null && (next.level == null || next.level === '')) {
+        next.level = prev.level;
+      }
+      bestByUid.set(uid, next);
+    } else if (row.level != null && (prev.level == null || prev.level === '')) {
+      bestByUid.set(uid, { ...prev, level: row.level });
     }
   });
   const sorted = Array.from(bestByUid.values()).sort((a, b) => b.ms - a.ms);
@@ -177,6 +183,17 @@ export async function fetchBothLeaderboards(n = LEADERBOARD_TOP_N) {
 
 export function getCachedLeaderboard(kind = 'general') {
   return kind === 'pure' ? _cachePure : _cacheGeneral;
+}
+
+/** Aggiorna il livello in cache classifica (generale + pura) per un uid. */
+export function syncLeaderboardLevel(uid, level) {
+  if (!uid) return;
+  const lv = Math.max(1, Math.floor(Number(level) || 0));
+  if (!Number.isFinite(lv) || lv < 1) return;
+  for (const cache of [_cacheGeneral, _cachePure]) {
+    const idx = cache.findIndex((r) => r.uid === uid);
+    if (idx >= 0) cache[idx] = { ...cache[idx], level: lv };
+  }
 }
 
 /**

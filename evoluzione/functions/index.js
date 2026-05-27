@@ -123,6 +123,89 @@ function safeNum(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function safeLevelNum(v) {
+  return Math.max(0, Math.floor(safeNum(v, 0)));
+}
+
+/** Run consecutive richieste per +1 livello (soglie indipendenti). */
+const LEVEL_RUNS_PER = Object.freeze({60: 6, 90: 4, 120: 3, 150: 2});
+
+function computeLevelFromStats(statsDoc) {
+  const s = statsDoc || {};
+  const eff60 = Math.max(0, safeLevelNum(s.best_streak_over_60s) - safeLevelNum(s.level_base_best_streak_over_60s));
+  const eff90 = Math.max(0, safeLevelNum(s.best_streak_over_90s) - safeLevelNum(s.level_base_best_streak_over_90s));
+  const eff120 = Math.max(0, safeLevelNum(s.best_streak_over_120s) - safeLevelNum(s.level_base_best_streak_over_120s));
+  const eff150 = Math.max(0, safeLevelNum(s.best_streak_over_150s) - safeLevelNum(s.level_base_best_streak_over_150s));
+  const eff180 = Math.max(0, safeLevelNum(s.best_streak_over_180s) - safeLevelNum(s.level_base_best_streak_over_180s));
+
+  return 1 + (
+    eff180 * 2 +
+    Math.floor(eff150 / LEVEL_RUNS_PER[150]) +
+    Math.floor(eff120 / LEVEL_RUNS_PER[120]) +
+    Math.floor(eff90 / LEVEL_RUNS_PER[90]) +
+    Math.floor(eff60 / LEVEL_RUNS_PER[60])
+  );
+}
+
+function streakUnits(snapshot) {
+  return (
+    effectiveCurrentStreakForLevel(snapshot, 180) * 2 +
+    Math.floor(effectiveCurrentStreakForLevel(snapshot, 150) / LEVEL_RUNS_PER[150]) +
+    Math.floor(effectiveCurrentStreakForLevel(snapshot, 120) / LEVEL_RUNS_PER[120]) +
+    Math.floor(effectiveCurrentStreakForLevel(snapshot, 90) / LEVEL_RUNS_PER[90]) +
+    Math.floor(effectiveCurrentStreakForLevel(snapshot, 60) / LEVEL_RUNS_PER[60])
+  );
+}
+
+function streakLevelPer(sec) {
+  return sec === 180 ? 1 : LEVEL_RUNS_PER[sec];
+}
+
+function readCurrentStreakLevelBase(s, sec) {
+  const key = `level_base_current_streak_over_${sec}s`;
+  if (Number.isFinite(Number(s[key]))) return safeLevelNum(s[key]);
+  const cur = safeLevelNum(s[`current_streak_over_${sec}s`]);
+  const per = streakLevelPer(sec);
+  return cur - (cur % per);
+}
+
+function effectiveCurrentStreakForLevel(s, sec) {
+  const cur = safeLevelNum(s[`current_streak_over_${sec}s`]);
+  return Math.max(0, cur - readCurrentStreakLevelBase(s, sec));
+}
+
+/** Copia o inizializza checkpoint progresso livello sulle strike correnti (non tocca la serie mostrata). */
+function syncCurrentStreakLevelBasesIntoNext(s0, next, duration) {
+  for (const sec of [60, 90, 120, 150, 180]) {
+    const key = `level_base_current_streak_over_${sec}s`;
+    const cur = safeLevelNum(next[`current_streak_over_${sec}s`]);
+    if (duration < sec) {
+      next[key] = 0;
+      continue;
+    }
+    if (Number.isFinite(Number(s0[key]))) {
+      next[key] = safeLevelNum(s0[key]);
+    } else {
+      const per = streakLevelPer(sec);
+      next[key] = cur - (cur % per);
+    }
+  }
+}
+
+/** Dopo level-up: azzera tutti i progressi livello (60/90/120/150/180), non la serie attuale. */
+function resetAllCurrentStreakLevelBasesAfterGain(next) {
+  for (const sec of [60, 90, 120, 150, 180]) {
+    const key = `level_base_current_streak_over_${sec}s`;
+    next[key] = safeLevelNum(next[`current_streak_over_${sec}s`]);
+  }
+}
+
+function computeLevelGainFromStreakTransition(prevSnapshot, nextSnapshot) {
+  const prevUnits = streakUnits(prevSnapshot);
+  const nextUnits = streakUnits(nextSnapshot);
+  return Math.max(0, nextUnits - prevUnits);
+}
+
 /** Millisecondi da `createdAt` su un documento `scores` (timestamp Firestore o compat). */
 function scoreCreatedAtMillis(data) {
   try {
@@ -263,7 +346,11 @@ function publicSurvivalThresholdFields(statsDoc) {
 
 function publicStatsShape(statsDoc) {
   const d = statsDoc || {};
+  const hasLevelBase = [60, 90, 120, 150, 180]
+      .every((sec) => Number.isFinite(Number(d[`level_base_best_streak_over_${sec}s`])));
+  const rulesVersion = safeLevelNum(d.level_rules_version);
   return {
+    level: hasLevelBase && rulesVersion >= 2 ? Math.max(1, Math.floor(safeNum(d.level, 1))) : 1,
     best_time_seconds: safeNum(d.best_time_seconds, 0),
     total_games: safeNum(d.total_games, 0),
     total_playtime_seconds: safeNum(d.total_playtime_seconds, 0),
@@ -385,6 +472,18 @@ async function upsertPlayerStatsIfMissing(uid) {
     runs_over_120s: 0,
     runs_over_150s: 0,
     runs_over_180s: 0,
+    level: 1,
+    level_rules_version: 2,
+    level_base_best_streak_over_60s: 0,
+    level_base_best_streak_over_90s: 0,
+    level_base_best_streak_over_120s: 0,
+    level_base_best_streak_over_150s: 0,
+    level_base_best_streak_over_180s: 0,
+    level_base_current_streak_over_60s: 0,
+    level_base_current_streak_over_90s: 0,
+    level_base_current_streak_over_120s: 0,
+    level_base_current_streak_over_150s: 0,
+    level_base_current_streak_over_180s: 0,
     current_streak_over_60s: 0,
     current_streak_over_90s: 0,
     current_streak_over_120s: 0,
@@ -425,6 +524,10 @@ app.get("/api/player/stats", requireAuth, async (req, res) => {
           .get(),
     ]);
     const base = snap.exists ? snap.data() || {} : {};
+    const hasLevelBase = [60, 90, 120, 150, 180]
+        .every((sec) => Number.isFinite(Number(base[`level_base_best_streak_over_${sec}s`])));
+    const rulesVersion = safeLevelNum(base.level_rules_version);
+    const level = hasLevelBase && rulesVersion >= 2 ? Math.max(1, Math.floor(safeNum(base.level, 1))) : 1;
     const recent_games = recentSnap.docs.map((d) => {
       const x = d.data() || {};
       const pu = x.prize_used;
@@ -438,7 +541,7 @@ app.get("/api/player/stats", requireAuth, async (req, res) => {
         played_at: statsIso(x.played_at),
       };
     });
-    return res.json({ok: true, uid, stats: {...base, ...bests}, recent_games});
+    return res.json({ok: true, uid, stats: {...base, level, ...bests}, recent_games});
   } catch (e) {
     logger.error("GET /api/player/stats", e);
     return res.status(500).json({error: "internal_error"});
@@ -756,6 +859,26 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       const nextBestStreak150 = Math.max(safeNum(s0.best_streak_over_150s, 0), duration >= 150 ? nextCurStreak150 : prevCurStreak150);
       const nextBestStreak180 = Math.max(safeNum(s0.best_streak_over_180s, 0), duration >= 180 ? nextCurStreak180 : prevCurStreak180);
 
+      const hasLevelBase = [60, 90, 120, 150, 180]
+          .every((sec) => Number.isFinite(Number(s0[`level_base_best_streak_over_${sec}s`])));
+      const baseRuns = hasLevelBase
+        ? {
+            60: safeLevelNum(s0.level_base_best_streak_over_60s),
+            90: safeLevelNum(s0.level_base_best_streak_over_90s),
+            120: safeLevelNum(s0.level_base_best_streak_over_120s),
+            150: safeLevelNum(s0.level_base_best_streak_over_150s),
+            180: safeLevelNum(s0.level_base_best_streak_over_180s),
+          }
+        : {
+            60: safeLevelNum(s0.best_streak_over_60s),
+            90: safeLevelNum(s0.best_streak_over_90s),
+            120: safeLevelNum(s0.best_streak_over_120s),
+            150: safeLevelNum(s0.best_streak_over_150s),
+            180: safeLevelNum(s0.best_streak_over_180s),
+          };
+      const rulesVersion = safeLevelNum(s0.level_rules_version);
+      const levelBefore = hasLevelBase && rulesVersion >= 2 ? Math.max(1, Math.floor(safeNum(s0.level, 1))) : 1;
+
       const next = {
         user_id: uid,
         total_games: safeNum(s0.total_games, 0) + 1,
@@ -776,6 +899,12 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         runs_over_120s: safeNum(s0.runs_over_120s, 0) + (duration >= 120 ? 1 : 0),
         runs_over_150s: safeNum(s0.runs_over_150s, 0) + (duration >= 150 ? 1 : 0),
         runs_over_180s: safeNum(s0.runs_over_180s, 0) + (duration >= 180 ? 1 : 0),
+        level_base_best_streak_over_60s: baseRuns[60],
+        level_base_best_streak_over_90s: baseRuns[90],
+        level_base_best_streak_over_120s: baseRuns[120],
+        level_base_best_streak_over_150s: baseRuns[150],
+        level_base_best_streak_over_180s: baseRuns[180],
+        level_rules_version: 2,
         current_streak_over_60s: nextCurStreak60,
         current_streak_over_90s: nextCurStreak90,
         current_streak_over_120s: nextCurStreak120,
@@ -789,6 +918,15 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         game_started_at: null,
         updated_at: nowTs(),
       };
+      syncCurrentStreakLevelBasesIntoNext(s0, next, duration);
+      const levelGain = computeLevelGainFromStreakTransition(s0, next);
+      const levelAfter = levelBefore + levelGain;
+      next.level = levelAfter;
+      if (levelGain > 0) resetAllCurrentStreakLevelBasesAfterGain(next);
+      responseExtra.level_before = levelBefore;
+      responseExtra.level_after = levelAfter;
+      responseExtra.level_gain = levelGain;
+      responseExtra.level_up = responseExtra.level_gain > 0;
 
       next.last_completed_run_id = runId;
       next.pending_run_id = null;
@@ -857,10 +995,11 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
       shouldUpdateLeaderboard = newBestMs > userBestMs;
 
       const pureLbRef = db.collection("leaderboard_pure").doc(uid);
-      let pureLbSnap = null;
-      if (!prizeUsedEffective) {
-        pureLbSnap = await tx.get(pureLbRef);
-      }
+      const lbUserRef = db.collection("leaderboard").doc(uid);
+      const [pureLbSnap, lbUserSnap] = await Promise.all([
+        tx.get(pureLbRef),
+        tx.get(lbUserRef),
+      ]);
 
       const lbQuery = db.collection("leaderboard").orderBy("ms", "desc").limit(LEADERBOARD_TOP_N);
       const lbSnap = await tx.get(lbQuery);
@@ -885,6 +1024,7 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         uid,
         displayName,
         ms: runMsTx,
+        level: levelAfter,
         updatedAt: nowTs(),
         prize_used: prizeUsedForLeaderboards
           ? prizeUsedForLeaderboards
@@ -922,24 +1062,31 @@ app.post("/api/game/end", requireAuth, async (req, res) => {
         }, {merge: true});
       }
 
-      // Classifica «pura»: solo run senza Premio Plus attivo.
-      if (!prizeUsedEffective && pureLbSnap) {
+      // Classifica «pura»: PB solo run senza Premio Plus; livello sempre sync se doc esiste.
+      if (!prizeUsedEffective) {
         const pureBestMs = pureLbSnap.exists ? safeNum(pureLbSnap.data().ms, 0) : 0;
         if (runMsTx > pureBestMs) {
           tx.set(pureLbRef, {
             uid,
             displayName,
             ms: runMsTx,
+            level: levelAfter,
             updatedAt: nowTs(),
           }, {merge: true});
+        } else if (pureLbSnap.exists) {
+          tx.set(pureLbRef, {level: levelAfter, updatedAt: nowTs()}, {merge: true});
         }
+      } else if (pureLbSnap.exists) {
+        tx.set(pureLbRef, {level: levelAfter, updatedAt: nowTs()}, {merge: true});
       }
 
       tx.set(scoreRef, scorePayload);
 
       if (shouldUpdateLeaderboard && inTop15) {
-        tx.set(db.collection("leaderboard").doc(uid), lbRow, {merge: true});
+        tx.set(lbUserRef, lbRow, {merge: true});
         inTop15Result = true;
+      } else if (lbUserSnap.exists) {
+        tx.set(lbUserRef, {level: levelAfter, updatedAt: nowTs()}, {merge: true});
       }
     });
 
@@ -1112,6 +1259,18 @@ async function adminCreateOrphanProfile(uid, email) {
       runs_over_120s: 0,
       runs_over_150s: 0,
       runs_over_180s: 0,
+      level: 1,
+      level_rules_version: 2,
+      level_base_best_streak_over_60s: 0,
+      level_base_best_streak_over_90s: 0,
+      level_base_best_streak_over_120s: 0,
+      level_base_best_streak_over_150s: 0,
+      level_base_best_streak_over_180s: 0,
+      level_base_current_streak_over_60s: 0,
+      level_base_current_streak_over_90s: 0,
+      level_base_current_streak_over_120s: 0,
+      level_base_current_streak_over_150s: 0,
+      level_base_current_streak_over_180s: 0,
       current_streak_over_60s: 0,
       current_streak_over_90s: 0,
       current_streak_over_120s: 0,
@@ -1140,6 +1299,45 @@ async function adminCreateOrphanProfile(uid, email) {
   }
   await batch.commit();
   return {username, role, player_stats_created: !statsSnap.exists};
+}
+
+async function resetLevelForUid(uid) {
+  const statsRef = db.collection("player_stats").doc(uid);
+  const statsSnap = await statsRef.get();
+  if (!statsSnap.exists) {
+    const err = new Error("player_stats_missing");
+    err.code = "player_stats_missing";
+    throw err;
+  }
+  const st = statsSnap.data() || {};
+  const FieldValue = admin.firestore.FieldValue;
+  const base60 = safeLevelNum(st.best_streak_over_60s);
+  const base90 = safeLevelNum(st.best_streak_over_90s);
+  const base120 = safeLevelNum(st.best_streak_over_120s);
+  const base150 = safeLevelNum(st.best_streak_over_150s);
+  const base180 = safeLevelNum(st.best_streak_over_180s);
+
+  await statsRef.set({
+    level: 1,
+    level_rules_version: 2,
+    level_base_best_streak_over_60s: base60,
+    level_base_best_streak_over_90s: base90,
+    level_base_best_streak_over_120s: base120,
+    level_base_best_streak_over_150s: base150,
+    level_base_best_streak_over_180s: base180,
+    updated_at: FieldValue.serverTimestamp(),
+  }, {merge: true});
+
+  await Promise.all([
+    db.collection("leaderboard").doc(uid).set({
+      level: 1,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true}),
+    db.collection("leaderboard_pure").doc(uid).set({
+      level: 1,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true}),
+  ]);
 }
 
 /**
@@ -1483,6 +1681,57 @@ app.post("/api/admin/grant-self-test-plus-prizes", requireAuth, requireAdmin, as
 });
 
 /**
+ * Solo admin: imposta la strike corrente 60s a 5/6 (bucket esclusivo) per testare +1 livello con una run ≥60s.
+ */
+app.post("/api/admin/set-self-level-streak-test", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const uid = req.uid;
+    await upsertPlayerStatsIfMissing(uid);
+    const ref = db.collection("player_stats").doc(uid);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      return res.status(404).json({error: "player_stats_missing"});
+    }
+    const s0 = snap.data() || {};
+    const hasLevelBase = [60, 90, 120, 150, 180]
+        .every((sec) => Number.isFinite(Number(s0[`level_base_best_streak_over_${sec}s`])));
+    const basePatch = hasLevelBase ? {} : {
+      level_base_best_streak_over_60s: safeLevelNum(s0.best_streak_over_60s),
+      level_base_best_streak_over_90s: safeLevelNum(s0.best_streak_over_90s),
+      level_base_best_streak_over_120s: safeLevelNum(s0.best_streak_over_120s),
+      level_base_best_streak_over_150s: safeLevelNum(s0.best_streak_over_150s),
+      level_base_best_streak_over_180s: safeLevelNum(s0.best_streak_over_180s),
+    };
+    const patch = {
+      user_id: uid,
+      ...basePatch,
+      level_rules_version: 2,
+      current_streak_over_60s: 5,
+      current_streak_over_90s: 0,
+      current_streak_over_120s: 0,
+      current_streak_over_150s: 0,
+      current_streak_over_180s: 0,
+      level_base_current_streak_over_60s: 0,
+      level_base_current_streak_over_90s: 0,
+      level_base_current_streak_over_120s: 0,
+      level_base_current_streak_over_150s: 0,
+      level_base_current_streak_over_180s: 0,
+      updated_at: nowTs(),
+    };
+    await ref.set(patch, {merge: true});
+    return res.json({
+      ok: true,
+      current_streak_over_60s: 5,
+      progress_60s: {current: 5, target: 6},
+      hint: "Fai una run ≥60s (idealmente sotto 90s) per ottenere +1 livello.",
+    });
+  } catch (e) {
+    logger.error("POST /api/admin/set-self-level-streak-test", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+/**
  * Solo admin: regalo lancio Missioni/Premi Plus.
  * Idempotente: ogni utente riceve +1 per colore una sola volta.
  */
@@ -1535,6 +1784,19 @@ app.post("/api/admin/grant-plus-launch-gift", requireAuth, requireAdmin, async (
     });
   } catch (e) {
     logger.error("POST /api/admin/grant-plus-launch-gift", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
+app.post("/api/admin/reset-self-level", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await resetLevelForUid(req.uid);
+    return res.json({ok: true, uid: req.uid, level: 1, rules_version: 2});
+  } catch (e) {
+    logger.error("POST /api/admin/reset-self-level", e);
+    if (e.code === "player_stats_missing") {
+      return res.status(404).json({error: "player_stats_missing"});
+    }
     return res.status(500).json({error: "internal_error"});
   }
 });

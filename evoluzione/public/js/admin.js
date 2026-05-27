@@ -401,6 +401,20 @@ function bindEvents() {
       setMsg('Export games non disponibile.');
     }
   });
+  document.getElementById('btn-admin-set-level-streak-test')?.addEventListener('click', async () => {
+    setMsg('');
+    if (!window.confirm('Impostare strike 60s a 5/6 sul tuo account? Poi fai una run ≥60s per testare il level-up.')) return;
+    try {
+      const data = await apiPost('/api/admin/set-self-level-streak-test', {});
+      setMsg(data?.hint || 'Strike 60s impostata a 5/6. Fai una run ≥60s per testare il +1 livello.');
+    } catch (e) {
+      const code = String(e.message || '');
+      if (code === 'HTTP_403') setMsg('Accesso negato.');
+      else if (code === 'HTTP_404') setMsg('player_stats non trovato.');
+      else if (code.startsWith('HTTP_')) setMsg(`Errore API (${code.replace('HTTP_', '')}).`);
+      else setMsg('Errore di rete.');
+    }
+  });
   document.getElementById('btn-admin-grant-plus-prizes')?.addEventListener('click', async () => {
     setMsg('');
     try {

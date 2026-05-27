@@ -137,8 +137,8 @@
   <div id="view-leaderboard" class="screen-view screen-view--sub" hidden>
     <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
     <div class="leaderboard-tab-strip" role="tablist" aria-label="Tipo classifica">
-      <button type="button" id="lb-tab-general" class="leaderboard-tab leaderboard-tab--active js-no-start" role="tab" aria-selected="true">Generale</button>
-      <button type="button" id="lb-tab-pure" class="leaderboard-tab js-no-start" role="tab" aria-selected="false">Pura</button>
+      <button type="button" id="lb-tab-general" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" hidden>Generale</button>
+      <button type="button" id="lb-tab-pure" class="leaderboard-tab leaderboard-tab--active js-no-start" role="tab" aria-selected="true">Pura</button>
     </div>
     <div id="records-block-lb"></div>
   </div>
@@ -152,8 +152,8 @@
       <div class="leaderboard-tab-strip profile-tab-strip" role="tablist" aria-label="Sezioni profilo">
         <button type="button" id="profile-tab-personal" class="leaderboard-tab leaderboard-tab--active js-no-start" role="tab" aria-selected="true" aria-controls="profile-panel-personal" title="Dati personali">Dati</button>
         <button type="button" id="profile-tab-stats" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" aria-controls="profile-panel-stats">Stats</button>
-        <button type="button" id="profile-tab-mix" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" aria-controls="profile-panel-mix">Mix</button>
-        <button type="button" id="profile-tab-prizes" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" aria-controls="profile-panel-prizes">Premi</button>
+        <button type="button" id="profile-tab-mix" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" aria-controls="profile-panel-mix" hidden>Mix</button>
+        <button type="button" id="profile-tab-prizes" class="leaderboard-tab js-no-start" role="tab" aria-selected="false" aria-controls="profile-panel-prizes" hidden>Premi</button>
       </div>
 
       <div id="profile-panel-personal" class="profile-tab-panel" role="tabpanel" aria-labelledby="profile-tab-personal">
@@ -178,6 +178,14 @@
       <div id="profile-panel-stats" class="profile-tab-panel" role="tabpanel" aria-labelledby="profile-tab-stats" hidden>
         <section class="profile-panel" aria-labelledby="profile-heading-stats">
           <h3 id="profile-heading-stats" class="profile-panel-title">Statistiche</h3>
+          <div id="profile-level-card" class="profile-level-card">
+            <p class="profile-level-card__label">Livello giocatore</p>
+            <div class="profile-level-card__row">
+              <span id="profile-level-badge" class="profile-level-badge">LV 0</span>
+              <span id="profile-level-gain-hint" class="profile-level-gain-hint" hidden></span>
+            </div>
+            <p id="profile-level-progress" class="profile-level-progress">Prossimo livello: 60s 0/6 - 90s 0/4 - 120s 0/3 - 150s 0/2</p>
+          </div>
           <div id="profile-stats-best-card" class="profile-stats-best"></div>
           <div id="profile-stats-grid" class="profile-stats-grid"></div>
           <div class="profile-soglie-block">
@@ -249,6 +257,15 @@
         <li><span class="hd hd-g"></span>Verde &mdash; rimpicciolisce i nemici</li>
         <li><span class="hd hd-p"></span>Viola &mdash; vita extra</li>
       </ul>
+      <h3 class="howto-subtitle">COME SI GUADAGNA UN LIVELLO</h3>
+      <p>Completa una qualsiasi di queste serie di sopravvivenze:</p>
+      <ul class="howto-list">
+        <li>6 partite oltre 1:00</li>
+        <li>4 partite oltre 1:30</li>
+        <li>3 partite oltre 2:00</li>
+        <li>2 partite oltre 2:30</li>
+      </ul>
+      <p class="howto-tip">Bonus livello: ogni partita oltre 3:00 vale +2 livelli.</p>
       <p class="howto-tip">Due dita = pausa.</p>
     </div>
   </div>
@@ -257,6 +274,11 @@
   <div id="view-death" class="screen-view" hidden>
     <h1 class="death-heading">Pensavi fosse un gioco facile?</h1>
     <p class="death-sub" id="death-time"></p>
+    <div id="death-level-strip" class="death-level-strip" hidden>
+      <span id="death-level-name" class="death-level-name">Giocatore</span>
+      <span id="death-level-value" class="death-level-value">LV 0</span>
+      <p id="death-level-delta" class="death-level-delta" hidden></p>
+    </div>
     <div id="records-block"><p class="rec-saving">salvataggio···</p></div>
     <div id="death-profile-snippet" class="death-snippet death-snippet--profile" hidden>
       <h2 class="death-snippet__title">Serie attuale</h2>

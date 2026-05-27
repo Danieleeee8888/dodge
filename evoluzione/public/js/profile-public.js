@@ -2,6 +2,7 @@ import { applyGameViewportChromeVars } from './viewport-ui-scale.js';
 import { renderProfileBestCard } from './profile-best-display.js';
 import { renderProfileStatsKpiGrid } from './profile-kpi-display.js';
 import { renderProfileSurvivalThresholdStats } from './profile-threshold-display.js';
+import { computeLevelFromStats } from './constants.js';
 
 function bindViewportUiSync() {
   const run = () => {
@@ -52,6 +53,12 @@ function getUserIdFromUrl() {
 
 function renderPublicProfileStats(stats) {
   const data = stats && typeof stats === 'object' ? stats : {};
+  const levelBadgeEl = document.getElementById('public-profile-level-badge');
+  if (levelBadgeEl) {
+    const rawLevel = Number(data.level);
+    const level = Number.isFinite(rawLevel) ? Math.max(1, Math.floor(rawLevel)) : Math.max(1, computeLevelFromStats(data));
+    levelBadgeEl.textContent = `LV ${level}`;
+  }
   renderProfileBestCard(document.getElementById('public-profile-stats-best-card'), {
     generalMs: Math.floor(Number(data.best_general_ms || 0)),
     pureMs: Math.floor(Number(data.best_pure_ms || 0)),

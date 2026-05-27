@@ -997,6 +997,58 @@ canvas {
   line-height:1.35;
   text-align:center;
 }
+#view-death .death-level-strip {
+  width:min(24rem, calc(100% - 1.1rem));
+  max-width:calc(100% - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+  margin:0.2rem 0 0.45rem;
+  padding:0.6rem 0.8rem 0.5rem;
+  box-sizing:border-box;
+  border:1px solid rgba(168,85,247,0.42);
+  border-radius:0.6rem;
+  background:rgba(18,8,35,0.82);
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  column-gap:0.7rem;
+}
+#view-death .death-level-name {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:0.78rem;
+  letter-spacing:0.09em;
+  color:rgba(245,240,255,0.9);
+}
+#view-death .death-level-value {
+  justify-self:end;
+  padding:0.2rem 0.55rem;
+  border-radius:999px;
+  border:1px solid rgba(196,181,253,0.55);
+  background:rgba(109,40,217,0.3);
+  color:#f5f3ff;
+  font-size:0.72rem;
+  letter-spacing:0.09em;
+  font-weight:700;
+}
+#view-death .death-level-delta {
+  grid-column:1 / -1;
+  margin:0.35rem 0 0;
+  text-align:center;
+  font-size:0.66rem;
+  letter-spacing:0.15em;
+  text-transform:uppercase;
+  color:#c4b5fd;
+}
+#view-death .death-level-strip.is-leveled-up .death-level-value {
+  animation:levelUpPulse 900ms ease-out;
+}
+@keyframes levelUpPulse {
+  0% { transform:scale(1); }
+  35% { transform:scale(1.18) rotate(-2deg); }
+  70% { transform:scale(0.96) rotate(1deg); }
+  100% { transform:scale(1); }
+}
 #screen .death-sub {
   color:rgba(255,255,255,0.5); font-size:0.78rem; letter-spacing:0.16em;
   margin:-0.35rem 0 1.1rem; text-align:center; width:100%; max-width:100%;
@@ -1047,6 +1099,20 @@ canvas {
   white-space:nowrap;
   letter-spacing:0.12em;
   font-weight:700;
+}
+.rec-level-pill {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:2px 6px;
+  border-radius:999px;
+  border:1px solid rgba(196,181,253,0.5);
+  background:rgba(91,33,182,0.22);
+  color:rgba(245,243,255,0.96);
+  font-size:0.64rem;
+  letter-spacing:0.1em;
+  font-weight:700;
+  flex:0 0 auto;
 }
 #records-block .rec-tag-btn,
 #records-block-lb .rec-tag-btn {
@@ -2340,3 +2406,59 @@ canvas {
 .profile-prize-card__count { font-size: 0.72rem; font-variant-numeric: tabular-nums; font-weight: 700; }
 .profile-btn-row { margin-top: 0.45rem; display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .home-btn--small { font-size: 0.62rem; padding: 0.38rem 0.55rem; letter-spacing: 0.1em; }
+
+.howto-subtitle {
+  margin:0.7rem 0 0.3rem;
+  font-size:0.74rem;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  text-align:center;
+  color:rgba(221,214,254,0.92);
+}
+
+.profile-level-card {
+  margin:0 0 0.65rem;
+  padding:0.62rem 0.7rem;
+  border-radius:0.6rem;
+  border:1px solid rgba(196,181,253,0.35);
+  background:rgba(39,18,66,0.24);
+}
+.profile-level-card__label {
+  margin:0;
+  font-size:0.62rem;
+  text-transform:uppercase;
+  letter-spacing:0.18em;
+  color:rgba(221,214,254,0.86);
+}
+.profile-level-card__row {
+  margin-top:0.36rem;
+  display:flex;
+  align-items:center;
+  gap:0.45rem;
+}
+.profile-level-badge {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:4.2rem;
+  padding:0.26rem 0.65rem;
+  border-radius:999px;
+  border:1px solid rgba(196,181,253,0.62);
+  background:rgba(91,33,182,0.38);
+  color:#f5f3ff;
+  font-size:0.84rem;
+  letter-spacing:0.12em;
+  font-weight:800;
+}
+.profile-level-gain-hint {
+  font-size:0.62rem;
+  letter-spacing:0.1em;
+  color:#c4b5fd;
+}
+.profile-level-progress {
+  margin:0.45rem 0 0;
+  font-size:0.62rem;
+  letter-spacing:0.06em;
+  line-height:1.4;
+  color:rgba(245,243,255,0.78);
+}

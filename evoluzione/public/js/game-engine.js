@@ -41,6 +41,8 @@ import {
   PLUS_PRIZE_GREEN_PLAYER_DURATION_MS,
   getProfileMissionDefs,
   MISSIONS_CONFIG,
+  computeLevelFromStats,
+  computeLevelProgressFromStats,
 } from './constants.js';
 import { auth, authPersistenceReady, rtdb } from './firebase-init.js';
 import { ref, push, onDisconnect, set } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
@@ -52,7 +54,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getProfile, resolveDisplayName, updateDisplayName, ensureProfileForUser } from './profile.js';
 import {
-  fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore,
+  fetchBothLeaderboards, getCachedLeaderboard, applyOptimisticScore, syncLeaderboardLevel,
   invalidateLeaderboardUsernameMap, LEADERBOARD_TOP_N,
 } from './leaderboard.js';
 import { renderProfileBestCard } from './profile-best-display.js';
@@ -501,16 +503,26 @@ const cdNumEl = document.getElementById('cdNum');
 let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
 /** Tab attiva sulla vista classifica (`records-block-lb`). */
-let leaderboardViewTab = 'general';
+let leaderboardViewTab = 'pure';
 /** Classifica mostrata in `#records-block` (schermata morte / refresh menu): segue l’ultima run pura vs Plus. */
 let deathRecordsLeaderboardKind = 'general';
 /** Righe classifica in schermata morte (la vista Classifica resta TOP 15). */
 const DEATH_RECORDS_TOP_N = 5;
+/** Feature toggle temporaneo: nasconde UI Bonus Plus / Missioni senza rimuovere la logica. */
+const ENABLE_PLUS_MISSIONS_UI = false;
 
 function syncLeaderboardTabButtons() {
   const g = document.getElementById('lb-tab-general');
   const p = document.getElementById('lb-tab-pure');
-  if (!g || !p) return;
+  if (!p) return;
+  if (!ENABLE_PLUS_MISSIONS_UI && g) g.hidden = true;
+  if (!ENABLE_PLUS_MISSIONS_UI) leaderboardViewTab = 'pure';
+  if (!g) {
+    const isPureOnly = true;
+    p.classList.toggle('leaderboard-tab--active', isPureOnly);
+    p.setAttribute('aria-selected', 'true');
+    return;
+  }
   const isGen = leaderboardViewTab === 'general';
   g.classList.toggle('leaderboard-tab--active', isGen);
   p.classList.toggle('leaderboard-tab--active', !isGen);
@@ -542,8 +554,10 @@ let profileViewTab = 'personal';
 const PROFILE_TAB_MAP = {
   personal: { tab: 'profile-tab-personal', panel: 'profile-panel-personal' },
   stats: { tab: 'profile-tab-stats', panel: 'profile-panel-stats' },
-  mix: { tab: 'profile-tab-mix', panel: 'profile-panel-mix' },
-  prizes: { tab: 'profile-tab-prizes', panel: 'profile-panel-prizes' },
+  ...(ENABLE_PLUS_MISSIONS_UI ? {
+    mix: { tab: 'profile-tab-mix', panel: 'profile-panel-mix' },
+    prizes: { tab: 'profile-tab-prizes', panel: 'profile-panel-prizes' },
+  } : {}),
 };
 
 function syncProfileTabUi() {
@@ -571,8 +585,17 @@ function bindProfileTabs() {
   };
   wire('profile-tab-personal', 'personal');
   wire('profile-tab-stats', 'stats');
-  wire('profile-tab-mix', 'mix');
-  wire('profile-tab-prizes', 'prizes');
+  if (ENABLE_PLUS_MISSIONS_UI) {
+    wire('profile-tab-mix', 'mix');
+    wire('profile-tab-prizes', 'prizes');
+  } else {
+    document.getElementById('profile-tab-mix')?.setAttribute('hidden', '');
+    document.getElementById('profile-tab-prizes')?.setAttribute('hidden', '');
+    const mixPanel = document.getElementById('profile-panel-mix');
+    const prizesPanel = document.getElementById('profile-panel-prizes');
+    if (mixPanel) mixPanel.hidden = true;
+    if (prizesPanel) prizesPanel.hidden = true;
+  }
 }
 
 function renderRecordsInto(el, opts = {}) {
@@ -644,6 +667,14 @@ function renderRecordsInto(el, opts = {}) {
       left.appendChild(rank);
       left.appendChild(tag);
       right.appendChild(time);
+      if (isLbPage) {
+        const levelPill = document.createElement('span');
+        levelPill.className = 'rec-level-pill';
+        const levelNum = Math.floor(Number(row.level));
+        levelPill.textContent = Number.isFinite(levelNum) && levelNum >= 1 ? `LV ${levelNum}` : 'LV 1';
+        levelPill.title = 'Livello giocatore';
+        right.appendChild(levelPill);
+      }
       item.appendChild(left);
       item.appendChild(right);
       list.appendChild(item);
@@ -742,6 +773,8 @@ async function formatMissionActivateFailure(res) {
 function clearDeathSummarySnippets() {
   const profileSnippet = document.getElementById('death-profile-snippet');
   const missionSnippet = document.getElementById('death-mission-snippet');
+  const levelStrip = document.getElementById('death-level-strip');
+  const levelDelta = document.getElementById('death-level-delta');
   if (profileSnippet) {
     profileSnippet.hidden = true;
     document.getElementById('death-streak-legend')?.replaceChildren();
@@ -750,6 +783,14 @@ function clearDeathSummarySnippets() {
   if (missionSnippet) {
     missionSnippet.hidden = true;
     missionSnippet.replaceChildren();
+  }
+  if (levelStrip) {
+    levelStrip.hidden = true;
+    levelStrip.classList.remove('is-leveled-up');
+  }
+  if (levelDelta) {
+    levelDelta.hidden = true;
+    levelDelta.textContent = '';
   }
 }
 
@@ -819,6 +860,11 @@ function buildActiveMissionCardHtml(active, opts = {}) {
 function renderDeathMissionSnippet(missionsPayload, opts = {}) {
   const root = document.getElementById('death-mission-snippet');
   if (!root) return;
+  if (!ENABLE_PLUS_MISSIONS_UI) {
+    root.hidden = true;
+    root.replaceChildren();
+    return;
+  }
   const active = missionsPayload?.active;
   const missionCompleted = !!opts.missionCompleted;
   if (!active && !missionCompleted) {
@@ -848,6 +894,36 @@ function renderDeathMissionSnippet(missionsPayload, opts = {}) {
   const card = wrap.firstElementChild;
   if (card) root.appendChild(card);
   root.hidden = false;
+}
+
+function renderDeathLevelStrip(opts = {}) {
+  const strip = document.getElementById('death-level-strip');
+  const nameEl = document.getElementById('death-level-name');
+  const valueEl = document.getElementById('death-level-value');
+  const deltaEl = document.getElementById('death-level-delta');
+  if (!strip || !nameEl || !valueEl || !deltaEl) return;
+
+  const isGuest = isGuestModeActive() || !currentUserId;
+  if (isGuest || !auth.currentUser?.emailVerified) {
+    strip.hidden = true;
+    return;
+  }
+
+  const name = String(opts.displayName || currentDisplayName || 'Giocatore').trim() || 'Giocatore';
+  const levelAfter = Math.max(0, Math.floor(Number(opts.levelAfter) || 0));
+  const levelGain = Math.max(0, Math.floor(Number(opts.levelGain) || 0));
+  nameEl.textContent = name.slice(0, 16);
+  valueEl.textContent = `LV ${levelAfter}`;
+  strip.hidden = false;
+  strip.classList.remove('is-leveled-up');
+  deltaEl.hidden = true;
+  deltaEl.textContent = '';
+  if (levelGain > 0) {
+    strip.classList.add('is-leveled-up');
+    deltaEl.hidden = false;
+    deltaEl.textContent = levelGain > 1 ? `+${levelGain} livelli` : '+1 livello';
+    setTimeout(() => strip.classList.remove('is-leveled-up'), 1500);
+  }
 }
 
 function waitMs(ms) {
@@ -1203,6 +1279,9 @@ async function prepareDeathScreenBundle({
 
   base.gameEndPayload = payload;
   await fetchBothLeaderboards().catch(() => {});
+  if (payload.level_after != null) {
+    syncLeaderboardLevel(currentUserId, payload.level_after);
+  }
   if (payload.improved && (payload.inTop15 || payload.inTop10)) {
     base.recordBadge = 'nuovo record in classifica!';
   } else if (payload.improved) {
@@ -1249,6 +1328,11 @@ function applyDeathSummaryFromBundle(bundle) {
       missionCompleted: !!bundle.gameEndPayload?.mission_completed,
     });
   }
+  renderDeathLevelStrip({
+    displayName: currentDisplayName,
+    levelAfter: bundle.gameEndPayload?.level_after ?? bundle.stats?.level ?? 0,
+    levelGain: bundle.gameEndPayload?.level_gain ?? 0,
+  });
 }
 
 function revealDeathScreen(bundle) {
@@ -1290,6 +1374,11 @@ async function refreshProfileMissionsAndPrizes() {
   const missionsRoot = document.getElementById('profile-missions-root');
   const prizesRoot = document.getElementById('profile-prizes-grid');
   if (!missionsRoot || !prizesRoot) return;
+  if (!ENABLE_PLUS_MISSIONS_UI) {
+    missionsRoot.replaceChildren();
+    prizesRoot.replaceChildren();
+    return;
+  }
 
   if (isGuestModeActive() || !currentUserId || !auth.currentUser?.emailVerified) {
     missionsRoot.innerHTML = '<p class="profile-info profile-info--dim">Accedi con email verificata per missioni e premi in cloud.</p>';
@@ -1414,6 +1503,7 @@ async function closePlusLaunchNoticeAndOpenProfile() {
 }
 
 function maybeShowPlusLaunchNotice(user) {
+  if (!ENABLE_PLUS_MISSIONS_UI) return;
   if (!user || isGuestModeActive() || !auth.currentUser?.emailVerified || hasSeenPlusLaunchNotice()) return;
   const overlay = document.getElementById('plusLaunchOverlay');
   if (!overlay) return;
@@ -1448,6 +1538,23 @@ function clearProfileStatsTabExtras() {
   document.getElementById('profile-stats-grid')?.replaceChildren();
   renderProfileSurvivalThresholdStats({}, profileThresholdElements());
   document.getElementById('profile-recent-games-root')?.replaceChildren();
+  renderProfileLevelCard({});
+}
+
+function renderProfileLevelCard(stats = {}) {
+  const badgeEl = document.getElementById('profile-level-badge');
+  const progressEl = document.getElementById('profile-level-progress');
+  const gainHintEl = document.getElementById('profile-level-gain-hint');
+  if (!badgeEl || !progressEl) return;
+  const rawLevel = Number(stats.level);
+  const level = Number.isFinite(rawLevel) ? Math.max(1, Math.floor(rawLevel)) : Math.max(1, computeLevelFromStats(stats));
+  const progress = computeLevelProgressFromStats(stats);
+  badgeEl.textContent = `LV ${level}`;
+  progressEl.textContent = `Prossimo livello: 60s ${progress.s60.current}/${progress.s60.target} - 90s ${progress.s90.current}/${progress.s90.target} - 120s ${progress.s120.current}/${progress.s120.target} - 150s ${progress.s150.current}/${progress.s150.target}`;
+  if (gainHintEl) {
+    gainHintEl.hidden = true;
+    gainHintEl.textContent = '';
+  }
 }
 
 function formatProfileRunDurationSeconds(sec) {
@@ -1547,6 +1654,7 @@ async function setupProfileView() {
     renderProfileBestCard(bestCardEl, { generalMs: 0, pureMs: 0, prizeUsed: '', fmt });
     renderProfileStatsKpiGrid(statsGridEl, {});
     renderProfileSurvivalThresholdStats({}, profileThresholdElements());
+    renderProfileLevelCard({});
     Object.values(colorMap).forEach((el) => { if (el) el.textContent = '0'; });
     if (displayInput) {
       displayInput.value = '';
@@ -1589,6 +1697,7 @@ async function setupProfileView() {
       renderProfileBestCard(bestCardEl, { generalMs, pureMs, prizeUsed, fmt });
       renderProfileStatsKpiGrid(statsGridEl, stats);
       renderProfileSurvivalThresholdStats(stats, profileThresholdElements());
+      renderProfileLevelCard(stats);
       if (colorMap.red) colorMap.red.textContent = String(Math.floor(Number(stats.red_collected || 0)));
       if (colorMap.blue) colorMap.blue.textContent = String(Math.floor(Number(stats.blue_collected || 0)));
       if (colorMap.yellow) colorMap.yellow.textContent = String(Math.floor(Number(stats.yellow_collected || 0)));
@@ -1606,6 +1715,7 @@ async function setupProfileView() {
       });
       renderProfileStatsKpiGrid(statsGridEl, {});
       renderProfileSurvivalThresholdStats({}, profileThresholdElements());
+      renderProfileLevelCard({});
     }
   } catch (_) {
     clearProfileStatsTabExtras();
@@ -1617,6 +1727,7 @@ async function setupProfileView() {
     });
     renderProfileStatsKpiGrid(statsGridEl, {});
     renderProfileSurvivalThresholdStats({}, profileThresholdElements());
+    renderProfileLevelCard({});
   }
   await refreshProfileMissionsAndPrizes().catch(() => {});
 }
@@ -1775,26 +1886,8 @@ async function beginStartGameSequence() {
   if (startGameSequenceBusy) return;
   startGameSequenceBusy = true;
   try {
-    let chosen = null;
     if (!isGuestModeActive() && currentUserId && auth.currentUser?.emailVerified) {
-      try {
-        const token = await auth.currentUser.getIdToken();
-        const pr = await fetch('/api/prizes', {headers: {Authorization: `Bearer ${token}`}});
-        const pj = await pr.json().catch(() => ({}));
-        const counts = pj.prizes || {};
-        let total = 0;
-        for (const k of RUN_PRIZE_CODES) total += Math.max(0, Math.floor(Number(counts[k] || 0)));
-        if (total > 0) {
-          chosen = await openPrizePicker(counts);
-        }
-        if (chosen === PRIZE_PICK_BACK_HOME) {
-          currentRunPrize = null;
-          return;
-        }
-        await postGameStartApi(chosen);
-      } catch (_) {
-        await postGameStartApi(null);
-      }
+      await postGameStartApi(null);
     } else {
       currentRunPrize = null;
     }
@@ -1855,7 +1948,7 @@ function bindHomeNav() {
       e.preventDefault();
       return;
     }
-    leaderboardViewTab = 'general';
+    leaderboardViewTab = ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure';
     syncLeaderboardTabButtons();
     const lbEl = document.getElementById('records-block-lb');
     renderRecordsInto(lbEl);
