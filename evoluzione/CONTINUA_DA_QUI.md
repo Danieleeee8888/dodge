@@ -167,7 +167,7 @@ Test statico locale (HTTP, come in produzione): dalla cartella `public`, avvia u
 
 ## Pagine legali e cookie
 
-- **Pagine statiche:** `public/privacy.html`, `public/terms.html`, `public/contact.html` — URL puliti `/privacy`, `/termini`, `/contatti` (rewrite in `firebase.json`). Info cookie solo in privacy (nessuna pagina cookie separata).
+- **Pagine statiche:** `public/privacy.html`, `public/terms.html`, `public/contact.html` — URL puliti `/privacy`, `/termini`, `/contatti` (rewrite in `firebase.json`). Layout come profilo pubblico: **⌂ blu centrato in basso** (`.subview-round-back`), `legal-page.js` + `viewport-ui-scale.js`. Info cookie solo in privacy (nessuna pagina cookie separata).
 - **Link in-app:** tab Profilo → **Dati** → tre pulsanti full-width sotto «Esci»: Privacy, Termini, Contatti (`.profile-legal-links` in `index.html`). **Home non modificata.**
 - **Contatto:** `officina.digitale.roma@gmail.com` (anche in `contact.html`).
 - **Banner cookie:** overlay centrale al primo accesso (`public/js/consent.js`, `public/css/consent.css`); scelta in `localStorage` chiave `dodge:cookieChoice` (`all` | `essential`). Pulsanti «Accetto» / «Solo necessari». Incluso in `index.html`, `auth.html`, `profile.html`, `admin.html`. Debug: `resetCookieChoice()` in console.

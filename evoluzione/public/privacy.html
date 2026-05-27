@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="page-scroll-body">
-  <main class="screen-view screen-view--sub legal-page">
-    <a href="/" class="legal-back js-no-start" aria-label="Torna al gioco">⌂</a>
-    <h1 class="view-title">PRIVACY</h1>
+  <main class="screen-view screen-view--sub profile-public-page legal-page" style="display:flex;">
+    <button type="button" class="subview-round-back subview-bar-back--center js-no-start" id="btn-legal-back" aria-label="Torna alla home" title="Home">⌂</button>
+    <h2 class="view-title">PRIVACY</h2>
     <div class="legal-body">
       <p class="legal-updated">Ultimo aggiornamento: maggio 2026</p>
 
@@ -73,6 +73,7 @@
     </div>
   </div>
   <script src="/js/consent.js"></script>
+  <script type="module" src="/js/legal-page.js"></script>
   <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
 </body>
 </html>
