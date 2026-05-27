@@ -933,6 +933,37 @@ app.post("/api/game/start", requireAuth, async (req, res) => {
   }
 });
 
+/** Uscita manuale entro la finestra di grazia: chiude la run senza aggiornare statistiche. */
+app.post("/api/game/abort", requireAuth, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const runIdParsed = parseRunId(body.run_id);
+    if (!runIdParsed.ok) return res.status(400).json({error: "invalid_run_id"});
+    const runId = runIdParsed.value;
+    if (runId == null) return res.status(400).json({error: "run_id_required"});
+
+    const uid = req.uid;
+    const statsRef = db.collection("player_stats").doc(uid);
+    let cleared = false;
+    await db.runTransaction(async (tx) => {
+      const statsSnap = await tx.get(statsRef);
+      const s0 = statsSnap.exists ? (statsSnap.data() || {}) : {};
+      if (!s0.pending_run_id || String(s0.pending_run_id) !== runId) return;
+      tx.set(statsRef, {
+        pending_run_id: null,
+        pending_run_prize: null,
+        game_started_at: null,
+        updated_at: nowTs(),
+      }, {merge: true});
+      cleared = true;
+    });
+    return res.json({ok: true, cleared});
+  } catch (e) {
+    logger.error("POST /api/game/abort", e);
+    return res.status(500).json({error: "internal_error"});
+  }
+});
+
 app.post("/api/game/end", requireAuth, async (req, res) => {
   try {
     const body = req.body || {};

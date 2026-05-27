@@ -142,6 +142,9 @@ function syncAudioChromeVisibility() {
   audioCornerBtn.classList.toggle('audio-corner--hidden', hide);
 }
 const pauseOverlay = document.getElementById('pauseOverlay');
+const pauseExitHomeBtn = document.getElementById('pauseExitHomeBtn');
+/** Uscita manuale da pausa: entro questa finestra non si chiama game/end (statistiche intatte). */
+const EARLY_EXIT_GRACE_MS = 15000;
 let deferredInstallPrompt = null;
 let installNudgeEl = null;
 
@@ -1582,8 +1585,8 @@ function revealDeathScreen(bundle) {
   tEl.textContent = fmt(bundle.diedElapsed);
   nbEl.textContent = String(bundle.diedNb);
   updateShellForPhase('gameover');
-  const deathTimeEl = document.getElementById('death-time');
-  if (deathTimeEl) deathTimeEl.textContent = `sopravvissuto ${fmt(bundle.diedElapsed)}`;
+  const deathTimeValueEl = document.getElementById('death-time-value');
+  if (deathTimeValueEl) deathTimeValueEl.textContent = fmt(bundle.diedElapsed);
   applyDeathSummaryFromBundle(bundle);
   showScreenView('death');
   setupMenuUI();
@@ -2017,6 +2020,20 @@ async function callGameEnd(payload, token, maxAttempts = 3) {
   return { ok: false, error: 'network' };
 }
 
+async function callGameAbort(runId, token) {
+  if (!runId || !token) return;
+  try {
+    await fetch('/api/game/abort', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ run_id: runId }),
+    });
+  } catch (_) { /* best effort */ }
+}
+
 async function postGameStartApi(prizeCode) {
   currentRunId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
     ? crypto.randomUUID()
@@ -2270,6 +2287,10 @@ function bindHomeNav() {
   });
 
   document.getElementById('homeCornerBtn')?.addEventListener('click', returnToHomeMenu);
+
+  pauseExitHomeBtn?.addEventListener('click', (e) => {
+    void abortRunAndReturnHome(e);
+  });
 
   // RESET PASSWORD
   document.getElementById('btn-reset-pw')?.addEventListener('click', async e => {
@@ -3137,7 +3158,7 @@ function startGame() {
   deathFinale = null;
   fingerDown = false;
   paused = false;
-  if (pauseOverlay) pauseOverlay.style.display = 'none';
+  hidePauseOverlay();
   screen.classList.remove('screen-death');
   screen.style.background = '';
   if (audioEnabled) initAudio();
@@ -3230,7 +3251,7 @@ function die(opts = {}) {
   fingerDown = false;
   paused = false;
   resumeCountdown = null;
-  if (pauseOverlay) pauseOverlay.style.display = 'none';
+  hidePauseOverlay();
   if (cdOverlayEl) {
     cdOverlayEl.classList.remove('show');
     cdOverlayEl.classList.remove('countdownOverlay--resume');
@@ -3256,6 +3277,76 @@ function die(opts = {}) {
   return 'fatal';
 }
 
+function canShowPauseExitHome() {
+  return running && paused && !introCountdown && !resumeCountdown && elapsed < EARLY_EXIT_GRACE_MS;
+}
+
+function syncPauseExitHomeVisibility() {
+  if (!pauseExitHomeBtn) return;
+  pauseExitHomeBtn.hidden = !canShowPauseExitHome();
+}
+
+function hidePauseOverlay() {
+  if (pauseOverlay) {
+    pauseOverlay.style.display = 'none';
+    pauseOverlay.classList.remove('pause-overlay--active');
+    pauseOverlay.setAttribute('aria-hidden', 'true');
+  }
+  if (pauseExitHomeBtn) pauseExitHomeBtn.hidden = true;
+}
+
+function showPauseOverlay() {
+  if (!pauseOverlay) return;
+  pauseOverlay.style.display = 'flex';
+  pauseOverlay.classList.add('pause-overlay--active');
+  pauseOverlay.setAttribute('aria-hidden', 'false');
+  syncPauseExitHomeVisibility();
+}
+
+async function abortRunAndReturnHome(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  if (!canShowPauseExitHome()) return;
+
+  const runIdToAbort = currentRunId;
+  deathRevealToken++;
+  if (deathUiTimeoutId != null) {
+    clearTimeout(deathUiTimeoutId);
+    deathUiTimeoutId = null;
+  }
+  deathFinale = null;
+  fingerDown = false;
+  paused = false;
+  running = false;
+  resumeCountdown = null;
+  introCountdown = null;
+  currentRunId = null;
+  currentRunPrize = null;
+  hidePauseOverlay();
+  if (cdOverlayEl) {
+    cdOverlayEl.classList.remove('show');
+    cdOverlayEl.classList.remove('countdownOverlay--resume');
+  }
+  stopMusic();
+  syncHudRunPrizeAccent();
+  screen.classList.remove('screen-death');
+  screen.style.background = '';
+  startGameUnlockAt = performance.now() + START_GAME_GUARD_MS;
+  armSubViewHomeNavGuard();
+  updateShellForPhase('menu');
+  showScreenView('home');
+  setupMenuUI();
+
+  if (!isGuestModeActive() && auth.currentUser?.emailVerified && runIdToAbort) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await callGameAbort(runIdToAbort, token);
+    } catch (_) {}
+  }
+}
+
 function togglePause() {
   if (!running) return;
   if (introCountdown) return;
@@ -3264,12 +3355,12 @@ function togglePause() {
   if (!paused) {
     paused = true;
     pausedAt = performance.now();
-    if (pauseOverlay) pauseOverlay.style.display = 'flex';
+    showPauseOverlay();
     pauseAllMusic();
     return;
   }
 
-  if (pauseOverlay) pauseOverlay.style.display = 'none';
+  hidePauseOverlay();
   const t0 = performance.now();
   resumeCountdown = { phase: 0, phaseEnd: t0 + INTRO_CD_MS };
   if (cdOverlayEl) {
@@ -3326,6 +3417,8 @@ function isControlTarget(el) {
   if (!el) return false;
   if (el.id === 'audioCornerBtn' || (el.closest && el.closest('#audioCornerBtn'))) return true;
   if (el.id === 'homeCornerBtn' || (el.closest && el.closest('#homeCornerBtn'))) return true;
+  if (el.id === 'pauseExitHomeBtn' || (el.closest && el.closest('#pauseExitHomeBtn'))) return true;
+  if (el.closest && el.closest('#pauseOverlay .pause-exit-home')) return true;
   if (el.closest && el.closest('#plusLaunchOverlay')) return true;
   if (deathFinale) return true;
   // Blocca startGame se siamo sulla home screen (non death)

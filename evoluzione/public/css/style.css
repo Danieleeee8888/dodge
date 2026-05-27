@@ -748,11 +748,40 @@ canvas {
   position:fixed; inset:0; min-height:100%; min-height:100dvh;
   display:none; align-items:center; justify-content:center;
   background:rgba(0,0,0,0.58); color:#fff;
-  font-size:1.75rem; letter-spacing:0.32em;
   z-index:15; pointer-events:none;
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   text-align:center;
 }
+#pauseOverlay.pause-overlay--active { pointer-events:auto; }
+.pause-overlay-inner {
+  display:flex; flex-direction:column; align-items:center; gap:1.1rem;
+  max-width:min(92vw, 22rem);
+}
+.pause-overlay-title {
+  margin:0;
+  font-size:1.75rem; letter-spacing:0.32em;
+}
+.pause-exit-home {
+  font:inherit;
+  font-size:clamp(0.68rem, 2.4vmin, 0.78rem);
+  letter-spacing:0.14em;
+  color:rgba(255,255,255,0.48);
+  text-decoration:underline;
+  text-underline-offset:0.18em;
+  background:none;
+  border:none;
+  padding:0.35rem 0.55rem;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.pause-exit-home:hover,
+.pause-exit-home:focus-visible { color:rgba(255,255,255,0.66); }
+.pause-exit-home:focus-visible {
+  outline:2px solid rgba(147,197,253,0.55);
+  outline-offset:3px;
+}
+.pause-exit-home[hidden] { display:none !important; }
 #countdownOverlay {
   position:fixed; inset:0; min-height:100%; min-height:100dvh; z-index:24;
   display:none; align-items:center; justify-content:center;
@@ -987,9 +1016,41 @@ canvas {
 
 /* Death screen */
 #screen h1.death-heading {
-  color:#fff; font-size:1.12rem; letter-spacing:0.04em; line-height:1.3;
-  margin-bottom:0.95rem; text-shadow:none; font-weight:700;
+  color:rgba(255,255,255,0.82); font-size:0.92rem; letter-spacing:0.06em; line-height:1.35;
+  margin-bottom:0.55rem; text-shadow:none; font-weight:600;
   max-width:min(22.5rem, calc(100% - 1.5rem)); padding:0 12px; box-sizing:border-box;
+}
+#view-death .death-run-time {
+  width:min(24rem, calc(100% - 1.1rem));
+  max-width:calc(100% - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+  margin:0 0 0.85rem;
+  padding:0.75rem 1rem 0.7rem;
+  box-sizing:border-box;
+  text-align:center;
+  border:2px solid rgba(147,197,253,0.42);
+  border-radius:0.65rem;
+  background:rgba(8,14,28,0.94);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset, 0 10px 36px rgba(0,0,0,0.5), 0 0 32px rgba(96,165,250,0.2);
+}
+#view-death .death-run-time__label {
+  display:block;
+  margin:0 0 0.35rem;
+  font-size:0.62rem;
+  letter-spacing:0.28em;
+  text-transform:uppercase;
+  color:rgba(191,219,254,0.78);
+  font-weight:700;
+}
+#view-death .death-run-time__value {
+  display:block;
+  color:#fff;
+  font-size:clamp(1.35rem, 5.2vw, 1.75rem);
+  font-weight:700;
+  letter-spacing:0.06em;
+  line-height:1.15;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:'tnum' 1;
+  text-shadow:0 0 22px rgba(147,197,253,0.45);
 }
 #screen.screen-death { background:#000; justify-content:center; align-items:center; }
 /* Spazio per ⌂ fissa in basso + gesture Android (visual viewport) */
@@ -1107,13 +1168,6 @@ canvas {
 }
 .profile-threshold-stat--pump-up { animation: thresholdPumpUp 950ms ease-out 1 both; }
 .profile-threshold-stat--pump-reset { animation: thresholdPumpReset 950ms ease-out 1 both; }
-#screen .death-sub {
-  color:rgba(255,255,255,0.5); font-size:0.78rem; letter-spacing:0.16em;
-  margin:-0.35rem 0 1.1rem; text-align:center; width:100%; max-width:100%;
-  padding:0 max(12px, env(safe-area-inset-left)) 0 max(12px, env(safe-area-inset-right));
-  box-sizing:border-box;
-}
-
 /* ── RECORDS / LEADERBOARD ───────────────────────────────────────────────── */
 #records-block {
   margin:0.85rem 0 0.45rem; cursor:default;

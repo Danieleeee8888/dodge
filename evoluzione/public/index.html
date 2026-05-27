@@ -43,7 +43,12 @@
   <div id="greenmodetrack"><div id="greenmodefill"></div></div>
 </div>
 
-<div id="pauseOverlay">PAUSA</div>
+<div id="pauseOverlay" aria-hidden="true">
+  <div class="pause-overlay-inner">
+    <p class="pause-overlay-title">PAUSA</p>
+    <button type="button" id="pauseExitHomeBtn" class="pause-exit-home js-no-start" hidden>torna alla home</button>
+  </div>
+</div>
 
 <button type="button" id="homeCornerBtn" class="js-no-start home-corner--hidden" aria-label="Home" title="Home">⌂</button>
 <button type="button" id="audioCornerBtn" class="js-no-start" aria-pressed="true" aria-label="Audio attivo" title="Audio">♪</button>
@@ -379,7 +384,10 @@
   <!-- ── MORTE ─────────────────────────────────────────────── -->
   <div id="view-death" class="screen-view" hidden>
     <h1 class="death-heading">Pensavi fosse un gioco facile?</h1>
-    <p class="death-sub" id="death-time"></p>
+    <div class="death-run-time" id="death-time" aria-label="Tempo di sopravvivenza">
+      <span class="death-run-time__label">Sopravvissuto</span>
+      <span class="death-run-time__value" id="death-time-value">00:00:000</span>
+    </div>
     <div id="death-level-strip" class="death-level-strip" hidden>
       <span id="death-level-name" class="death-level-name">Giocatore</span>
       <span id="death-level-value" class="death-level-value">LV 0</span>
