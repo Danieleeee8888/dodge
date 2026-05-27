@@ -135,6 +135,9 @@ function syncAudioChromeVisibility() {
     || uiChromeScreen === 'leaderboard'
     || uiChromeScreen === 'profile'
     || uiChromeScreen === 'howto'
+    || uiChromeScreen === 'privacy'
+    || uiChromeScreen === 'termini'
+    || uiChromeScreen === 'contatti'
     || uiChromeScreen === 'death';
   audioCornerBtn.classList.toggle('audio-corner--hidden', hide);
 }
@@ -2172,6 +2175,17 @@ function returnToHomeMenu(e) {
   updateShellForPhase('menu');
 }
 
+const LEGAL_SCREEN_NAMES = new Set(['privacy', 'termini', 'contatti']);
+
+function openLegalScreen(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const view = e.currentTarget?.dataset?.legalView;
+  if (!view || !LEGAL_SCREEN_NAMES.has(view)) return;
+  armSubViewHomeNavGuard();
+  showScreenView(view);
+}
+
 function bindHomeNav() {
   if (_navBound) return;
   _navBound = true;
@@ -2247,6 +2261,12 @@ function bindHomeNav() {
     if (btn.dataset.backHomeBound === '1') return;
     btn.dataset.backHomeBound = '1';
     btn.addEventListener('click', returnToHomeMenu);
+  });
+
+  document.querySelectorAll('.js-open-legal').forEach((btn) => {
+    if (btn.dataset.openLegalBound === '1') return;
+    btn.dataset.openLegalBound = '1';
+    btn.addEventListener('click', openLegalScreen);
   });
 
   document.getElementById('homeCornerBtn')?.addEventListener('click', returnToHomeMenu);
@@ -4238,6 +4258,9 @@ onAuthStateChanged(auth, async (user) => {
     sessionStorage.removeItem('dodge_open_screen');
     await setupProfileView().catch(() => {});
     showScreenView('profile');
+  } else if (pendingScreen && LEGAL_SCREEN_NAMES.has(pendingScreen)) {
+    sessionStorage.removeItem('dodge_open_screen');
+    showScreenView(pendingScreen);
   } else {
     showScreenView('home');
     maybeShowPlusLaunchNotice(user);

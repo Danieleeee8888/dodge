@@ -176,9 +176,9 @@
             <button type="button" id="btn-logout" class="home-btn home-btn--compact home-btn--danger js-no-start">Esci</button>
           </div>
           <div class="profile-legal-links">
-            <a href="/privacy" class="profile-legal-btn js-no-start">Privacy</a>
-            <a href="/termini" class="profile-legal-btn js-no-start">Termini</a>
-            <a href="/contatti" class="profile-legal-btn js-no-start">Contatti</a>
+            <button type="button" class="profile-legal-btn js-no-start js-open-legal" data-legal-view="privacy">Privacy</button>
+            <button type="button" class="profile-legal-btn js-no-start js-open-legal" data-legal-view="termini">Termini</button>
+            <button type="button" class="profile-legal-btn js-no-start js-open-legal" data-legal-view="contatti">Contatti</button>
           </div>
         </section>
       </div>
@@ -251,6 +251,103 @@
     <p id="profile-msg" class="profile-msg"></p>
   </div>
 
+  <!-- ── PRIVACY ───────────────────────────────────────────── -->
+  <div id="view-privacy" class="screen-view screen-view--sub" hidden>
+    <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
+    <h2 class="view-title">PRIVACY</h2>
+    <div class="legal-body">
+      <p class="legal-updated">Ultimo aggiornamento: maggio 2026</p>
+      <h3 class="legal-h2">Chi siamo</h3>
+      <p>DODGE è un gioco web gestito da Officina Digitale Roma. Per domande sui dati personali: <a href="mailto:officina.digitale.roma@gmail.com">officina.digitale.roma@gmail.com</a>.</p>
+      <h3 class="legal-h2">Dati che raccogliamo</h3>
+      <p>Se crei un account, trattiamo:</p>
+      <ul class="legal-list">
+        <li>indirizzo email e username scelti alla registrazione;</li>
+        <li>nome visualizzato in classifica (opzionale);</li>
+        <li>tempi di gioco, statistiche, livello, missioni e premi Plus;</li>
+        <li>storico partite salvato sui nostri server (Firebase).</li>
+      </ul>
+      <p>Se giochi senza account («offline»), i dati restano solo sul tuo dispositivo e non vengono inviati ai server.</p>
+      <h3 class="legal-h2">Perché li usiamo</h3>
+      <ul class="legal-list">
+        <li>autenticarti e gestire il profilo;</li>
+        <li>salvare i progressi e mostrarti classifica e statistiche;</li>
+        <li>garantire sicurezza del servizio e prevenire abusi.</li>
+      </ul>
+      <h3 class="legal-h2">Base giuridica</h3>
+      <p>Il trattamento si basa sull’esecuzione del servizio richiesto (gioco con account) e, ove applicabile, sul tuo consenso per scelte facoltative (es. cookie non strettamente necessari, se in futuro li introdurremo).</p>
+      <h3 class="legal-h2">Dove sono conservati i dati</h3>
+      <p>I dati sono ospitati su infrastruttura Google Firebase (Firestore, Authentication), con server in area UE dove disponibile. Non vendiamo i tuoi dati a terzi.</p>
+      <h3 class="legal-h2">Cookie e archiviazione locale</h3>
+      <p>Usiamo solo strumenti tecnici necessari al funzionamento:</p>
+      <ul class="legal-list">
+        <li>cookie di sessione Firebase Authentication (accesso account);</li>
+        <li><code>localStorage</code> sul dispositivo per preferenze di gioco, scelta cookie e cache PWA.</li>
+      </ul>
+      <p>Non usiamo cookie pubblicitari o di profilazione marketing in questa versione del sito.</p>
+      <h3 class="legal-h2">Quanto li conserviamo</h3>
+      <p>I dati restano finché mantieni l’account attivo. Puoi chiedere la cancellazione scrivendo all’email sopra; elimineremo account e dati associati nei tempi tecnici ragionevoli.</p>
+      <h3 class="legal-h2">I tuoi diritti</h3>
+      <p>In base al GDPR puoi chiedere accesso, rettifica, cancellazione, limitazione o opposizione al trattamento, e presentare reclamo al Garante Privacy. Per esercitare i diritti scrivi a <a href="mailto:officina.digitale.roma@gmail.com">officina.digitale.roma@gmail.com</a>.</p>
+      <h3 class="legal-h2">Minori</h3>
+      <p>Il servizio non è pensato per minori di 13 anni. Se ritieni che un minore abbia fornito dati senza consenso dei genitori, contattaci per la rimozione.</p>
+    </div>
+  </div>
+
+  <!-- ── TERMINI ───────────────────────────────────────────── -->
+  <div id="view-termini" class="screen-view screen-view--sub" hidden>
+    <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
+    <h2 class="view-title">TERMINI</h2>
+    <div class="legal-body">
+      <p class="legal-updated">Ultimo aggiornamento: maggio 2026</p>
+      <h3 class="legal-h2">Accettazione</h3>
+      <p>Usando DODGE accetti questi termini. Se non li accetti, non usare il servizio.</p>
+      <h3 class="legal-h2">Il servizio</h3>
+      <p>DODGE è un gioco arcade online gratuito. Il servizio è fornito «così com’è», senza garanzia di disponibilità continua o assenza di errori.</p>
+      <h3 class="legal-h2">Account</h3>
+      <ul class="legal-list">
+        <li>sei responsabile delle credenziali del tuo account;</li>
+        <li>un username per persona; non impersonare altri utenti;</li>
+        <li>puoi uscire o chiedere la cancellazione account via email di contatto.</li>
+      </ul>
+      <h3 class="legal-h2">Uso consentito</h3>
+      <p>È vietato:</p>
+      <ul class="legal-list">
+        <li>manipolare punteggi, classifica o API con bot o script;</li>
+        <li>tentare accessi non autorizzati ad account o sistemi;</li>
+        <li>copiare o ridistribuire il codice o gli asset senza permesso;</li>
+        <li>usare il servizio per attività illegali o moleste verso altri giocatori.</li>
+      </ul>
+      <p>Ci riserviamo di sospendere o eliminare account che violano queste regole.</p>
+      <h3 class="legal-h2">Classifica e dati di gioco</h3>
+      <p>I tempi e le statistiche salvati con account autenticato sono usati per classifica e profilo. Il nome visualizzato in classifica è quello che imposti nel profilo.</p>
+      <h3 class="legal-h2">Proprietà intellettuale</h3>
+      <p>Il gioco, il marchio DODGE, grafica e codice sono di Officina Digitale Roma. Non acquisisci diritti sul software oltre all’uso personale del servizio.</p>
+      <h3 class="legal-h2">Limitazione di responsabilità</h3>
+      <p>Nei limiti consentiti dalla legge, non siamo responsabili per danni indiretti, perdita di dati o interruzioni del servizio. Il gioco richiede attenzione: gioca in sicurezza e non mentre guidi o cammini.</p>
+      <h3 class="legal-h2">Modifiche</h3>
+      <p>Possiamo aggiornare gioco e termini. Le modifiche rilevanti saranno indicate su questa pagina con data di aggiornamento.</p>
+      <h3 class="legal-h2">Legge applicabile</h3>
+      <p>Questi termini sono regolati dalla legge italiana. Per controversie è competente il foro del consumatore, ove previsto dalla normativa.</p>
+      <h3 class="legal-h2">Contatti</h3>
+      <p>Per segnalazioni o dispute: <a href="mailto:officina.digitale.roma@gmail.com">officina.digitale.roma@gmail.com</a> — <button type="button" class="legal-inline-link js-no-start js-open-legal" data-legal-view="contatti">pagina contatti</button>.</p>
+    </div>
+  </div>
+
+  <!-- ── CONTATTI ──────────────────────────────────────────── -->
+  <div id="view-contatti" class="screen-view screen-view--sub" hidden>
+    <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
+    <h2 class="view-title">CONTATTI</h2>
+    <div class="legal-body legal-body--center">
+      <p>Per qualsiasi domanda su DODGE, account, privacy o segnalazioni:</p>
+      <p class="legal-contact-email">
+        <a href="mailto:officina.digitale.roma@gmail.com">officina.digitale.roma@gmail.com</a>
+      </p>
+      <p class="profile-info--dim">Rispondiamo appena possibile, di solito entro qualche giorno lavorativo.</p>
+      <p class="profile-info--dim">Per richieste sui dati personali vedi anche la <button type="button" class="legal-inline-link js-no-start js-open-legal" data-legal-view="privacy">Privacy Policy</button>.</p>
+    </div>
+  </div>
+
   <!-- ── COME SI GIOCA ─────────────────────────────────────── -->
   <div id="view-howto" class="screen-view screen-view--sub" hidden>
     <button type="button" class="subview-round-back subview-bar-back--center js-back-home js-no-start" aria-label="Torna alla home" title="Home">⌂</button>
@@ -315,7 +412,7 @@
   <div class="cookie-banner__panel">
     <h2 id="cookieBannerTitle" class="cookie-banner__title">Cookie e archiviazione</h2>
     <p class="cookie-banner__text">Usiamo cookie tecnici e memoria locale per accesso, preferenze e funzionamento del gioco. Nessun cookie pubblicitario.</p>
-    <p class="cookie-banner__text"><a href="/privacy" class="cookie-banner__link">Leggi la privacy</a></p>
+    <p class="cookie-banner__text"><button type="button" class="cookie-banner__link js-no-start js-open-legal" data-legal-view="privacy">Leggi la privacy</button></p>
     <div class="cookie-banner__actions">
       <button type="button" id="cookieAcceptAll" class="cookie-banner__btn cookie-banner__btn--primary js-no-start">Accetto</button>
       <button type="button" id="cookieEssentialOnly" class="cookie-banner__btn cookie-banner__btn--ghost js-no-start">Solo necessari</button>

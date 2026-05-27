@@ -53,9 +53,16 @@ html.cookie-banner-open {
 }
 
 .cookie-banner__link {
+  font: inherit;
+  font-size: inherit;
   color: rgba(196, 181, 253, 0.95);
   text-decoration: underline;
   text-underline-offset: 0.15em;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .cookie-banner__actions {

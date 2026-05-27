@@ -64,8 +64,7 @@ html.page-scroll-root body.page-scroll-body .screen-view {
   -webkit-overflow-scrolling: touch;
 }
 
-html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--sub,
-html.page-scroll-root body.page-scroll-body .legal-page.screen-view--sub {
+html.page-scroll-root body.page-scroll-body .profile-public-page.screen-view--sub {
   padding-bottom: calc(max(1.15rem, env(safe-area-inset-bottom)) + max(56px, calc(58px * var(--ui-scale))) + var(--vv-layout-gap-bottom, 0px));
 }
 
@@ -1539,8 +1538,10 @@ canvas {
 #view-leaderboard .subview-round-back,
 #view-profile .subview-round-back,
 #view-howto .subview-round-back,
-.profile-public-page .subview-round-back,
-.legal-page .subview-round-back {
+#view-privacy .subview-round-back,
+#view-termini .subview-round-back,
+#view-contatti .subview-round-back,
+.profile-public-page .subview-round-back {
   font-size:1.22rem;
   line-height:1;
   font-family:inherit;
@@ -1553,8 +1554,10 @@ canvas {
 #view-leaderboard .subview-round-back:active,
 #view-profile .subview-round-back:active,
 #view-howto .subview-round-back:active,
-.profile-public-page .subview-round-back:active,
-.legal-page .subview-round-back:active {
+#view-privacy .subview-round-back:active,
+#view-termini .subview-round-back:active,
+#view-contatti .subview-round-back:active,
+.profile-public-page .subview-round-back:active {
   background:rgba(37,99,235,0.16);
   border-color:rgba(147,197,253,0.88);
   color:#f0f9ff;
@@ -2647,16 +2650,42 @@ canvas {
   border: 1px solid rgba(147, 197, 253, 0.35);
   background: rgba(8, 12, 28, 0.55);
   color: rgba(240, 245, 255, 0.88);
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .profile-legal-btn:active {
   opacity: 0.88;
 }
 
-.legal-page .legal-body,
-.legal-page .legal-body a {
+#view-privacy .legal-body,
+#view-termini .legal-body,
+#view-contatti .legal-body {
+  width: min(20rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 0 0.25rem 0.5rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
   user-select: text;
   -webkit-user-select: text;
+}
+#view-privacy .legal-body a,
+#view-termini .legal-body a,
+#view-contatti .legal-body a {
+  color: rgba(196, 181, 253, 0.95);
+}
+.legal-inline-link {
+  font: inherit;
+  font-size: inherit;
+  color: rgba(196, 181, 253, 0.95);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .legal-body {
   width: min(24rem, calc(100% - 1.5rem));

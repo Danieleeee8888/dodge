@@ -3,7 +3,7 @@
  * si vede subito (fallback su cache se offline).
  * Bump CACHE quando vuoi uno svuotamento duro su tutti i client.
  */
-const CACHE = 'dodge-v68';
+const CACHE = 'dodge-v69';
 const PRECACHE = [
   '/',
   '/index.html',

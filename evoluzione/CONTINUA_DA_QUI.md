@@ -167,9 +167,10 @@ Test statico locale (HTTP, come in produzione): dalla cartella `public`, avvia u
 
 ## Pagine legali e cookie
 
-- **Pagine statiche:** `public/privacy.html`, `public/terms.html`, `public/contact.html` — URL puliti `/privacy`, `/termini`, `/contatti` (rewrite in `firebase.json`). Stesso layout del **profilo pubblico** (`profile-public-page` + `screen-view--sub`): **⌂ blu centrato in basso** (`subview-round-back`), scroll su `html.page-scroll-root`, `legal-page.js` + `viewport-ui-scale.js`. Info cookie solo in privacy (nessuna pagina cookie separata).
-- **Link in-app:** tab Profilo → **Dati** → tre pulsanti full-width sotto «Esci»: Privacy, Termini, Contatti (`.profile-legal-links` in `index.html`). **Home non modificata.**
-- **Contatto:** `officina.digitale.roma@gmail.com` (anche in `contact.html`).
+- **Viste in-app:** `#view-privacy`, `#view-termini`, `#view-contatti` in `index.html` dentro `#screen` (come classifica/profilo: `subview-round-back` + `js-back-home`). Apertura con `.js-open-legal` da Profilo → Dati o banner cookie.
+- **URL `/privacy` `/termini` `/contatti`:** file redirect → `/` + `sessionStorage.dodge_open_screen` apre la vista nel gioco.
+- **Link in-app:** tab Profilo → **Dati** → tre pulsanti sotto «Esci». **Home non modificata.**
+- **Contatto:** `officina.digitale.roma@gmail.com`.
 - **Banner cookie:** overlay centrale al primo accesso (`public/js/consent.js`, `public/css/consent.css`); scelta in `localStorage` chiave `dodge:cookieChoice` (`all` | `essential`). Pulsanti «Accetto» / «Solo necessari». Incluso in `index.html`, `auth.html`, `profile.html`, `admin.html`. Debug: `resetCookieChoice()` in console.
 - **AdSense / monetizzazione:** non integrata; rimandata.
 
