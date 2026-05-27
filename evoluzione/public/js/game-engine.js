@@ -705,6 +705,19 @@ const LEVEL_LB_THRESHOLDS = [
   { key: 's180', sec: 180, tone: 'purple', label: '\u2265 3:00' },
 ];
 
+function renderLevelLegendInto(el) {
+  if (!el) return;
+  const legend = document.createElement('div');
+  legend.className = 'rec-streak-legend';
+  LEVEL_LB_THRESHOLDS.forEach((t) => {
+    const item = document.createElement('span');
+    item.className = `rec-streak-legend-item rec-streak-cell--${t.tone}`;
+    item.textContent = t.label;
+    legend.appendChild(item);
+  });
+  el.appendChild(legend);
+}
+
 function renderLevelLeaderboardInto(el) {
   if (!el) return;
   const rec = getCachedLevelLeaderboard().slice(0, LEADERBOARD_TOP_N);
@@ -713,6 +726,7 @@ function renderLevelLeaderboardInto(el) {
   const title = document.createElement('h2');
   title.textContent = `TOP ${LEADERBOARD_TOP_N} · LIVELLO`;
   el.appendChild(title);
+  renderLevelLegendInto(el);
 
   const list = document.createElement('ol');
   if (rec.length === 0) {

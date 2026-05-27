@@ -2170,28 +2170,48 @@ canvas {
   gap:3px;
   flex:0 0 auto;
 }
+.rec-streak-legend {
+  display:flex;
+  flex-wrap:wrap;
+  gap:0.35rem;
+  justify-content:center;
+  align-items:center;
+  margin:0 0 0.45rem;
+  font-size:0.62rem;
+  letter-spacing:0.05em;
+}
+.rec-streak-legend-item {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0.08rem 0.18rem;
+  background:transparent;
+  border-radius:0.2rem;
+  font-weight:700;
+}
 .rec-streak-cell {
   display:inline-flex;
   align-items:center;
   justify-content:center;
   min-width:1.6ch;
-  padding:0.08rem 0.28rem;
-  border-radius:0.32rem;
-  font-size:0.7rem;
+  padding:0.02rem 0.12rem;
+  border-radius:0.2rem;
+  font-size:0.74rem;
   font-weight:700;
   letter-spacing:0;
   line-height:1;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
+  background:transparent;
   color:#fff;
-  box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset;
+  box-shadow:none;
 }
 .rec-streak-cell--zero { opacity:0.32; }
-.rec-streak-cell--red    { background:#ff4444; }
-.rec-streak-cell--blue   { background:#4488ff; }
-.rec-streak-cell--yellow { background:#e9c81a; color:#1c1500; }
-.rec-streak-cell--green  { background:#34cc6e; color:#062611; }
-.rec-streak-cell--purple { background:#a855f7; }
+.rec-streak-cell--red    { color:#ff4444; }
+.rec-streak-cell--blue   { color:#4488ff; }
+.rec-streak-cell--yellow { color:#e9c81a; }
+.rec-streak-cell--green  { color:#34cc6e; }
+.rec-streak-cell--purple { color:#a855f7; }
 
 /* Scelta premio pre-partita */
 .prize-pick-overlay {
