@@ -82,6 +82,14 @@ evoluzione/
 - **Profilo:** username account (fisso), **nome visualizzato** (modificabile, max 24 caratteri, compare in classifica), statistiche con **miglior tempo** vs **miglior tempo puro** (vedi API sopra); pannelli **Missioni** e **Premi Plus** collegati alle API sopra. **Copy missioni/premi:** sotto «Tenta col premio» nell’overlay premio e nel pannello Missioni è indicato che le run **con** premio Plus non contano per le missioni (solo «Gioca puro»).
 - **Sistema Livelli:** livello persistito in `player_stats.level`, ricalcolabile dai contatori `runs_over_*` (bucket esclusivi): `+1` con `6x60s` / `4x90s` / `3x120s` / `2x150s`, `+2` per ogni run `>=180s`. `POST /api/game/end` restituisce `level_before`, `level_after`, `level_gain`, `level_up`.
 - **UI livelli:** in `profile` card livello con progresso prossimo livello; in `profile.html` badge pubblico `LV`; in tab classifica **Tempi** (`#lb-panel-times`) pill `LV` accanto al nome; in tab **Livello** pill `LV` + 5 tile colorati con best streak; in death screen strip `nome | LV` con micro-animazione quando `level_gain > 0` (la TOP5 in morte resta senza livello per riga, e la classifica per livello **non** appare alla morte).
+- **UX traguardi consecutivi (2026-05-27):**
+  - lessico unificato in profilo / profilo pubblico / death snippet: **Traguardi attuali**, **Migliori serie**, testo guida sotto le 5 colonne (`Conta solo la serie consecutiva di partite che superano quel tempo.`).
+  - classifica tab **Livello**: titolo `TRAGUARDI CONSECUTIVI RAGGIUNTI` sopra la legenda colorata e pannello in grigio più scuro.
+  - HUD in partita: rimosso il `LV` centrale; ora mostra il traguardo raggiunto (`>1:00`, `>1:30`, `>2:00`, `>2:30`, `>3:00`) nel colore corrispondente, con micro-respiro.
+  - rinforzo evento traguardo in partita: **glow bordo schermo** (~1s) + **tin** audio dedicato (rispetta audio on/off).
+  - schermata morte: card **Traguardi attuali** spostata prima della TOP5, animazioni delta sulle tile (grow/reset) e glow colorato sul badge LV quando il level-up è causato da un traguardo.
+  - profilo Stats (in-app + pubblico): doppia hero card affiancata **Miglior tempo** + **Livello** con stesso peso visivo; la riga `Prossimo livello` resta sotto.
+  - `COME SI GIOCA`: sezione `COME SI GUADAGNA UN LIVELLO` spostata prima della lista bonus colorati.
 - **Hotfix UX temporaneo (2026-05-27):** UI **Missioni/Premi Plus nascosta** senza rimozione logica. Avvio partita diretto (niente picker premio), profilo con sole tab `Dati` + `Stats` (Mix/Premi hidden). Vista classifica: tab **Tempi** | **Livello** (non più Generale/Pura né layout affiancato). Toggle `ENABLE_PLUS_MISSIONS_UI` in `game-engine.js` (riattivabile; `leaderboardKind` tab Tempi: `pure` / `general`).
 - PWA: manifest, service worker, icone.
 - Target: **mobile** (PC browser secondario).
