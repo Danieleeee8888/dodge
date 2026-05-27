@@ -503,12 +503,57 @@ const cdNumEl = document.getElementById('cdNum');
 
 let audioEnabled = safeLocalGet('dodge_audio', '1') !== '0';
 
+/** Tab attiva sulla vista classifica: `times` | `level`. */
+let leaderboardViewTab = 'times';
 /** Classifica mostrata in `#records-block` (schermata morte / refresh menu): segue l'ultima run pura vs Plus. */
 let deathRecordsLeaderboardKind = 'general';
 /** Righe classifica in schermata morte (la vista Classifica resta TOP 15). */
 const DEATH_RECORDS_TOP_N = 5;
 /** Feature toggle temporaneo: nasconde UI Bonus Plus / Missioni senza rimuovere la logica. */
 const ENABLE_PLUS_MISSIONS_UI = false;
+
+const LEADERBOARD_TAB_MAP = {
+  times: { tab: 'lb-tab-times', panel: 'lb-panel-times' },
+  level: { tab: 'lb-tab-level', panel: 'lb-panel-level' },
+};
+
+function syncLeaderboardTabUi() {
+  for (const key of Object.keys(LEADERBOARD_TAB_MAP)) {
+    const { tab, panel } = LEADERBOARD_TAB_MAP[key];
+    const tabEl = document.getElementById(tab);
+    const panelEl = document.getElementById(panel);
+    const active = leaderboardViewTab === key;
+    tabEl?.classList.toggle('leaderboard-tab--active', active);
+    tabEl?.setAttribute('aria-selected', active ? 'true' : 'false');
+    if (panelEl) panelEl.hidden = !active;
+  }
+}
+
+function bindLeaderboardTabs() {
+  const root = document.getElementById('view-leaderboard');
+  if (!root || root.dataset.lbTabsBound === '1') return;
+  root.dataset.lbTabsBound = '1';
+  document.getElementById('lb-tab-times')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    leaderboardViewTab = 'times';
+    syncLeaderboardTabUi();
+    renderLeaderboardPanels();
+  });
+  document.getElementById('lb-tab-level')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    leaderboardViewTab = 'level';
+    syncLeaderboardTabUi();
+    renderLeaderboardPanels();
+  });
+}
+
+function renderLeaderboardPanels() {
+  const timesEl = document.getElementById('lb-panel-times');
+  const levelsEl = document.getElementById('lb-panel-level');
+  const timesKind = ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure';
+  renderRecordsInto(timesEl, { leaderboardKind: timesKind });
+  renderLevelLeaderboardInto(levelsEl);
+}
 
 /** Tab attiva sulla vista profilo (`#view-profile`). */
 let profileViewTab = 'personal';
@@ -562,7 +607,7 @@ function bindProfileTabs() {
 
 function renderRecordsInto(el, opts = {}) {
   if (!el) return;
-  const isLbPage = el.id === 'records-block-times';
+  const isLbPage = el.id === 'lb-panel-times';
   const isDeathRecords = el.id === 'records-block';
   const kind = opts.leaderboardKind ?? 'general';
   const maxRows = opts.maxRows ?? (isDeathRecords ? DEATH_RECORDS_TOP_N : LEADERBOARD_TOP_N);
@@ -1983,6 +2028,7 @@ function bindHomeNav() {
   if (_navBound) return;
   _navBound = true;
 
+  bindLeaderboardTabs();
   bindProfileTabs();
 
   // GIOCA
@@ -1997,15 +2043,11 @@ function bindHomeNav() {
       e.preventDefault();
       return;
     }
-    const timesEl = document.getElementById('records-block-times');
-    const levelsEl = document.getElementById('records-block-levels');
-    renderRecordsInto(timesEl, { leaderboardKind: ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure' });
-    renderLevelLeaderboardInto(levelsEl);
+    leaderboardViewTab = 'times';
+    syncLeaderboardTabUi();
+    renderLeaderboardPanels();
     showScreenView('leaderboard');
-    fetchBothLeaderboards().then(() => {
-      renderRecordsInto(timesEl, { leaderboardKind: ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure' });
-      renderLevelLeaderboardInto(levelsEl);
-    }).catch(() => {});
+    fetchBothLeaderboards().then(() => renderLeaderboardPanels()).catch(() => {});
   };
   document.getElementById('btn-home-leaderboard')?.addEventListener('click', openLeaderboard);
 
@@ -2086,23 +2128,18 @@ function setupMenuUI() {
   const nameEl = document.getElementById('menuPlayerName');
   if (nameEl) nameEl.textContent = isGuestModeActive() ? 'OSPITE OFFLINE' : currentDisplayName;
   const recEl = document.getElementById('records-block');
-  const timesEl = document.getElementById('records-block-times');
-  const levelsEl = document.getElementById('records-block-levels');
   const lbBtn = document.getElementById('btn-home-leaderboard');
   const profileBtn = document.getElementById('btn-home-profile');
-  const timesKind = ENABLE_PLUS_MISSIONS_UI ? 'general' : 'pure';
   if (isGuestModeActive()) {
     if (recEl) recEl.innerHTML = '';
     if (lbBtn) lbBtn.hidden = false;
     if (profileBtn) profileBtn.hidden = false;
-    if (timesEl) renderRecordsInto(timesEl, { leaderboardKind: timesKind });
-    if (levelsEl) renderLevelLeaderboardInto(levelsEl);
+    renderLeaderboardPanels();
   } else {
     if (lbBtn) lbBtn.hidden = false;
     if (profileBtn) profileBtn.hidden = false;
     renderRecordsInto(recEl, { leaderboardKind: deathRecordsLeaderboardKind, maxRows: DEATH_RECORDS_TOP_N });
-    if (timesEl) renderRecordsInto(timesEl, { leaderboardKind: timesKind });
-    if (levelsEl) renderLevelLeaderboardInto(levelsEl);
+    renderLeaderboardPanels();
   }
 }
 

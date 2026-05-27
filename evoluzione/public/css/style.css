@@ -2150,50 +2150,17 @@ canvas {
 }
 .records-block-list li.rec-row--me { border-color:rgba(147,197,253,0.45); background:rgba(147,197,253,0.08); }
 
-/* Wrapper 2 colonne: Tempi | Livello */
-.leaderboards-split {
+/* Vista classifica: tab Tempi | Livello + un pannello alla volta (come profilo Dati/Stats) */
+#view-leaderboard {
   display:flex;
-  gap:0.45rem;
-  align-items:flex-start;
-  justify-content:center;
-  width:min(48rem, calc(100% - 0.6rem));
-  margin:0 auto;
-  box-sizing:border-box;
+  flex-direction:column;
+  align-items:center;
 }
-.leaderboard-col { flex:1 1 0; min-width:0; }
-/* In split mode i due blocchi devono prendere l'intera larghezza della loro colonna. */
-.leaderboards-split .records-block-list {
-  width:100%;
-  max-width:100%;
-  padding:0.6rem 0.55rem;
-  font-size:0.72rem;
-  letter-spacing:0.06em;
+#view-leaderboard .leaderboard-tab-strip {
+  margin-top:0.15rem;
 }
-.leaderboards-split .records-block-list h2 {
-  font-size:0.6rem;
-  letter-spacing:0.18em;
-  margin-bottom:0.55rem;
-}
-.leaderboards-split .records-block-list li {
-  padding:0.42rem 0.45rem;
-  margin:0.28rem 0;
-  font-size:0.8rem;
-  letter-spacing:0.04em;
-  border-radius:0.45rem;
-}
-.leaderboards-split .records-block-list li.rec-row { gap:6px; }
-.leaderboards-split .records-block-list li.rec-row .rec-row-left { gap:0.3rem; }
-.leaderboards-split .records-block-list .rec-rank { width:1.9ch; flex:0 0 1.9ch; }
-.leaderboards-split .records-block-list .rec-tag { letter-spacing:0.06em; font-size:0.78rem; }
-.leaderboards-split .records-block-list .rec-row-right { gap:0.3rem; }
-.leaderboards-split .records-block-list .rec-time {
-  min-width:auto;
-  font-size:0.72rem;
-}
-.leaderboards-split .records-block-list .rec-level-pill {
-  font-size:0.65rem;
-  letter-spacing:0.06em;
-  padding:0.12rem 0.32rem;
+#view-leaderboard .records-block-list {
+  margin-top:0.35rem;
 }
 
 /* Riga 5 numeri colorati (best streak per soglia) nella classifica per livello */
