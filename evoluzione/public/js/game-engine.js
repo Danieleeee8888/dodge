@@ -109,10 +109,21 @@ const greenModeHud = document.getElementById('green-mode-hud');
 const greenmodefill = document.getElementById('greenmodefill');
 const hudEl = document.getElementById('hud');
 const tEl = document.getElementById('t');
-const lvEl = document.getElementById('lv');
+const hudThresholdEl = document.getElementById('hud-threshold');
+const thresholdGlowEl = document.getElementById('thresholdGlow');
 const nbEl = document.getElementById('nb');
 const homeCornerBtn = document.getElementById('homeCornerBtn');
 const audioCornerBtn = document.getElementById('audioCornerBtn');
+let hudThresholdIdx = -1;
+let lastStreakSnapshot = null;
+let lastDeathThresholdTone = '';
+const HUD_THRESHOLDS = [
+  { ms: 60_000, sec: 60, label: '>1:00', tone: 'red' },
+  { ms: 90_000, sec: 90, label: '>1:30', tone: 'blue' },
+  { ms: 120_000, sec: 120, label: '>2:00', tone: 'yellow' },
+  { ms: 150_000, sec: 150, label: '>2:30', tone: 'green' },
+  { ms: 180_000, sec: 180, label: '>3:00', tone: 'purple' },
+];
 /** Fasi shell per HUD/chrome (`playing` nasconde audio ecc.). */
 let shellPhase = 'menu';
 /** Vista `#screen` attiva: su classifica da home l?audio resta nascosto. */
@@ -707,6 +718,10 @@ const LEVEL_LB_THRESHOLDS = [
 
 function renderLevelLegendInto(el) {
   if (!el) return;
+  const title = document.createElement('p');
+  title.className = 'rec-streak-legend-title';
+  title.textContent = 'TRAGUARDI CONSECUTIVI RAGGIUNTI';
+  el.appendChild(title);
   const legend = document.createElement('div');
   legend.className = 'rec-streak-legend';
   LEVEL_LB_THRESHOLDS.forEach((t) => {
@@ -771,8 +786,8 @@ function renderLevelLeaderboardInto(el) {
         const cell = document.createElement('span');
         cell.className = `rec-streak-cell rec-streak-cell--${t.tone}` + (n === 0 ? ' rec-streak-cell--zero' : '');
         cell.textContent = String(n);
-        cell.title = `Serie ${t.label}: ${n} di fila`;
-        cell.setAttribute('aria-label', `Serie almeno ${t.sec}s: ${n}`);
+        cell.title = `Traguardi ${t.label}: ${n} di fila`;
+        cell.setAttribute('aria-label', `Traguardi almeno ${t.sec}s: ${n}`);
         streakRow.appendChild(cell);
       });
       right.appendChild(streakRow);
@@ -792,6 +807,58 @@ function renderLevelLeaderboardInto(el) {
 
   el.appendChild(list);
 }
+
+function resetHudThreshold() {
+  hudThresholdIdx = -1;
+  if (hudThresholdEl) {
+    hudThresholdEl.className = 'hud-center hud-threshold';
+    hudThresholdEl.textContent = '';
+  }
+}
+
+function playThresholdTin(tone) {
+  if (!audioEnabled || !audioCtx) return;
+  const freqMap = {
+    red: 880,
+    blue: 988,
+    yellow: 1108,
+    green: 1244,
+    purple: 1396,
+  };
+  const f = freqMap[tone] || 1000;
+  playTone(f, 0.18, 0.1, 'sine', 0, { attack: 0.003 });
+  playTone(f * 2, 0.16, 0.05, 'triangle', 0.02, { attack: 0.002 });
+}
+
+function triggerThresholdGlow(tone) {
+  if (!thresholdGlowEl) return;
+  thresholdGlowEl.className = `threshold-glow threshold-glow--${tone}`;
+  void thresholdGlowEl.offsetWidth;
+  thresholdGlowEl.classList.add('threshold-glow--show');
+  setTimeout(() => thresholdGlowEl?.classList.remove('threshold-glow--show'), 1050);
+}
+
+function updateHudThreshold(elapsedMs) {
+  if (!hudThresholdEl) return;
+  let nextIdx = hudThresholdIdx;
+  for (let i = HUD_THRESHOLDS.length - 1; i > hudThresholdIdx; i--) {
+    if (elapsedMs >= HUD_THRESHOLDS[i].ms) {
+      nextIdx = i;
+      break;
+    }
+  }
+  if (nextIdx === hudThresholdIdx || nextIdx < 0) return;
+  hudThresholdIdx = nextIdx;
+  const t = HUD_THRESHOLDS[nextIdx];
+  hudThresholdEl.className = `hud-center hud-threshold hud-threshold--${t.tone}`;
+  hudThresholdEl.textContent = t.label;
+  void hudThresholdEl.offsetWidth;
+  hudThresholdEl.classList.add('hud-threshold--breath');
+  setTimeout(() => hudThresholdEl?.classList.remove('hud-threshold--breath'), 950);
+  triggerThresholdGlow(t.tone);
+  playThresholdTin(t.tone);
+}
+
 function syncAudioCornerBtn() {
   if (!audioCornerBtn) return;
   audioCornerBtn.classList.toggle('audio-on', audioEnabled);
@@ -896,11 +963,55 @@ function clearDeathSummarySnippets() {
   if (levelStrip) {
     levelStrip.hidden = true;
     levelStrip.classList.remove('is-leveled-up');
+    levelStrip.classList.remove('is-leveled-up--red', 'is-leveled-up--blue', 'is-leveled-up--yellow', 'is-leveled-up--green', 'is-leveled-up--purple');
   }
   if (levelDelta) {
     levelDelta.hidden = true;
     levelDelta.textContent = '';
   }
+}
+
+function readStreakSnapshot(stats) {
+  return {
+    s60: Math.max(0, Math.floor(Number(stats?.current_streak_over_60s || 0))),
+    s90: Math.max(0, Math.floor(Number(stats?.current_streak_over_90s || 0))),
+    s120: Math.max(0, Math.floor(Number(stats?.current_streak_over_120s || 0))),
+    s150: Math.max(0, Math.floor(Number(stats?.current_streak_over_150s || 0))),
+    s180: Math.max(0, Math.floor(Number(stats?.current_streak_over_180s || 0))),
+  };
+}
+
+function toneForSnapshotKey(key) {
+  if (key === 's60') return 'red';
+  if (key === 's90') return 'blue';
+  if (key === 's120') return 'yellow';
+  if (key === 's150') return 'green';
+  if (key === 's180') return 'purple';
+  return '';
+}
+
+function animateDeathStreakDelta(gridEl, prevSnapshot, nextSnapshot) {
+  if (!gridEl || !prevSnapshot || !nextSnapshot) return '';
+  const tiles = gridEl.querySelectorAll('.profile-threshold-stat');
+  const keys = ['s60', 's90', 's120', 's150', 's180'];
+  let highestGrowthTone = '';
+  for (let i = 0; i < keys.length; i++) {
+    const tile = tiles[i];
+    if (!tile) continue;
+    const key = keys[i];
+    const prev = Math.max(0, Math.floor(Number(prevSnapshot[key] || 0)));
+    const next = Math.max(0, Math.floor(Number(nextSnapshot[key] || 0)));
+    tile.classList.remove('profile-threshold-stat--pump-up', 'profile-threshold-stat--pump-reset');
+    if (next > prev) {
+      tile.classList.add('profile-threshold-stat--pump-up');
+      highestGrowthTone = toneForSnapshotKey(key);
+      continue;
+    }
+    if (prev >= 1 && next === 0) {
+      tile.classList.add('profile-threshold-stat--pump-reset');
+    }
+  }
+  return highestGrowthTone;
 }
 
 function highlightDeathStreakThresholds(diedElapsedMs, gridEl) {
@@ -926,6 +1037,10 @@ function renderDeathProfileSnippet(stats, diedElapsedMs) {
   renderProfileThresholdLegend(legendEl);
   renderProfileThresholdStatGrid(gridEl, stats, 'current_streak_over');
   highlightDeathStreakThresholds(diedElapsedMs, gridEl);
+  const nextSnapshot = readStreakSnapshot(stats);
+  const growthTone = animateDeathStreakDelta(gridEl, lastStreakSnapshot, nextSnapshot);
+  if (growthTone) lastDeathThresholdTone = growthTone;
+  lastStreakSnapshot = nextSnapshot;
   root.hidden = false;
 }
 
@@ -1025,13 +1140,19 @@ function renderDeathLevelStrip(opts = {}) {
   valueEl.textContent = `LV ${levelAfter}`;
   strip.hidden = false;
   strip.classList.remove('is-leveled-up');
+  strip.classList.remove('is-leveled-up--red', 'is-leveled-up--blue', 'is-leveled-up--yellow', 'is-leveled-up--green', 'is-leveled-up--purple');
   deltaEl.hidden = true;
   deltaEl.textContent = '';
   if (levelGain > 0) {
     strip.classList.add('is-leveled-up');
+    const tone = String(opts.causeTone || '').trim();
+    if (tone) strip.classList.add(`is-leveled-up--${tone}`);
     deltaEl.hidden = false;
     deltaEl.textContent = levelGain > 1 ? `+${levelGain} livelli` : '+1 livello';
-    setTimeout(() => strip.classList.remove('is-leveled-up'), 1500);
+    setTimeout(() => {
+      strip.classList.remove('is-leveled-up');
+      strip.classList.remove('is-leveled-up--red', 'is-leveled-up--blue', 'is-leveled-up--yellow', 'is-leveled-up--green', 'is-leveled-up--purple');
+    }, 1500);
   }
 }
 
@@ -1418,6 +1539,7 @@ async function prepareDeathScreenBundle({
 
 function applyDeathSummaryFromBundle(bundle) {
   clearDeathSummarySnippets();
+  lastDeathThresholdTone = '';
   const recEl = document.getElementById('records-block');
   if (!recEl) return;
   recEl.textContent = '';
@@ -1449,12 +1571,12 @@ function applyDeathSummaryFromBundle(bundle) {
     displayName: currentDisplayName,
     levelAfter: bundle.gameEndPayload?.level_after ?? bundle.stats?.level ?? 0,
     levelGain: bundle.gameEndPayload?.level_gain ?? 0,
+    causeTone: lastDeathThresholdTone,
   });
 }
 
 function revealDeathScreen(bundle) {
   tEl.textContent = fmt(bundle.diedElapsed);
-  lvEl.textContent = String(bundle.diedLevel);
   nbEl.textContent = String(bundle.diedNb);
   updateShellForPhase('gameover');
   const deathTimeEl = document.getElementById('death-time');
@@ -1656,6 +1778,7 @@ function clearProfileStatsTabExtras() {
   renderProfileSurvivalThresholdStats({}, profileThresholdElements());
   document.getElementById('profile-recent-games-root')?.replaceChildren();
   renderProfileLevelCard({});
+  lastStreakSnapshot = null;
 }
 
 function renderProfileLevelCard(stats = {}) {
@@ -1815,6 +1938,7 @@ async function setupProfileView() {
       renderProfileStatsKpiGrid(statsGridEl, stats);
       renderProfileSurvivalThresholdStats(stats, profileThresholdElements());
       renderProfileLevelCard(stats);
+      lastStreakSnapshot = readStreakSnapshot(stats);
       if (colorMap.red) colorMap.red.textContent = String(Math.floor(Number(stats.red_collected || 0)));
       if (colorMap.blue) colorMap.blue.textContent = String(Math.floor(Number(stats.blue_collected || 0)));
       if (colorMap.yellow) colorMap.yellow.textContent = String(Math.floor(Number(stats.yellow_collected || 0)));
@@ -1833,6 +1957,7 @@ async function setupProfileView() {
       renderProfileStatsKpiGrid(statsGridEl, {});
       renderProfileSurvivalThresholdStats({}, profileThresholdElements());
       renderProfileLevelCard({});
+      lastStreakSnapshot = null;
     }
   } catch (_) {
     clearProfileStatsTabExtras();
@@ -1845,6 +1970,7 @@ async function setupProfileView() {
     renderProfileStatsKpiGrid(statsGridEl, {});
     renderProfileSurvivalThresholdStats({}, profileThresholdElements());
     renderProfileLevelCard({});
+    lastStreakSnapshot = null;
   }
   await refreshProfileMissionsAndPrizes().catch(() => {});
 }
@@ -2936,6 +3062,7 @@ function finishIntroCountdown() {
   }
   startTime = performance.now();
   elapsed = 0;
+  resetHudThreshold();
   nextPurpleAt = startTime + runPurpleFirstSpawnMs;
   lastRed = startTime;
   lastBlue = startTime;
@@ -2998,6 +3125,7 @@ function startGame() {
   hideScreen();
   running = true;
   updateShellForPhase('playing');
+  resetHudThreshold();
   balls = []; parts = []; sparkles = [];
   floatingTexts = [];
   firstRedSpawned = false;
@@ -3411,7 +3539,7 @@ function loop(now){
     }
     drawBg(now, level);
     tEl.textContent = fmt(0);
-    lvEl.textContent = '1';
+    if (hudThresholdEl) hudThresholdEl.textContent = '';
     nbEl.textContent = '0';
     return;
   }
@@ -3478,6 +3606,7 @@ function loop(now){
   }
 
   elapsed = now - startTime;
+  updateHudThreshold(elapsed);
 
   // cursor lerp ? traslazione anzich? teletrasporto
   if (tx > -200) {
@@ -3853,7 +3982,6 @@ function loop(now){
   }
 
   tEl.textContent=fmt(elapsed);
-  lvEl.textContent=level;
   nbEl.textContent=balls.filter(b=>b.type==='white').length;
 }
 

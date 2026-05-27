@@ -30,10 +30,11 @@
 
 <div id="dodgeShell" class="dodge-shell">
 <canvas id="c"></canvas>
+<div id="thresholdGlow" class="threshold-glow" aria-hidden="true"></div>
 
 <div id="hud" class="hud--hidden">
   <span class="hud-left hud-time">TEMPO <span id="t">00:00:000</span></span>
-  <span class="hud-center">LV <span id="lv">1</span></span>
+  <span id="hud-threshold" class="hud-center hud-threshold" aria-live="polite"></span>
   <span class="hud-right hud-nb"><span id="nb">0</span> oggetti</span>
 </div>
 
@@ -179,32 +180,33 @@
       <div id="profile-panel-stats" class="profile-tab-panel" role="tabpanel" aria-labelledby="profile-tab-stats" hidden>
         <section class="profile-panel" aria-labelledby="profile-heading-stats">
           <h3 id="profile-heading-stats" class="profile-panel-title">Statistiche</h3>
-          <div id="profile-level-card" class="profile-level-card">
-            <p class="profile-level-card__label">Livello giocatore</p>
-            <div class="profile-level-card__row">
-              <span id="profile-level-badge" class="profile-level-badge">LV 0</span>
+          <div class="profile-stats-hero">
+            <div id="profile-stats-best-card" class="profile-stats-best profile-stats-hero__card"></div>
+            <div class="profile-stats-best profile-stats-hero__card profile-stats-hero__card--level">
+              <span class="profile-stats-best-label">Livello</span>
+              <span id="profile-level-badge" class="profile-stats-best-value">LV 0</span>
               <span id="profile-level-gain-hint" class="profile-level-gain-hint" hidden></span>
             </div>
-            <p id="profile-level-progress" class="profile-level-progress">Prossimo livello: 60s 0/6 - 90s 0/4 - 120s 0/3 - 150s 0/2</p>
           </div>
-          <div id="profile-stats-best-card" class="profile-stats-best"></div>
+          <p id="profile-level-progress" class="profile-level-progress">Prossimo livello: 60s 0/6 - 90s 0/4 - 120s 0/3 - 150s 0/2</p>
           <div id="profile-stats-grid" class="profile-stats-grid"></div>
           <div class="profile-soglie-block">
-            <div id="profile-threshold-legend" class="profile-threshold-legend" aria-label="Soglie di tempo"></div>
+            <div id="profile-threshold-legend" class="profile-threshold-legend" aria-label="Traguardi di tempo"></div>
             <div class="profile-threshold-rows">
               <div class="profile-threshold-row">
                 <p class="profile-threshold-row__label profile-info--dim">Totale</p>
-                <div id="profile-runs-over-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Partite oltre soglia"></div>
+                <div id="profile-runs-over-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Partite oltre il traguardo"></div>
               </div>
               <div class="profile-threshold-row">
-                <p class="profile-threshold-row__label profile-info--dim">Serie<br>attuale</p>
-                <div id="profile-streaks-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Strike consecutivi attuali"></div>
+                <p class="profile-threshold-row__label profile-info--dim">Traguardi<br>attuali</p>
+                <div id="profile-streaks-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Traguardi consecutivi attuali"></div>
               </div>
               <div class="profile-threshold-row">
-                <p class="profile-threshold-row__label profile-info--dim">Record</p>
-                <div id="profile-best-streaks-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Miglior strike per soglia"></div>
+                <p class="profile-threshold-row__label profile-info--dim">Migliori<br>serie</p>
+                <div id="profile-best-streaks-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Migliori serie consecutive"></div>
               </div>
             </div>
+            <p class="profile-threshold-help profile-info--dim">Conta solo la serie consecutiva di partite che superano quel tempo.</p>
           </div>
           <p class="profile-panel-note profile-info--dim profile-stats-subhead">Bonus raccolti (totale)</p>
           <div class="profile-color-stats">
@@ -250,14 +252,6 @@
     <div class="howto-body">
       <p>Muovi il dito ovunque sul display per spostare il cursore bianco.</p>
       <p>Schiva i <b>triangoli</b> e <b>quadrati</b> bianchi.</p>
-      <p>Raccogli i bonus colorati:</p>
-      <ul class="howto-list">
-        <li><span class="hd hd-r"></span>Rosso &mdash; scudo temporaneo</li>
-        <li><span class="hd hd-b"></span>Blu &mdash; rallenta i nemici</li>
-        <li><span class="hd hd-y"></span>Giallo &mdash; elimina un terzo dei nemici</li>
-        <li><span class="hd hd-g"></span>Verde &mdash; rimpicciolisce i nemici</li>
-        <li><span class="hd hd-p"></span>Viola &mdash; vita extra</li>
-      </ul>
       <h3 class="howto-subtitle">COME SI GUADAGNA UN LIVELLO</h3>
       <p>Completa una qualsiasi di queste serie di sopravvivenze:</p>
       <ul class="howto-list">
@@ -267,6 +261,14 @@
         <li>2 partite oltre 2:30</li>
       </ul>
       <p class="howto-tip">Bonus livello: ogni partita oltre 3:00 vale +2 livelli.</p>
+      <p>Raccogli i bonus colorati:</p>
+      <ul class="howto-list">
+        <li><span class="hd hd-r"></span>Rosso &mdash; scudo temporaneo</li>
+        <li><span class="hd hd-b"></span>Blu &mdash; rallenta i nemici</li>
+        <li><span class="hd hd-y"></span>Giallo &mdash; elimina un terzo dei nemici</li>
+        <li><span class="hd hd-g"></span>Verde &mdash; rimpicciolisce i nemici</li>
+        <li><span class="hd hd-p"></span>Viola &mdash; vita extra</li>
+      </ul>
       <p class="howto-tip">Due dita = pausa.</p>
     </div>
   </div>
@@ -280,17 +282,18 @@
       <span id="death-level-value" class="death-level-value">LV 0</span>
       <p id="death-level-delta" class="death-level-delta" hidden></p>
     </div>
-    <div id="records-block"><p class="rec-saving">salvataggio···</p></div>
     <div id="death-profile-snippet" class="death-snippet death-snippet--profile" hidden>
-      <h2 class="death-snippet__title">Serie attuale</h2>
+      <h2 class="death-snippet__title">Traguardi attuali</h2>
       <div class="profile-soglie-block death-soglie-block">
-        <div id="death-streak-legend" class="profile-threshold-legend" aria-label="Soglie di tempo"></div>
+        <div id="death-streak-legend" class="profile-threshold-legend" aria-label="Traguardi di tempo"></div>
         <div class="profile-threshold-row">
-          <p class="profile-threshold-row__label profile-info--dim">Serie<br>attuale</p>
-          <div id="death-streaks-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Strike consecutivi attuali"></div>
+          <p class="profile-threshold-row__label profile-info--dim">Traguardi<br>attuali</p>
+          <div id="death-streaks-grid" class="profile-color-stats profile-threshold-stats profile-threshold-row__values" aria-label="Traguardi consecutivi attuali"></div>
         </div>
+        <p class="profile-threshold-help profile-info--dim">Conta solo la serie consecutiva di partite che superano quel tempo.</p>
       </div>
     </div>
+    <div id="records-block"><p class="rec-saving">salvataggio···</p></div>
     <div id="death-mission-snippet" class="death-snippet death-snippet--mission" hidden></div>
     <div class="death-actions">
       <p class="tap-hint">Premi ovunque per riprovare</p>
