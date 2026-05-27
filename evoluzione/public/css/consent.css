@@ -1,0 +1,94 @@
+/* Banner cookie centrale — coerente con .plus-launch-panel */
+html.cookie-banner-open {
+  overflow: hidden;
+}
+
+.cookie-banner {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+
+.cookie-banner[hidden] {
+  display: none !important;
+}
+
+.cookie-banner__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.cookie-banner__panel {
+  position: relative;
+  width: min(22rem, 100%);
+  padding: 1rem 1.1rem 1.15rem;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(216, 180, 254, 0.42);
+  background: rgba(6, 8, 18, 0.97);
+  box-shadow: 0 12px 42px rgba(0, 0, 0, 0.62), 0 0 26px rgba(168, 85, 247, 0.16);
+  text-align: center;
+}
+
+.cookie-banner__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: rgba(240, 245, 255, 0.95);
+}
+
+.cookie-banner__text {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(245, 243, 255, 0.82);
+}
+
+.cookie-banner__link {
+  color: rgba(196, 181, 253, 0.95);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.cookie-banner__actions {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+
+.cookie-banner__btn {
+  flex: 1;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.55rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cookie-banner__btn:active {
+  opacity: 0.88;
+}
+
+.cookie-banner__btn--primary {
+  border-color: rgba(147, 197, 253, 0.55);
+  background: rgba(147, 197, 253, 0.18);
+  color: rgba(240, 245, 255, 0.95);
+}
+
+.cookie-banner__btn--ghost {
+  background: transparent;
+  color: rgba(245, 243, 255, 0.75);
+}

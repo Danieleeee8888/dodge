@@ -35,6 +35,18 @@
         "destination": "/profile.html"
       },
       {
+        "source": "/privacy",
+        "destination": "/privacy.html"
+      },
+      {
+        "source": "/termini",
+        "destination": "/terms.html"
+      },
+      {
+        "source": "/contatti",
+        "destination": "/contact.html"
+      },
+      {
         "source": "/api/**",
         "function": {
           "functionId": "api",

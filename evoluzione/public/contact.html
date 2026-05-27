@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="it" class="page-scroll-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Contatti — DODGE</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="page-scroll-body">
+  <main class="screen-view screen-view--sub legal-page">
+    <a href="/" class="legal-back js-no-start" aria-label="Torna al gioco">⌂</a>
+    <h1 class="view-title">CONTATTI</h1>
+    <div class="legal-body legal-body--center">
+      <p>Per qualsiasi domanda su DODGE, account, privacy o segnalazioni:</p>
+      <p class="legal-contact-email">
+        <a href="mailto:officina.digitale.roma@gmail.com">officina.digitale.roma@gmail.com</a>
+      </p>
+      <p class="profile-info--dim">Rispondiamo appena possibile, di solito entro qualche giorno lavorativo.</p>
+      <p class="profile-info--dim">Per richieste sui dati personali vedi anche la <a href="/privacy">Privacy Policy</a>.</p>
+    </div>
+  </main>
+  <link rel="stylesheet" href="/css/consent.css">
+  <div id="cookieBanner" class="cookie-banner" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cookieBannerTitle">
+    <div class="cookie-banner__backdrop"></div>
+    <div class="cookie-banner__panel">
+      <h2 id="cookieBannerTitle" class="cookie-banner__title">Cookie e archiviazione</h2>
+      <p class="cookie-banner__text">Usiamo cookie tecnici e memoria locale per accesso, preferenze e funzionamento del gioco. Nessun cookie pubblicitario.</p>
+      <p class="cookie-banner__text"><a href="/privacy" class="cookie-banner__link">Leggi la privacy</a></p>
+      <div class="cookie-banner__actions">
+        <button type="button" id="cookieAcceptAll" class="cookie-banner__btn cookie-banner__btn--primary">Accetto</button>
+        <button type="button" id="cookieEssentialOnly" class="cookie-banner__btn cookie-banner__btn--ghost">Solo necessari</button>
+      </div>
+    </div>
+  </div>
+  <script src="/js/consent.js"></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+</body>
+</html>

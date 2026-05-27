@@ -15,6 +15,7 @@
 <title>     DODGE</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/consent.css">
 </head>
 <body>
 
@@ -174,6 +175,11 @@
             <button type="button" id="btn-reset-pw" class="home-btn home-btn--compact home-btn--ghost js-no-start">Reset password</button>
             <button type="button" id="btn-logout" class="home-btn home-btn--compact home-btn--danger js-no-start">Esci</button>
           </div>
+          <div class="profile-legal-links">
+            <a href="/privacy" class="profile-legal-btn js-no-start">Privacy</a>
+            <a href="/termini" class="profile-legal-btn js-no-start">Termini</a>
+            <a href="/contatti" class="profile-legal-btn js-no-start">Contatti</a>
+          </div>
         </section>
       </div>
 
@@ -304,6 +310,20 @@
 
 </div>
 
+<div id="cookieBanner" class="cookie-banner" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cookieBannerTitle">
+  <div class="cookie-banner__backdrop"></div>
+  <div class="cookie-banner__panel">
+    <h2 id="cookieBannerTitle" class="cookie-banner__title">Cookie e archiviazione</h2>
+    <p class="cookie-banner__text">Usiamo cookie tecnici e memoria locale per accesso, preferenze e funzionamento del gioco. Nessun cookie pubblicitario.</p>
+    <p class="cookie-banner__text"><a href="/privacy" class="cookie-banner__link">Leggi la privacy</a></p>
+    <div class="cookie-banner__actions">
+      <button type="button" id="cookieAcceptAll" class="cookie-banner__btn cookie-banner__btn--primary js-no-start">Accetto</button>
+      <button type="button" id="cookieEssentialOnly" class="cookie-banner__btn cookie-banner__btn--ghost js-no-start">Solo necessari</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/consent.js"></script>
 <script type="module" src="/js/game-engine.js"></script>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
 </body>

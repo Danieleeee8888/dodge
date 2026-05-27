@@ -38,8 +38,12 @@ evoluzione/
 ├── public/
 │   ├── auth.html
 │   ├── index.html
+│   ├── privacy.html
+│   ├── terms.html
+│   ├── contact.html
 │   ├── manifest.json
 │   ├── sw.js
+│   ├── css/consent.css
 │   ├── icons/           (icon-192.png, icon-512.png)
 │   ├── css/style.css
 │   └── js/
@@ -53,6 +57,7 @@ evoluzione/
 │       ├── profile-public.js
 │       ├── profile-best-display.js   (miglior tempo / puro profilo)
 │       ├── viewport-ui-scale.js   (--ui-scale + gap visual viewport, condiviso gioco / profilo pubblico / admin)
+│       ├── consent.js             (banner cookie / localStorage)
 │       └── game-engine.js
 │   ├── admin.html
 │   ├── profile.html
@@ -157,6 +162,16 @@ firebase deploy --only database
 Dopo un rollout che tocca **solo** `functions/index.js`, serve almeno `firebase deploy --only functions` (e hosting se cambia `public/`).
 
 Test statico locale (HTTP, come in produzione): dalla cartella `public`, avvia un server sulla porta scelta e apri `/index.html` dalla root del server.
+
+---
+
+## Pagine legali e cookie
+
+- **Pagine statiche:** `public/privacy.html`, `public/terms.html`, `public/contact.html` — URL puliti `/privacy`, `/termini`, `/contatti` (rewrite in `firebase.json`). Info cookie solo in privacy (nessuna pagina cookie separata).
+- **Link in-app:** tab Profilo → **Dati** → tre pulsanti full-width sotto «Esci»: Privacy, Termini, Contatti (`.profile-legal-links` in `index.html`). **Home non modificata.**
+- **Contatto:** `officina.digitale.roma@gmail.com` (anche in `contact.html`).
+- **Banner cookie:** overlay centrale al primo accesso (`public/js/consent.js`, `public/css/consent.css`); scelta in `localStorage` chiave `dodge:cookieChoice` (`all` | `essential`). Pulsanti «Accetto» / «Solo necessari». Incluso in `index.html`, `auth.html`, `profile.html`, `admin.html`. Debug: `resetCookieChoice()` in console.
+- **AdSense / monetizzazione:** non integrata; rimandata.
 
 ---
 

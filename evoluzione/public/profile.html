@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Profilo giocatore</title>
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/consent.css">
 </head>
 <body class="page-scroll-body">
   <main class="screen-view screen-view--sub profile-public-page" style="display:flex;">
@@ -52,6 +53,20 @@
     </div>
     <p id="public-profile-msg" class="profile-msg"></p>
   </main>
+  <div id="cookieBanner" class="cookie-banner" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cookieBannerTitle">
+    <div class="cookie-banner__backdrop"></div>
+    <div class="cookie-banner__panel">
+      <h2 id="cookieBannerTitle" class="cookie-banner__title">Cookie e archiviazione</h2>
+      <p class="cookie-banner__text">Usiamo cookie tecnici e memoria locale per accesso, preferenze e funzionamento del gioco. Nessun cookie pubblicitario.</p>
+      <p class="cookie-banner__text"><a href="/privacy" class="cookie-banner__link">Leggi la privacy</a></p>
+      <div class="cookie-banner__actions">
+        <button type="button" id="cookieAcceptAll" class="cookie-banner__btn cookie-banner__btn--primary">Accetto</button>
+        <button type="button" id="cookieEssentialOnly" class="cookie-banner__btn cookie-banner__btn--ghost">Solo necessari</button>
+      </div>
+    </div>
+  </div>
+  <script src="/js/consent.js"></script>
   <script type="module" src="/js/profile-public.js"></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
 </body>
 </html>

@@ -2617,3 +2617,100 @@ canvas {
   margin:0.4rem auto 0;
   max-width:20rem;
 }
+
+/* Link legali nel profilo (tab Dati) */
+.profile-legal-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: min(24rem, calc(100% - 1.1rem));
+  max-width: calc(100% - max(24px, env(safe-area-inset-left) + env(safe-area-inset-right)));
+  margin: 0.6rem auto 0;
+  box-sizing: border-box;
+}
+.profile-legal-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  background: rgba(8, 12, 28, 0.55);
+  color: rgba(240, 245, 255, 0.88);
+  -webkit-tap-highlight-color: transparent;
+}
+.profile-legal-btn:active {
+  opacity: 0.88;
+}
+
+/* Pagine legali (privacy, termini, contatti) */
+html.page-scroll-root body.page-scroll-body .legal-page.screen-view--sub {
+  padding-bottom: calc(max(1.15rem, env(safe-area-inset-bottom)) + 1rem);
+}
+.legal-back {
+  position: absolute;
+  top: max(0.65rem, env(safe-area-inset-top));
+  left: max(0.75rem, env(safe-area-inset-left));
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(147, 197, 253, 0.45);
+  background: rgba(30, 58, 138, 0.35);
+  color: rgba(240, 245, 255, 0.95);
+  font-size: 1.25rem;
+  text-decoration: none;
+  line-height: 1;
+}
+.legal-body {
+  width: min(24rem, calc(100% - 1.5rem));
+  margin: 0 auto;
+  padding: 0 0.25rem 1.5rem;
+  text-align: left;
+}
+.legal-body--center {
+  text-align: center;
+}
+.legal-updated {
+  font-size: 0.62rem;
+  color: rgba(245, 243, 255, 0.55);
+  margin: 0 0 1rem;
+}
+.legal-h2 {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(196, 181, 253, 0.9);
+  margin: 1.1rem 0 0.45rem;
+}
+.legal-body p,
+.legal-body li {
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: rgba(245, 243, 255, 0.82);
+  margin: 0 0 0.55rem;
+}
+.legal-body a {
+  color: rgba(196, 181, 253, 0.95);
+}
+.legal-list {
+  margin: 0 0 0.65rem;
+  padding-left: 1.1rem;
+}
+.legal-contact-email {
+  margin: 1rem 0 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.04em;
+}
+.legal-contact-email a {
+  font-weight: 700;
+}

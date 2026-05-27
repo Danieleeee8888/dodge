@@ -3,13 +3,18 @@
  * si vede subito (fallback su cache se offline).
  * Bump CACHE quando vuoi uno svuotamento duro su tutti i client.
  */
-const CACHE = 'dodge-v64';
+const CACHE = 'dodge-v65';
 const PRECACHE = [
   '/',
   '/index.html',
   '/auth.html',
+  '/privacy.html',
+  '/terms.html',
+  '/contact.html',
   '/manifest.json',
   '/css/style.css',
+  '/css/consent.css',
+  '/js/consent.js',
   '/js/firebase-init.js',
   '/js/auth.js',
   '/js/profile.js',
